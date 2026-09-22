@@ -15,3 +15,11 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+
+springdoc:
+  paths-to-match: /api/**
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method
+    disable-swagger-default-url: true
