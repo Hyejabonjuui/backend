@@ -39,6 +39,9 @@ public class CardNews extends BaseEntity {
             foreignKey = @ForeignKey(name = "fk_card_news_policy"))
     private Policy policy;
 
+    @Column(name = "title", length = 255)
+    private String title;
+
     @Column(name = "body", nullable = false, length = 500)
     private String body;
 
@@ -46,8 +49,9 @@ public class CardNews extends BaseEntity {
     private Long cardNo;
 
     @Builder
-    public CardNews(Policy policy, String body, Long cardNo) {
+    public CardNews(Policy policy, String title, String body, Long cardNo) {
         this.policy = Objects.requireNonNull(policy, "정책은 필수입니다.");
+        this.title = title;
         this.body = Objects.requireNonNull(body, "카드 문구는 필수입니다.");
         if (cardNo == null || cardNo < 1 || cardNo > 4) {
             throw new IllegalArgumentException("카드 번호는 1~4여야 합니다.");
