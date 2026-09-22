@@ -1,6 +1,7 @@
 package com.hyeja.domain.profile.entity;
 
 import com.hyeja.domain.member.entity.Member;
+import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.baseEntity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -36,9 +37,10 @@ public class Profile extends BaseEntity {
             foreignKey = @ForeignKey(name = "fk_profile_member_email"))
     private Member member;
 
-    // Region 엔티티 구현 시 연관관계로 전환합니다.
-    @Column(name = "region_code", nullable = false, length = 5, columnDefinition = "CHAR(5)")
-    private String regionCode;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "region_code", referencedColumnName = "region_code", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_profile_region"))
+    private Region region;
 
     @Column(name = "birth", nullable = false)
     private LocalDate birth;
@@ -62,12 +64,12 @@ public class Profile extends BaseEntity {
     private String housingType;
 
     @Builder
-    public Profile(Member member, String regionCode, LocalDate birth, String employmentCode,
+    public Profile(Member member, Region region, LocalDate birth, String employmentCode,
             Boolean houselessYn, String marriageCode, String incomeRangeCode,
             String educationCode, String housingType) {
         this.member = Objects.requireNonNull(member, "회원은 필수입니다.");
         this.email = Objects.requireNonNull(member.getEmail(), "회원 이메일은 필수입니다.");
-        this.regionCode = regionCode;
+        this.region = Objects.requireNonNull(region, "거주 지역은 필수입니다.");
         this.birth = birth;
         this.employmentCode = employmentCode;
         this.houselessYn = houselessYn;

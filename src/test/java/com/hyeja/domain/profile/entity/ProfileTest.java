@@ -1,10 +1,12 @@
 package com.hyeja.domain.profile.entity;
 
 import com.hyeja.domain.member.entity.Member;
+import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.config.JpaAuditingConfig;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import org.hibernate.exception.ConstraintViolationException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -21,6 +23,12 @@ class ProfileTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @BeforeEach
+    void setUpRegion() {
+        entityManager.persist(Region.builder().regionCode("11110").sigunguName("종로구").build());
+        entityManager.flush();
+    }
 
     @Test
     void persistsProfileAndReferencesMemberByEmail() {
@@ -41,7 +49,8 @@ class ProfileTest {
         assertThat(stored.getEmail()).isEqualTo(email);
         assertThat(stored.getMember().getMemberId()).isEqualTo(member.getMemberId());
         assertThat(stored.getMember().getEmail()).isEqualTo(email);
-        assertThat(stored.getRegionCode()).isEqualTo("11110");
+        assertThat(stored.getRegion().getRegionCode()).isEqualTo("11110");
+        assertThat(stored.getRegion().getSigunguName()).isEqualTo("종로구");
         assertThat(stored.getBirth()).isEqualTo(LocalDate.of(2000, 1, 1));
         assertThat(stored.getEmploymentCode()).isEqualTo("TEST");
         assertThat(stored.getHouselessYn()).isTrue();
@@ -109,6 +118,51 @@ class ProfileTest {
                 .isInstanceOf(ConstraintViolationException.class);
     }
 
+    @Test
+    void multipleProfilesCanReferenceSameRegion() {
+        Member firstMember = persistMember("first@example.com");
+        Member secondMember = persistMember("second@example.com");
+        entityManager.persist(newProfile(firstMember).build());
+        entityManager.persist(newProfile(secondMember).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        Profile first = entityManager.find(Profile.class, firstMember.getEmail());
+        Profile second = entityManager.find(Profile.class, secondMember.getEmail());
+        assertThat(first.getRegion().getRegionCode()).isEqualTo("11110");
+        assertThat(second.getRegion().getRegionCode()).isEqualTo("11110");
+        assertThat(entityManager.createQuery("select count(r) from Region r", Long.class)
+                .getSingleResult()).isEqualTo(1L);
+    }
+
+    @Test
+    void regionIsLoadedOnlyWhenAccessed() {
+        Member member = persistMember("lazy@example.com");
+        entityManager.persist(newProfile(member).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        Profile stored = entityManager.find(Profile.class, member.getEmail());
+        var persistenceUnitUtil = entityManager.getEntityManagerFactory().getPersistenceUnitUtil();
+        assertThat(persistenceUnitUtil.isLoaded(stored, "region")).isFalse();
+        assertThat(stored.getRegion().getSigunguName()).isEqualTo("종로구");
+        assertThat(persistenceUnitUtil.isLoaded(stored, "region")).isTrue();
+    }
+
+    @Test
+    void databaseRejectsRegionWithoutMatchingRow() {
+        persistMember("unknown-region@example.com");
+        assertThatThrownBy(() -> entityManager.createNativeQuery("""
+                INSERT INTO profile
+                    (email, region_code, birth, employment_code, houseless_yn, created_at, updated_at)
+                VALUES
+                    ('unknown-region@example.com', '99999', '2000-01-01', 'TEST', true,
+                     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """).executeUpdate())
+                .isInstanceOf(ConstraintViolationException.class)
+                .hasMessageContaining("FK_PROFILE_REGION");
+    }
+
     private Member persistMember(String email) {
         Member member = Member.builder()
                 .email(email).password("encoded-password").nickname("혜자").build();
@@ -120,7 +174,7 @@ class ProfileTest {
     private Profile.ProfileBuilder newProfile(Member member) {
         return Profile.builder()
                 .member(member)
-                .regionCode("11110")
+                .region(entityManager.getReference(Region.class, "11110"))
                 .birth(LocalDate.of(2000, 1, 1))
                 .employmentCode("TEST")
                 .houselessYn(true);
