@@ -72,7 +72,7 @@ public class Policy extends BaseEntity {
     @Column(name = "houseless_yn")
     private Boolean houselessYn;
 
-    @Column(name = "housing_type", length = 10)
+    @Column(name = "housing_type", length = 20)
     private String housingType;
 
     @Column(name = "apply_period_code", nullable = false, length = 10)
