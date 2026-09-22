@@ -1,0 +1,79 @@
+package com.hyeja.domain.profile.entity;
+
+import com.hyeja.domain.member.entity.Member;
+import com.hyeja.global.baseEntity.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import java.time.LocalDate;
+import java.util.Objects;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@Entity
+@Table(name = "profile")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Profile extends BaseEntity {
+
+    @Id
+    @Column(name = "email", nullable = false, length = 100, updatable = false)
+    private String email;
+
+    // PK와 FK가 같은 컬럼인 @OneToOne은 Hibernate가 회원의 PK를 참조하는 것으로 해석합니다.
+    // 이메일 참조에는 @ManyToOne을 사용하되, profile.email의 PK 제약으로 실제 관계는 1:1입니다.
+    // email 필드가 컬럼을 저장하므로 연관관계에서는 같은 컬럼을 중복 저장하지 않습니다.
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "email", referencedColumnName = "email",
+            nullable = false, unique = true, insertable = false, updatable = false,
+            foreignKey = @ForeignKey(name = "fk_profile_member_email"))
+    private Member member;
+
+    // Region 엔티티 구현 시 연관관계로 전환합니다.
+    @Column(name = "region_code", nullable = false, length = 5, columnDefinition = "CHAR(5)")
+    private String regionCode;
+
+    @Column(name = "birth", nullable = false)
+    private LocalDate birth;
+
+    @Column(name = "employment_code", nullable = false, length = 10)
+    private String employmentCode;
+
+    @Column(name = "houseless_yn", nullable = false)
+    private Boolean houselessYn;
+
+    @Column(name = "marriage_code", length = 10)
+    private String marriageCode;
+
+    @Column(name = "income_range_code", length = 10)
+    private String incomeRangeCode;
+
+    @Column(name = "education_code", length = 10)
+    private String educationCode;
+
+    @Column(name = "housing_type", length = 10)
+    private String housingType;
+
+    @Builder
+    public Profile(Member member, String regionCode, LocalDate birth, String employmentCode,
+            Boolean houselessYn, String marriageCode, String incomeRangeCode,
+            String educationCode, String housingType) {
+        this.member = Objects.requireNonNull(member, "회원은 필수입니다.");
+        this.email = Objects.requireNonNull(member.getEmail(), "회원 이메일은 필수입니다.");
+        this.regionCode = regionCode;
+        this.birth = birth;
+        this.employmentCode = employmentCode;
+        this.houselessYn = houselessYn;
+        this.marriageCode = marriageCode;
+        this.incomeRangeCode = incomeRangeCode;
+        this.educationCode = educationCode;
+        this.housingType = housingType;
+    }
+}
