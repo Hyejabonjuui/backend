@@ -60,7 +60,7 @@ public class Profile extends BaseEntity {
     @Column(name = "education_code", length = 10)
     private String educationCode;
 
-    @Column(name = "housing_type", length = 10)
+    @Column(name = "housing_type", length = 20)
     private String housingType;
 
     @Builder
