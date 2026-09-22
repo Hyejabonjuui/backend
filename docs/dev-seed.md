@@ -19,7 +19,15 @@ API 개발과 프론트 시연을 위한 가상 데이터입니다. 실제 지�
    DB_NAME=hyeja
    DB_USERNAME=각자의_DB_계정
    DB_PASSWORD=각자의_DB_비밀번호
+   DB_SEED_MODE=always
+   SERVER_PORT=8080
    ```
+
+   `DB_USERNAME`과 `DB_PASSWORD`는 본인의 MariaDB 계정 정보로 바꿉니다.
+   `KEY=value` 형식으로 작성하며, `SPRING_PROFILES_ACTIVE`는 설정하지 않습니다.
+   기존 `.env`나 IDE 실행 설정에 프로필을 지정했다면 제거합니다.
+   `DB_SEED_MODE=always`이면 앱 시작 시 없는 시드 행을 추가합니다.
+   이 항목을 생략해도 기본값은 `always`입니다. `SERVER_PORT`의 기본값은 `8080`입니다.
 
 3. 별도 프로필 지정 없이 실행합니다.
 
@@ -29,6 +37,7 @@ API 개발과 프론트 시연을 위한 가상 데이터입니다. 실제 지�
 
    IntelliJ에서는 실행 설정의 Active profiles를 비워 둡니다.
    작업 디렉터리는 `.env`가 있는 프로젝트 루트로 설정합니다.
+   `.env`를 수정하기 전에 앱이 이미 실행 중이었다면 종료한 뒤 다시 실행합니다.
 
 `application.yml`의 `ddl-auto: update`로 테이블을 생성·갱신한 뒤,
 `defer-datasource-initialization: true`로 `db/seed/dev-data.sql`을 실행합니다.
