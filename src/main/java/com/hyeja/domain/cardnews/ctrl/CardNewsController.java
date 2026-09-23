@@ -1,4 +1,4 @@
-package com.hyeja.ctrl.cardnews;
+package com.hyeja.domain.cardnews.ctrl;
 
 import java.util.List;
 
@@ -16,7 +16,7 @@ import com.hyeja.global.apiPayload.ApiResponse;
 import lombok.RequiredArgsConstructor;
 
 @RestController 
-@RequestMapping ("/policies/card-news")
+@RequestMapping ("/api/policies/card-news")
 @RequiredArgsConstructor 
 public class CardNewsController {
     private final CardNewsService cardNewsService;

@@ -13,20 +13,20 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/policies")
+@RequestMapping("/api/policies")
 @RequiredArgsConstructor
 public class PolicyController {
 
     private final PolicyService policyService;
 
-    // 외부 API 데이터를 동기화(적재)하는 엔드포인트
+    // 1. 외부 API 데이터를 당겨와서 DB에 적재하는 수동 트리거 API
     @PostMapping("/sync")
     public ResponseEntity<ApiResponse<String>> syncPolicies() {
         policyService.fetchAndSaveHousingPolicies();
-        return ResponseEntity.ok(ApiResponse.onSuccess("정책 데이터 동기화가 완료되었습니다."));
+        return ResponseEntity.ok(ApiResponse.onSuccess("온통청년 주거 정책 데이터 동기화가 성공적으로 완료되었습니다."));
     }
 
-    // 주거 정책 목록 조회 엔트포인트
+    // 2. 적재된 주거 정책 목록 조회 API
     @GetMapping("/housing")
     public ResponseEntity<ApiResponse<List<Policy>>> getHousingPolicies() {
         List<Policy> housingPolicies = policyService.getHousingPolicies();

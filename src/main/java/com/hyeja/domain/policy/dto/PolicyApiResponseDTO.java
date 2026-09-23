@@ -3,29 +3,61 @@ package com.hyeja.domain.policy.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
+
+import java.util.List;
 
 @Getter
 @Setter
+@ToString
 public class PolicyApiResponseDTO {
 
-    @JsonProperty("bizId")
-    private String policyId;          // 정책 ID
+    private int resultCode;
+    private String resultMessage;
+    private ResultData result;
 
-    @JsonProperty("polyBizSjnm")
-    private String policyName;        // 정책명
+    @Getter
+    @Setter
+    @ToString
+    public static class ResultData {
+        private Pagging pagging;
+        
+        @JsonProperty("youthPolicyList")
+        private List<PolicyItem> youthPolicyList;
+    }
 
-    @JsonProperty("plcyTpNm")
-    private String category;          // 정책분야 (주거 등)
+    @Getter
+    @Setter
+    @ToString
+    public static class Pagging {
+        private int totCount;
+        private int pageNum;
+        private int pageSize;
+    }
 
-    @JsonProperty("plcyExplnCn")
-    private String description;       // 정책소개 (description)
+    @Getter
+    @Setter
+    @ToString
+    public static class PolicyItem {
+        @JsonProperty("plcyNo")
+        private String policyId;          // 정책 ID
 
-    @JsonProperty("supportCn")
-    private String supportContent;    // 지원내용
+        @JsonProperty("plcyNm")
+        private String policyName;        // 정책명
 
-    @JsonProperty("polyRlmCd")
-    private String apiSubCategory;
+        @JsonProperty("lclsfNm")
+        private String category;          // 정책 대분야 (예: 주거, 일자리 등)
 
-    @JsonProperty("rqutPrdCn")
-    private String applyPeriodCode;   // 신청기간 내용 등
+        @JsonProperty("plcyExplnCn")
+        private String description;       // 정책 설명
+
+        @JsonProperty("plcySprtCn")
+        private String supportContent;    // 지원 내용
+
+        @JsonProperty("aplyUrlAddr")
+        private String applyUrl;          // 신청 URL
+
+        @JsonProperty("aplyYmd")
+        private String applyYmd;          // 신청 기간 (예: "20260923 ~ 20260928")
+    }
 }
