@@ -1,5 +1,6 @@
 package com.hyeja.domain.notification.entity;
 
+import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.global.config.JpaAuditingConfig;
@@ -33,7 +34,7 @@ class NotificationTest {
         member = Member.builder().email("member@example.com")
                 .password("encoded-password").nickname("회원").build();
         policy = Policy.builder().policyId("policy-1").policyName("테스트 정책")
-                .category("주거").ageLimitYn(false).applyPeriodCode("TEST").build();
+                .category(PolicyCategory.MONTHLY_RENT).ageLimitYn(false).applyPeriodCode("TEST").build();
         entityManager.persist(member);
         entityManager.persist(policy);
         entityManager.flush();

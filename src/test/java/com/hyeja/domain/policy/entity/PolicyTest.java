@@ -1,11 +1,13 @@
 package com.hyeja.domain.policy.entity;
 
+import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.global.config.JpaAuditingConfig;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -53,7 +55,7 @@ class PolicyTest {
         Policy stored = entityManager.find(Policy.class, id);
         assertThat(stored.getPolicyId()).isEqualTo(id);
         assertThat(stored.getPolicyName()).hasSize(200);
-        assertThat(stored.getCategory()).isEqualTo("주거");
+        assertThat(stored.getCategory()).isEqualTo(PolicyCategory.MONTHLY_RENT);
         assertThat(stored.getApiSubCategory()).isEqualTo("임차료 지원");
         assertThat(stored.getSubtypeCode()).isEqualTo("TEST");
         assertThat(stored.getKeywords()).isEqualTo("청년,주거");
@@ -120,7 +122,7 @@ class PolicyTest {
     void databaseRejectsMissingRequiredColumn(String missingColumn) {
         String[] columns = {"policy_name", "category", "age_limit_yn", "apply_period_code",
                 "view_count", "active_yn"};
-        String[] values = {"'정책'", "'주거'", "false", "'TEST'", "0", "true"};
+        String[] values = {"'정책'", "'MONTHLY_RENT'", "false", "'TEST'", "0", "true"};
         for (int i = 0; i < columns.length; i++) {
             if (columns[i].equals(missingColumn)) {
                 values[i] = "NULL";
@@ -134,8 +136,21 @@ class PolicyTest {
                 .isInstanceOf(ConstraintViolationException.class);
     }
 
+    @ParameterizedTest
+    @EnumSource(PolicyCategory.class)
+    void storesEveryCategoryByName(PolicyCategory category) {
+        String id = "category-" + category.name();
+        entityManager.persist(requiredFields(id).category(category).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(entityManager.find(Policy.class, id).getCategory()).isEqualTo(category);
+        assertThat(entityManager.createNativeQuery("SELECT category FROM policy WHERE policy_id = :id")
+                .setParameter("id", id).getSingleResult()).isEqualTo(category.name());
+    }
+
     private Policy.PolicyBuilder requiredFields(String id) {
         return Policy.builder().policyId(id).policyName("테스트 정책")
-                .category("주거").ageLimitYn(false).applyPeriodCode("TEST");
+                .category(PolicyCategory.MONTHLY_RENT).ageLimitYn(false).applyPeriodCode("TEST");
     }
 }

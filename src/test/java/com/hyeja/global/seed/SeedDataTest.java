@@ -2,6 +2,7 @@ package com.hyeja.global.seed;
 
 import com.hyeja.domain.cardnews.entity.CardNews;
 import com.hyeja.domain.policy.entity.Policy;
+import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import com.hyeja.domain.profile.enums.HousingType;
@@ -66,6 +67,7 @@ class SeedDataTest {
         assertThat(profile.getMarriageCode()).isEqualTo(MaritalStatus.SINGLE);
         assertThat(profile.getHousingType()).isEqualTo(HousingType.MONTHLY_RENT);
         Policy policy = entityManager.find(Policy.class, "DEMO-HOUSING-001");
+        assertThat(policy.getCategory()).isEqualTo(PolicyCategory.MONTHLY_RENT);
         assertThat(policy.getHousingType()).isEqualTo("MONTHLY_RENT");
         CardNews card = entityManager.createQuery(
                 "select c from CardNews c where c.policy.policyId = :id", CardNews.class)

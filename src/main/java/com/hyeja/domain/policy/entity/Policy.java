@@ -1,8 +1,11 @@
 package com.hyeja.domain.policy.entity;
 
+import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.global.baseEntity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
@@ -10,6 +13,8 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Entity
@@ -24,8 +29,11 @@ public class Policy extends BaseEntity {
     @Column(name = "policy_name", nullable = false, length = 200)
     private String policyName;
 
+    // 기존 VARCHAR 컬럼을 유지하면서 enum 이름을 저장합니다.
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "category", nullable = false, length = 20)
-    private String category;
+    private PolicyCategory category;
 
     @Column(name = "api_sub_category", length = 50)
     private String apiSubCategory;
@@ -103,7 +111,7 @@ public class Policy extends BaseEntity {
     private Boolean activeYn;
 
     @Builder
-    public Policy(String policyId, String policyName, String category, String apiSubCategory,
+    public Policy(String policyId, String policyName, PolicyCategory category, String apiSubCategory,
             String subtypeCode, String keywords, String description, String supportContent,
             Integer minAge, Integer maxAge, Boolean ageLimitYn, String incomeConditionCode,
             Integer incomeMin, Integer incomeMax, String incomeEtc, String marriageCode,

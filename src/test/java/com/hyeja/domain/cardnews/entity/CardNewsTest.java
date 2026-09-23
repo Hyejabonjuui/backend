@@ -1,5 +1,6 @@
 package com.hyeja.domain.cardnews.entity;
 
+import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.global.config.JpaAuditingConfig;
 import jakarta.persistence.EntityManager;
@@ -134,7 +135,7 @@ class CardNewsTest {
 
     private Policy persistPolicy(String id) {
         Policy value = Policy.builder().policyId(id).policyName("테스트 정책")
-                .category("주거").ageLimitYn(false).applyPeriodCode("TEST").build();
+                .category(PolicyCategory.MONTHLY_RENT).ageLimitYn(false).applyPeriodCode("TEST").build();
         entityManager.persist(value);
         return value;
     }
