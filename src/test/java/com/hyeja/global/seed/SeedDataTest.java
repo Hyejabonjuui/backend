@@ -85,6 +85,22 @@ class SeedDataTest {
     }
 
     @Test
+    void seedCoversEveryProfileOptionAndPolicyCategory() {
+        List<Profile> profiles = entityManager.createQuery("select p from Profile p", Profile.class)
+                .getResultList();
+        assertThat(profiles).extracting(Profile::getEmploymentCode).containsOnly(EmploymentStatus.values());
+        assertThat(profiles).extracting(Profile::getMarriageCode).containsOnly(MaritalStatus.values());
+        assertThat(profiles).extracting(Profile::getHousingType).containsOnly(HousingType.values());
+        List<Policy> policies = entityManager.createQuery("select p from Policy p", Policy.class)
+                .getResultList();
+        assertThat(policies).extracting(Policy::getCategory).containsOnly(PolicyCategory.values());
+
+        Profile profile = entityManager.find(Profile.class, "seed01@hyeja.test");
+        assertThat(profile.getIncomeRangeCode()).isEqualTo("INC_20_30");
+        assertThat(profile.getEducationCode()).isNull();
+    }
+
+    @Test
     void allTestAccountsHaveValidBcryptPasswords() {
         List<String> passwords = jdbc.queryForList("SELECT password FROM member", String.class);
         assertThat(passwords).hasSize(10).allSatisfy(password -> {

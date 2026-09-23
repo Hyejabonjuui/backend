@@ -2,10 +2,11 @@
 -- 로컬 앱 시작 시 실행합니다. DB_SEED_MODE=never로 끌 수 있으며, 기존 행은 수정·삭제하지 않습니다.
 -- IDENTITY PK는 DB가 생성하고, FK는 이메일/정책 ID/지역 코드로 연결합니다.
 -- 재실행 시 같은 키의 행이 있으면 건너뜁니다. deleted_at이 있는 행도 복구하지 않습니다.
--- 임시 코드(프론트 및 enum 합의 후 변경):
--- employment_code: EMPLOYED(재직), UNEMPLOYED(미취업), FREELANCER(프리랜서)
+-- 프로필·정책 분류는 Java enum 이름과 동일하게 저장합니다. 전체 목록: docs/profile-policy-enums.md
+-- employment_code: EMPLOYED / SELF_EMPLOYED / UNEMPLOYED / FREELANCER / DAILY_WORKER
+--                  ENTREPRENEUR / SHORT_TERM_WORKER / FARMER / OTHER
 -- marriage_code: SINGLE(미혼), MARRIED(기혼)
--- income_range_code: INC_0_20 / INC_20_30 / INC_30_40 / INC_40_UP
+-- income_range_code: INC_0_20 / INC_20_30 / INC_30_40 / INC_40_UP (선택지 미정인 임시 문자열)
 -- 연소득 구간: 2천만원 미만 / 2천 이상 3천 미만 / 3천 이상 4천 미만 / 4천 이상
 -- housing_type: PARENTS / MONTHLY_RENT / JEONSE / OWNED
 -- category: MONTHLY_RENT / JEONSE / PURCHASE / PUBLIC_RENT / OTHER
@@ -56,12 +57,12 @@ FROM (
     SELECT 'seed01@hyeja.test' AS email, '11440' AS region_code, '1999-03-12' AS birth, 'UNEMPLOYED' AS employment_code, TRUE AS houseless_yn, 'SINGLE' AS marriage_code, 'INC_20_30' AS income_range_code, 'MONTHLY_RENT' AS housing_type
     UNION ALL SELECT 'seed02@hyeja.test', '11680', '1996-07-21', 'EMPLOYED', TRUE, 'SINGLE', 'INC_30_40', 'JEONSE'
     UNION ALL SELECT 'seed03@hyeja.test', '11200', '2001-11-05', 'FREELANCER', TRUE, 'SINGLE', 'INC_0_20', 'PARENTS'
-    UNION ALL SELECT 'seed04@hyeja.test', '11620', '1994-02-18', 'EMPLOYED', FALSE, 'MARRIED', 'INC_40_UP', 'OWNED'
-    UNION ALL SELECT 'seed05@hyeja.test', '11710', '2000-08-30', 'UNEMPLOYED', TRUE, 'SINGLE', 'INC_0_20', 'PARENTS'
-    UNION ALL SELECT 'seed06@hyeja.test', '11350', '1998-05-09', 'FREELANCER', TRUE, 'SINGLE', 'INC_20_30', 'MONTHLY_RENT'
-    UNION ALL SELECT 'seed07@hyeja.test', '11500', '1995-12-14', 'EMPLOYED', TRUE, 'MARRIED', 'INC_40_UP', 'JEONSE'
-    UNION ALL SELECT 'seed08@hyeja.test', '11590', '2002-01-27', 'UNEMPLOYED', TRUE, 'SINGLE', 'INC_0_20', 'PARENTS'
-    UNION ALL SELECT 'seed09@hyeja.test', '11410', '1997-09-03', 'EMPLOYED', TRUE, 'SINGLE', 'INC_30_40', 'MONTHLY_RENT'
+    UNION ALL SELECT 'seed04@hyeja.test', '11620', '1994-02-18', 'SELF_EMPLOYED', FALSE, 'MARRIED', 'INC_40_UP', 'OWNED'
+    UNION ALL SELECT 'seed05@hyeja.test', '11710', '2000-08-30', 'DAILY_WORKER', TRUE, 'SINGLE', 'INC_0_20', 'PARENTS'
+    UNION ALL SELECT 'seed06@hyeja.test', '11350', '1998-05-09', 'ENTREPRENEUR', TRUE, 'SINGLE', 'INC_20_30', 'MONTHLY_RENT'
+    UNION ALL SELECT 'seed07@hyeja.test', '11500', '1995-12-14', 'SHORT_TERM_WORKER', TRUE, 'MARRIED', 'INC_40_UP', 'JEONSE'
+    UNION ALL SELECT 'seed08@hyeja.test', '11590', '2002-01-27', 'FARMER', TRUE, 'SINGLE', 'INC_0_20', 'PARENTS'
+    UNION ALL SELECT 'seed09@hyeja.test', '11410', '1997-09-03', 'OTHER', TRUE, 'SINGLE', 'INC_30_40', 'MONTHLY_RENT'
     UNION ALL SELECT 'seed10@hyeja.test', '11740', '1993-06-16', 'FREELANCER', FALSE, 'MARRIED', 'INC_40_UP', 'OWNED'
 ) seed
 JOIN member m ON m.email = seed.email
