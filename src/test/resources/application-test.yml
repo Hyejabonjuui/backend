@@ -1,4 +1,9 @@
 spring:
+  test:
+    database:
+      # H2 2.4.240의 CHECK 제약 평가 오류를 피하도록 Hikari 연결 풀을 유지합니다.
+      # https://github.com/h2database/h2database/issues/4308
+      replace: none
   datasource:
     url: jdbc:h2:mem:hyeja-test;DB_CLOSE_DELAY=-1
     username: sa

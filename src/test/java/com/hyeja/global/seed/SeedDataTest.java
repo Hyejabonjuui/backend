@@ -3,6 +3,9 @@ package com.hyeja.global.seed;
 import com.hyeja.domain.cardnews.entity.CardNews;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.profile.entity.Profile;
+import com.hyeja.domain.profile.enums.EmploymentStatus;
+import com.hyeja.domain.profile.enums.HousingType;
+import com.hyeja.domain.profile.enums.MaritalStatus;
 import jakarta.persistence.EntityManager;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,7 +62,9 @@ class SeedDataTest {
         Profile profile = entityManager.find(Profile.class, "seed01@hyeja.test");
         assertThat(profile.getMember().getEmail()).isEqualTo("seed01@hyeja.test");
         assertThat(profile.getRegion().getRegionCode()).isEqualTo("11440");
-        assertThat(profile.getHousingType()).isEqualTo("MONTHLY_RENT");
+        assertThat(profile.getEmploymentCode()).isEqualTo(EmploymentStatus.UNEMPLOYED);
+        assertThat(profile.getMarriageCode()).isEqualTo(MaritalStatus.SINGLE);
+        assertThat(profile.getHousingType()).isEqualTo(HousingType.MONTHLY_RENT);
         Policy policy = entityManager.find(Policy.class, "DEMO-HOUSING-001");
         assertThat(policy.getHousingType()).isEqualTo("MONTHLY_RENT");
         CardNews card = entityManager.createQuery(

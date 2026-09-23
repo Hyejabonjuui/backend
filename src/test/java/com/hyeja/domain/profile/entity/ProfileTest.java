@@ -1,6 +1,9 @@
 package com.hyeja.domain.profile.entity;
 
 import com.hyeja.domain.member.entity.Member;
+import com.hyeja.domain.profile.enums.EmploymentStatus;
+import com.hyeja.domain.profile.enums.HousingType;
+import com.hyeja.domain.profile.enums.MaritalStatus;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.config.JpaAuditingConfig;
 import jakarta.persistence.EntityManager;
@@ -8,6 +11,8 @@ import java.time.LocalDate;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
@@ -36,10 +41,10 @@ class ProfileTest {
         String email = "a".repeat(88) + "@example.com";
         Member member = persistMember(email);
         Profile profile = newProfile(member)
-                .marriageCode("UNMARRIED")
+                .marriageCode(MaritalStatus.SINGLE)
                 .incomeRangeCode("TEST")
                 .educationCode("TEST")
-                .housingType("TEST")
+                .housingType(HousingType.MONTHLY_RENT)
                 .build();
         entityManager.persist(profile);
         entityManager.flush();
@@ -52,12 +57,12 @@ class ProfileTest {
         assertThat(stored.getRegion().getRegionCode()).isEqualTo("11110");
         assertThat(stored.getRegion().getSigunguName()).isEqualTo("종로구");
         assertThat(stored.getBirth()).isEqualTo(LocalDate.of(2000, 1, 1));
-        assertThat(stored.getEmploymentCode()).isEqualTo("TEST");
+        assertThat(stored.getEmploymentCode()).isEqualTo(EmploymentStatus.EMPLOYED);
         assertThat(stored.getHouselessYn()).isTrue();
-        assertThat(stored.getMarriageCode()).isEqualTo("UNMARRIED");
+        assertThat(stored.getMarriageCode()).isEqualTo(MaritalStatus.SINGLE);
         assertThat(stored.getIncomeRangeCode()).isEqualTo("TEST");
         assertThat(stored.getEducationCode()).isEqualTo("TEST");
-        assertThat(stored.getHousingType()).isEqualTo("TEST");
+        assertThat(stored.getHousingType()).isEqualTo(HousingType.MONTHLY_RENT);
         assertThat(stored.getCreatedAt()).isNotNull();
         assertThat(stored.getUpdatedAt()).isNotNull();
         assertThat(stored.getDeletedAt()).isNull();
@@ -99,7 +104,7 @@ class ProfileTest {
                 INSERT INTO profile
                     (email, region_code, birth, employment_code, houseless_yn, created_at, updated_at)
                 VALUES
-                    ('missing@example.com', '11110', '2000-01-01', 'TEST', true,
+                    ('missing@example.com', '11110', '2000-01-01', 'EMPLOYED', true,
                      CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """).executeUpdate())
                 .isInstanceOf(ConstraintViolationException.class);
@@ -112,7 +117,7 @@ class ProfileTest {
                 INSERT INTO profile
                     (email, region_code, birth, employment_code, houseless_yn, created_at, updated_at)
                 VALUES
-                    ('required@example.com', '11110', '2000-01-01', 'TEST', NULL,
+                    ('required@example.com', '11110', '2000-01-01', 'EMPLOYED', NULL,
                      CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """).executeUpdate())
                 .isInstanceOf(ConstraintViolationException.class);
@@ -156,11 +161,65 @@ class ProfileTest {
                 INSERT INTO profile
                     (email, region_code, birth, employment_code, houseless_yn, created_at, updated_at)
                 VALUES
-                    ('unknown-region@example.com', '99999', '2000-01-01', 'TEST', true,
+                    ('unknown-region@example.com', '99999', '2000-01-01', 'EMPLOYED', true,
                      CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """).executeUpdate())
                 .isInstanceOf(ConstraintViolationException.class)
                 .hasMessageContaining("FK_PROFILE_REGION");
+    }
+
+    @ParameterizedTest
+    @EnumSource(EmploymentStatus.class)
+    void storesEveryEmploymentStatusByName(EmploymentStatus status) {
+        Member member = persistMember("employment@example.com");
+        entityManager.persist(newProfile(member).employmentCode(status).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(entityManager.find(Profile.class, member.getEmail()).getEmploymentCode()).isEqualTo(status);
+        assertThat(storedColumn("employment_code", member.getEmail())).isEqualTo(status.name());
+    }
+
+    @ParameterizedTest
+    @EnumSource(MaritalStatus.class)
+    void storesEveryMaritalStatusByName(MaritalStatus status) {
+        Member member = persistMember("marital@example.com");
+        entityManager.persist(newProfile(member).marriageCode(status).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(entityManager.find(Profile.class, member.getEmail()).getMarriageCode()).isEqualTo(status);
+        assertThat(storedColumn("marriage_code", member.getEmail())).isEqualTo(status.name());
+    }
+
+    @ParameterizedTest
+    @EnumSource(HousingType.class)
+    void storesEveryHousingTypeByName(HousingType type) {
+        Member member = persistMember("housing@example.com");
+        entityManager.persist(newProfile(member).housingType(type).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(entityManager.find(Profile.class, member.getEmail()).getHousingType()).isEqualTo(type);
+        assertThat(storedColumn("housing_type", member.getEmail())).isEqualTo(type.name());
+    }
+
+    @Test
+    void databaseRejectsMissingEmploymentStatus() {
+        persistMember("missing-employment@example.com");
+        assertThatThrownBy(() -> entityManager.createNativeQuery("""
+                INSERT INTO profile
+                    (email, region_code, birth, employment_code, houseless_yn, created_at, updated_at)
+                VALUES
+                    ('missing-employment@example.com', '11110', '2000-01-01', NULL, true,
+                     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """).executeUpdate())
+                .isInstanceOf(ConstraintViolationException.class);
+    }
+
+    private Object storedColumn(String column, String email) {
+        return entityManager.createNativeQuery("SELECT " + column + " FROM profile WHERE email = :email")
+                .setParameter("email", email).getSingleResult();
     }
 
     private Member persistMember(String email) {
@@ -176,7 +235,7 @@ class ProfileTest {
                 .member(member)
                 .region(entityManager.getReference(Region.class, "11110"))
                 .birth(LocalDate.of(2000, 1, 1))
-                .employmentCode("TEST")
+                .employmentCode(EmploymentStatus.EMPLOYED)
                 .houselessYn(true);
     }
 }

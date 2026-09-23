@@ -1,10 +1,15 @@
 package com.hyeja.domain.profile.entity;
 
 import com.hyeja.domain.member.entity.Member;
+import com.hyeja.domain.profile.enums.EmploymentStatus;
+import com.hyeja.domain.profile.enums.HousingType;
+import com.hyeja.domain.profile.enums.MaritalStatus;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.baseEntity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Id;
@@ -17,6 +22,8 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Entity
@@ -45,14 +52,19 @@ public class Profile extends BaseEntity {
     @Column(name = "birth", nullable = false)
     private LocalDate birth;
 
-    @Column(name = "employment_code", nullable = false, length = 10)
-    private String employmentCode;
+    // 기존 VARCHAR 컬럼을 유지하면서 enum 이름을 저장합니다.
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "employment_code", nullable = false, length = 20)
+    private EmploymentStatus employmentCode;
 
     @Column(name = "houseless_yn", nullable = false)
     private Boolean houselessYn;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "marriage_code", length = 10)
-    private String marriageCode;
+    private MaritalStatus marriageCode;
 
     @Column(name = "income_range_code", length = 10)
     private String incomeRangeCode;
@@ -60,13 +72,15 @@ public class Profile extends BaseEntity {
     @Column(name = "education_code", length = 10)
     private String educationCode;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "housing_type", length = 20)
-    private String housingType;
+    private HousingType housingType;
 
     @Builder
-    public Profile(Member member, Region region, LocalDate birth, String employmentCode,
-            Boolean houselessYn, String marriageCode, String incomeRangeCode,
-            String educationCode, String housingType) {
+    public Profile(Member member, Region region, LocalDate birth, EmploymentStatus employmentCode,
+            Boolean houselessYn, MaritalStatus marriageCode, String incomeRangeCode,
+            String educationCode, HousingType housingType) {
         this.member = Objects.requireNonNull(member, "회원은 필수입니다.");
         this.email = Objects.requireNonNull(member.getEmail(), "회원 이메일은 필수입니다.");
         this.region = Objects.requireNonNull(region, "거주 지역은 필수입니다.");
