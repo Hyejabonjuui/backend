@@ -1,9 +1,10 @@
-package com.hyeja.service.cardnews;
+package com.hyeja.domain.cardnews.service;
 
 import com.hyeja.domain.cardnews.dto.CardNewsRequestDTO;
 import com.hyeja.domain.cardnews.dto.CardNewsResponseDTO;
 import com.hyeja.domain.cardnews.entity.CardNews;
-import com.hyeja.repository.cardnews.CardNewsRepository;
+import com.hyeja.domain.cardnews.repository.CardNewsRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

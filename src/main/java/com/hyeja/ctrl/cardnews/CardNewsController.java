@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.hyeja.domain.cardnews.dto.CardNewsRequestDTO;
 import com.hyeja.domain.cardnews.dto.CardNewsResponseDTO;
+import com.hyeja.domain.cardnews.service.CardNewsService;
 import com.hyeja.global.apiPayload.ApiResponse;
-import com.hyeja.service.cardnews.CardNewsService;
 
 import lombok.RequiredArgsConstructor;
 
