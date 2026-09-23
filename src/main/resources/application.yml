@@ -30,3 +30,7 @@ springdoc:
     tags-sorter: alpha
     operations-sorter: method
     disable-swagger-default-url: true
+youth:
+  api:
+    key: ${YOUTH_API_KEY}
+    url: "https://www.youthcenter.go.kr/go/ythip/getPlcy"
