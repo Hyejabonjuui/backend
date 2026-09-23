@@ -4,6 +4,7 @@ import com.hyeja.domain.cardnews.entity.CardNews;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.profile.entity.Profile;
+import com.hyeja.domain.profile.enums.EducationLevel;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import com.hyeja.domain.profile.enums.HousingType;
 import com.hyeja.domain.profile.enums.MaritalStatus;
@@ -91,13 +92,16 @@ class SeedDataTest {
         assertThat(profiles).extracting(Profile::getEmploymentCode).containsOnly(EmploymentStatus.values());
         assertThat(profiles).extracting(Profile::getMarriageCode).containsOnly(MaritalStatus.values());
         assertThat(profiles).extracting(Profile::getHousingType).containsOnly(HousingType.values());
+        assertThat(profiles).filteredOn(profile -> profile.getEducationCode() != null)
+                .extracting(Profile::getEducationCode).containsOnly(EducationLevel.values());
         List<Policy> policies = entityManager.createQuery("select p from Policy p", Policy.class)
                 .getResultList();
         assertThat(policies).extracting(Policy::getCategory).containsOnly(PolicyCategory.values());
 
         Profile profile = entityManager.find(Profile.class, "seed01@hyeja.test");
         assertThat(profile.getIncomeRangeCode()).isEqualTo("INC_20_30");
-        assertThat(profile.getEducationCode()).isNull();
+        assertThat(profile.getEducationCode()).isEqualTo(EducationLevel.COLLEGE_STUDENT);
+        assertThat(entityManager.find(Profile.class, "seed10@hyeja.test").getEducationCode()).isNull();
     }
 
     @Test
@@ -113,7 +117,7 @@ class SeedDataTest {
     @Test
     void rerunDoesNotDuplicateOverwriteOrRestoreExistingRows() {
         jdbc.update("UPDATE member SET nickname = '수정한 닉네임' WHERE email = 'seed01@hyeja.test'");
-        jdbc.update("UPDATE profile SET housing_type = 'JEONSE' WHERE email = 'seed01@hyeja.test'");
+        jdbc.update("UPDATE profile SET housing_type = 'JEONSE', education_code = 'OTHER' WHERE email = 'seed01@hyeja.test'");
         jdbc.update("UPDATE region SET sigungu_name = '수정한 지역명' WHERE region_code = '11440'");
         jdbc.update("UPDATE policy SET view_count = 123, active_yn = FALSE WHERE policy_id = 'DEMO-HOUSING-001'");
         jdbc.update("UPDATE policy_region SET deleted_at = CURRENT_TIMESTAMP WHERE policy_id = 'DEMO-HOUSING-001'");

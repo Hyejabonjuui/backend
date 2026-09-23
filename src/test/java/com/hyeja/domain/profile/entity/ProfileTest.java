@@ -1,6 +1,7 @@
 package com.hyeja.domain.profile.entity;
 
 import com.hyeja.domain.member.entity.Member;
+import com.hyeja.domain.profile.enums.EducationLevel;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import com.hyeja.domain.profile.enums.HousingType;
 import com.hyeja.domain.profile.enums.MaritalStatus;
@@ -43,7 +44,7 @@ class ProfileTest {
         Profile profile = newProfile(member)
                 .marriageCode(MaritalStatus.SINGLE)
                 .incomeRangeCode("TEST")
-                .educationCode("TEST")
+                .educationCode(EducationLevel.COLLEGE_GRADUATE)
                 .housingType(HousingType.MONTHLY_RENT)
                 .build();
         entityManager.persist(profile);
@@ -61,7 +62,7 @@ class ProfileTest {
         assertThat(stored.getHouselessYn()).isTrue();
         assertThat(stored.getMarriageCode()).isEqualTo(MaritalStatus.SINGLE);
         assertThat(stored.getIncomeRangeCode()).isEqualTo("TEST");
-        assertThat(stored.getEducationCode()).isEqualTo("TEST");
+        assertThat(stored.getEducationCode()).isEqualTo(EducationLevel.COLLEGE_GRADUATE);
         assertThat(stored.getHousingType()).isEqualTo(HousingType.MONTHLY_RENT);
         assertThat(stored.getCreatedAt()).isNotNull();
         assertThat(stored.getUpdatedAt()).isNotNull();
@@ -202,6 +203,18 @@ class ProfileTest {
 
         assertThat(entityManager.find(Profile.class, member.getEmail()).getHousingType()).isEqualTo(type);
         assertThat(storedColumn("housing_type", member.getEmail())).isEqualTo(type.name());
+    }
+
+    @ParameterizedTest
+    @EnumSource(EducationLevel.class)
+    void storesEveryEducationLevelByName(EducationLevel level) {
+        Member member = persistMember("education@example.com");
+        entityManager.persist(newProfile(member).educationCode(level).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(entityManager.find(Profile.class, member.getEmail()).getEducationCode()).isEqualTo(level);
+        assertThat(storedColumn("education_code", member.getEmail())).isEqualTo(level.name());
     }
 
     @Test

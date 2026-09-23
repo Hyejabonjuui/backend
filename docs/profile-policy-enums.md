@@ -1,19 +1,21 @@
 # 프로필·정책 enum
 
-이슈 #27에서는 아래 네 필드를 enum으로 관리합니다. 기존 컬럼 이름과 Java 필드 이름은 유지합니다.
+이슈 #27에서는 아래 다섯 필드를 enum으로 관리합니다. 기존 컬럼 이름과 Java 필드 이름은 유지합니다.
 API와 DB에 사용할 값은 대문자 enum 이름이며, `getLabel()`은 화면 표시용 한글 이름입니다.
 
 | 필드 | Java 타입 | DB 컬럼 | NULL |
 | --- | --- | --- | --- |
 | PROFILE.employment_code | EmploymentStatus | VARCHAR(20) | 불가 |
 | PROFILE.marriage_code | MaritalStatus | VARCHAR(10) | 허용 |
+| PROFILE.education_code | EducationLevel | VARCHAR(30) | 허용 |
 | PROFILE.housing_type | HousingType | VARCHAR(20) | 허용 |
 | POLICY.category | PolicyCategory | VARCHAR(20) | 불가 |
 
 프로필 enum은 `com.hyeja.domain.profile.enums`, 정책 enum은 `com.hyeja.domain.policy.enums`에 둡니다.
 `@Enumerated(EnumType.STRING)`으로 이름을 저장하고, `@JdbcTypeCode(SqlTypes.VARCHAR)`로 기존 VARCHAR 타입을 유지합니다.
 취업 상태에는 `SHORT_TERM_WORKER`처럼 10자를 넘는 값이 있어 컬럼 길이를 10에서 20으로 늘렸습니다.
-미선택인 혼인 상태·주거 형태는 `null`을 사용하며, 빈 문자열이나 문자열 `"null"`을 보내지 않습니다.
+학력에는 `HIGH_SCHOOL_EXPECTED_GRADUATE`처럼 10자를 넘는 값이 있어 컬럼 길이를 10에서 30으로 늘렸습니다.
+미선택인 혼인 상태·학력·주거 형태는 `null`을 사용하며, 빈 문자열이나 문자열 `"null"`을 보내지 않습니다.
 
 ## 선택지
 
@@ -60,12 +62,26 @@ API와 DB에 사용할 값은 대문자 enum 이름이며, `getLabel()`은 화�
 | PUBLIC_RENT | 공공임대 |
 | OTHER | 기타 주거 |
 
+### EducationLevel
+
+| 코드 | 표시명 |
+| --- | --- |
+| BELOW_HIGH_SCHOOL | 고졸 미만 |
+| HIGH_SCHOOL_STUDENT | 고교 재학 |
+| HIGH_SCHOOL_EXPECTED_GRADUATE | 고졸 예정 |
+| HIGH_SCHOOL_GRADUATE | 고교 졸업 |
+| COLLEGE_GRADUATE | 대학 졸업 |
+| COLLEGE_EXPECTED_GRADUATE | 대졸 예정 |
+| COLLEGE_STUDENT | 대학 재학 |
+| MASTER_OR_DOCTOR | 석박사 |
+| OTHER | 기타 |
+
 화면의 '전체'는 필터를 적용하지 않는 선택지이므로 DB에 저장하는 enum에는 포함하지 않습니다.
 
 ## 기존 DB 확인
 
 이전 시드에서 사용한 코드값은 모두 이번 enum에 포함됩니다. 기존 시드만 사용했다면 데이터 변환은 필요 없습니다.
-앱 시작 시 `ddl-auto: update`가 취업 상태 컬럼 길이를 확장합니다.
+앱 시작 시 `ddl-auto: update`가 취업 상태와 학력 컬럼 길이를 확장합니다.
 `ddl-auto: update`나 시드 재실행이 기존 문자열의 의미를 바꾸어 주지는 않습니다.
 
 직접 넣거나 수정한 데이터가 있다면 앱 실행 전에 DB IDE에서 다음 쿼리를 실행합니다.
@@ -93,6 +109,16 @@ WHERE housing_type IS NOT NULL
   AND BINARY housing_type NOT IN ('PARENTS', 'MONTHLY_RENT', 'JEONSE', 'OWNED')
 GROUP BY housing_type;
 
+SELECT education_code, COUNT(*) AS row_count
+FROM profile
+WHERE education_code IS NOT NULL
+  AND BINARY education_code NOT IN (
+    'BELOW_HIGH_SCHOOL', 'HIGH_SCHOOL_STUDENT', 'HIGH_SCHOOL_EXPECTED_GRADUATE',
+    'HIGH_SCHOOL_GRADUATE', 'COLLEGE_GRADUATE', 'COLLEGE_EXPECTED_GRADUATE',
+    'COLLEGE_STUDENT', 'MASTER_OR_DOCTOR', 'OTHER'
+)
+GROUP BY education_code;
+
 SELECT category, COUNT(*) AS row_count
 FROM policy
 WHERE category IS NULL
@@ -117,11 +143,10 @@ WHERE BINARY marriage_code = 'UNMARRIED';
 ## 그대로 유지하는 필드
 
 - PROFILE.income_range_code: 소득 구간 문자열. 숫자 연소득으로 바꾸지 않습니다.
-- PROFILE.education_code: 학력 문자열.
 - POLICY.employment_codes, marriage_code, housing_type 등: 기존 외부 API 코드 문자열.
 - MEMBER.role: 기존 Role enum 유지.
 
-소득·학력은 선택지 확정 후 별도 작업으로 전환합니다.
+소득 구간은 선택지와 전환 범위를 확정한 후 별도 작업으로 전환합니다.
 프로필의 enum 이름은 외부 API 원본 코드와 구분하며, 외부 API와의 대응 관계는 연동 작업에서 정의합니다.
 
 ## 검증

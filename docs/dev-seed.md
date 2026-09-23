@@ -85,16 +85,16 @@ CARD_NEWS의 `title`은 ERD에 맞춰 길이 255의 선택 항목으로 추가�
 
 ## 코드값
 
-프로필의 취업 상태·혼인 상태·주거 형태와 정책 분류는 Java enum 이름을 사용합니다.
+프로필의 취업 상태·혼인 상태·학력·주거 형태와 정책 분류는 Java enum 이름을 사용합니다.
 전체 코드와 화면 표시명은 [프로필·정책 enum 안내](profile-policy-enums.md)를 참고합니다.
-소득 구간·학력과 정책의 외부 API 코드 필드는 문자열로 유지하며, 미확정 값은 임시 값 또는 NULL입니다.
+소득 구간과 정책의 외부 API 코드 필드는 문자열로 유지하며, 미확정 값은 임시 값 또는 NULL입니다.
 
 | 필드 | 시드 값 |
 | --- | --- |
 | PROFILE.employment_code | EmploymentStatus 9개 선택지 전체 |
 | PROFILE.marriage_code | SINGLE, MARRIED |
 | PROFILE.income_range_code | INC_0_20, INC_20_30, INC_30_40, INC_40_UP |
-| PROFILE.education_code | NULL (선택지 미정) |
+| PROFILE.education_code | EducationLevel 9개 선택지 전체와 NULL |
 | PROFILE.housing_type | PARENTS, MONTHLY_RENT, JEONSE, OWNED |
 | POLICY.housing_type | 문자열 유지. 시드에는 MONTHLY_RENT, JEONSE 또는 NULL 사용 |
 | POLICY.category | MONTHLY_RENT, JEONSE, PURCHASE, PUBLIC_RENT, OTHER |
@@ -102,7 +102,7 @@ CARD_NEWS의 `title`은 ERD에 맞춰 길이 255의 선택 항목으로 추가�
 | POLICY.employment_codes 등 미확정 외부 API 코드 | NULL |
 
 소득 구간은 연소득 기준으로 각각 2천만원 미만, 2천 이상 3천 미만, 3천 이상 4천 미만, 4천 이상을 뜻합니다.
-소득 구간·학력 선택지가 확정되면 SQL과 프론트의 코드도 함께 맞춥니다.
+소득 구간 선택지가 확정되면 SQL과 프론트의 코드도 함께 맞춥니다.
 신규 시드는 취업 상태 9개 선택지를 모두 포함하지만, 기존 시드 행의 취업 상태는 재실행으로 덮어쓰지 않습니다.
 기존 시드의 EMPLOYED, UNEMPLOYED, FREELANCER 등은 새 enum과 호환되므로 그대로 사용할 수 있습니다.
 수동으로 다른 문자열을 넣었다면 [기존 DB 확인 방법](profile-policy-enums.md#기존-db-확인)을 먼저 확인합니다.

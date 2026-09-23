@@ -1,6 +1,7 @@
 package com.hyeja.domain.profile.entity;
 
 import com.hyeja.domain.member.entity.Member;
+import com.hyeja.domain.profile.enums.EducationLevel;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import com.hyeja.domain.profile.enums.HousingType;
 import com.hyeja.domain.profile.enums.MaritalStatus;
@@ -69,8 +70,10 @@ public class Profile extends BaseEntity {
     @Column(name = "income_range_code", length = 10)
     private String incomeRangeCode;
 
-    @Column(name = "education_code", length = 10)
-    private String educationCode;
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "education_code", length = 30)
+    private EducationLevel educationCode;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.VARCHAR)
@@ -80,7 +83,7 @@ public class Profile extends BaseEntity {
     @Builder
     public Profile(Member member, Region region, LocalDate birth, EmploymentStatus employmentCode,
             Boolean houselessYn, MaritalStatus marriageCode, String incomeRangeCode,
-            String educationCode, HousingType housingType) {
+            EducationLevel educationCode, HousingType housingType) {
         this.member = Objects.requireNonNull(member, "회원은 필수입니다.");
         this.email = Objects.requireNonNull(member.getEmail(), "회원 이메일은 필수입니다.");
         this.region = Objects.requireNonNull(region, "거주 지역은 필수입니다.");
