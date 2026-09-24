@@ -18,6 +18,7 @@ jobs:
     timeout-minutes: 15
     env:
       SPRING_PROFILES_ACTIVE: test
+      YOUTH_API_KEY: ${{ secrets.YOUTH_API_KEY }}
 
     steps:
       - name: Checkout repository
