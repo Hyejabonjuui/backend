@@ -40,7 +40,9 @@ API 개발과 프론트 시연을 위한 가상 데이터입니다. 실제 지�
    `.env`를 수정하기 전에 앱이 이미 실행 중이었다면 종료한 뒤 다시 실행합니다.
 
 `application.yml`의 `ddl-auto: update`로 테이블을 생성·갱신한 뒤,
-`defer-datasource-initialization: true`로 `db/seed/dev-data.sql`을 실행합니다.
+`defer-datasource-initialization: true`로 기존 정책 분류 호환 스크립트와
+`db/seed/dev-data.sql`을 순서대로 실행합니다. 호환 스크립트는 과거의 `category='주거'`
+행을 현재 enum 값인 `OTHER`로 변환하며, 반복 실행해도 같은 결과를 유지합니다.
 기존 데이터를 지우는 `create`나 `create-drop`을 개발 설정에 사용하지 않습니다.
 로컬 개발 설정은 `application.yml` 하나로 관리하고, 각자의 DB 접속 정보는 `.env`에 둡니다.
 `application-test.yml`은 H2와 `spring.sql.init.mode: never`를 사용해 일반 테스트에 시드를 넣지 않습니다.
