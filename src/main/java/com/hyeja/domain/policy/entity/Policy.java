@@ -1,11 +1,11 @@
 package com.hyeja.domain.policy.entity;
 
+import com.hyeja.domain.policy.converter.PolicyCategoryConverter;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.global.baseEntity.BaseEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
@@ -13,8 +13,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Getter
 @Entity
@@ -29,9 +27,7 @@ public class Policy extends BaseEntity {
     @Column(name = "policy_name", nullable = false, length = 200)
     private String policyName;
 
-    // 기존 VARCHAR 컬럼을 유지하면서 enum 이름을 저장합니다.
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Convert(converter = PolicyCategoryConverter.class)
     @Column(name = "category", nullable = false, length = 20)
     private PolicyCategory category;
 
