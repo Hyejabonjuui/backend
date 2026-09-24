@@ -40,9 +40,9 @@ API 개발과 프론트 시연을 위한 가상 데이터입니다. 실제 지�
    `.env`를 수정하기 전에 앱이 이미 실행 중이었다면 종료한 뒤 다시 실행합니다.
 
 `application.yml`의 `ddl-auto: update`로 테이블을 생성·갱신한 뒤,
-`defer-datasource-initialization: true`로 기존 정책 분류 호환 스크립트와
+`defer-datasource-initialization: true`로 기존 enum 값 호환 스크립트와
 `db/seed/dev-data.sql`을 순서대로 실행합니다. 호환 스크립트는 과거의 `category='주거'`
-행을 현재 enum 값인 `OTHER`로 변환하며, 반복 실행해도 같은 결과를 유지합니다.
+행과 임시 소득 구간 코드를 현재 enum 값으로 변환하며, 반복 실행해도 같은 결과를 유지합니다.
 기존 데이터를 지우는 `create`나 `create-drop`을 개발 설정에 사용하지 않습니다.
 로컬 개발 설정은 `application.yml` 하나로 관리하고, 각자의 DB 접속 정보는 `.env`에 둡니다.
 `application-test.yml`은 H2와 `spring.sql.init.mode: never`를 사용해 일반 테스트에 시드를 넣지 않습니다.
@@ -87,15 +87,15 @@ CARD_NEWS의 `title`은 ERD에 맞춰 길이 255의 선택 항목으로 추가�
 
 ## 코드값
 
-프로필의 취업 상태·혼인 상태·학력·주거 형태와 정책 분류는 Java enum 이름을 사용합니다.
+프로필의 취업 상태·혼인 상태·소득 구간·학력·주거 형태와 정책 분류는 Java enum 이름을 사용합니다.
 전체 코드와 화면 표시명은 [프로필·정책 enum 안내](profile-policy-enums.md)를 참고합니다.
-소득 구간과 정책의 외부 API 코드 필드는 문자열로 유지하며, 미확정 값은 임시 값 또는 NULL입니다.
+정책의 외부 API 코드 필드는 문자열로 유지하며, 미확정 값은 NULL입니다.
 
 | 필드 | 시드 값 |
 | --- | --- |
 | PROFILE.employment_code | EmploymentStatus 9개 선택지 전체 |
 | PROFILE.marriage_code | SINGLE, MARRIED |
-| PROFILE.income_range_code | INC_0_20, INC_20_30, INC_30_40, INC_40_UP |
+| PROFILE.income_range_code | UNDER_2000, R2000_3000, R3000_4000, R4000_5000, OVER_5000 |
 | PROFILE.education_code | EducationLevel 9개 선택지 전체와 NULL |
 | PROFILE.housing_type | PARENTS, MONTHLY_RENT, JEONSE, OWNED |
 | POLICY.housing_type | 문자열 유지. 시드에는 MONTHLY_RENT, JEONSE 또는 NULL 사용 |
@@ -103,8 +103,7 @@ CARD_NEWS의 `title`은 ERD에 맞춰 길이 255의 선택 항목으로 추가�
 | POLICY.apply_period_code | PERIOD |
 | POLICY.employment_codes 등 미확정 외부 API 코드 | NULL |
 
-소득 구간은 연소득 기준으로 각각 2천만원 미만, 2천 이상 3천 미만, 3천 이상 4천 미만, 4천 이상을 뜻합니다.
-소득 구간 선택지가 확정되면 SQL과 프론트의 코드도 함께 맞춥니다.
+소득 구간은 연소득 기준으로 각각 2천만원 미만, 2천~3천, 3천~4천, 4천~5천, 5천만원 이상을 뜻합니다.
 신규 시드는 취업 상태 9개 선택지를 모두 포함하지만, 기존 시드 행의 취업 상태는 재실행으로 덮어쓰지 않습니다.
 기존 시드의 EMPLOYED, UNEMPLOYED, FREELANCER 등은 새 enum과 호환되므로 그대로 사용할 수 있습니다.
 수동으로 다른 문자열을 넣었다면 [기존 DB 확인 방법](profile-policy-enums.md#기존-db-확인)을 먼저 확인합니다.

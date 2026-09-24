@@ -4,6 +4,7 @@ import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.profile.enums.EducationLevel;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import com.hyeja.domain.profile.enums.HousingType;
+import com.hyeja.domain.profile.enums.IncomeRange;
 import com.hyeja.domain.profile.enums.MaritalStatus;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.config.JpaAuditingConfig;
@@ -43,7 +44,7 @@ class ProfileTest {
         Member member = persistMember(email);
         Profile profile = newProfile(member)
                 .marriageCode(MaritalStatus.SINGLE)
-                .incomeRangeCode("TEST")
+                .incomeRangeCode(IncomeRange.R2000_3000)
                 .educationCode(EducationLevel.COLLEGE_GRADUATE)
                 .housingType(HousingType.MONTHLY_RENT)
                 .build();
@@ -61,7 +62,7 @@ class ProfileTest {
         assertThat(stored.getEmploymentCode()).isEqualTo(EmploymentStatus.EMPLOYED);
         assertThat(stored.getHouselessYn()).isTrue();
         assertThat(stored.getMarriageCode()).isEqualTo(MaritalStatus.SINGLE);
-        assertThat(stored.getIncomeRangeCode()).isEqualTo("TEST");
+        assertThat(stored.getIncomeRangeCode()).isEqualTo(IncomeRange.R2000_3000);
         assertThat(stored.getEducationCode()).isEqualTo(EducationLevel.COLLEGE_GRADUATE);
         assertThat(stored.getHousingType()).isEqualTo(HousingType.MONTHLY_RENT);
         assertThat(stored.getCreatedAt()).isNotNull();
@@ -203,6 +204,18 @@ class ProfileTest {
 
         assertThat(entityManager.find(Profile.class, member.getEmail()).getHousingType()).isEqualTo(type);
         assertThat(storedColumn("housing_type", member.getEmail())).isEqualTo(type.name());
+    }
+
+    @ParameterizedTest
+    @EnumSource(IncomeRange.class)
+    void storesEveryIncomeRangeByName(IncomeRange range) {
+        Member member = persistMember("income@example.com");
+        entityManager.persist(newProfile(member).incomeRangeCode(range).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(entityManager.find(Profile.class, member.getEmail()).getIncomeRangeCode()).isEqualTo(range);
+        assertThat(storedColumn("income_range_code", member.getEmail())).isEqualTo(range.name());
     }
 
     @ParameterizedTest

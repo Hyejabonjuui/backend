@@ -1,21 +1,24 @@
 # 프로필·정책 enum
 
-이슈 #27에서는 아래 다섯 필드를 enum으로 관리합니다. 기존 컬럼 이름과 Java 필드 이름은 유지합니다.
+이슈 #27에서는 아래 여섯 필드를 enum으로 관리합니다. 기존 컬럼 이름과 Java 필드 이름은 유지합니다.
 API와 DB에 사용할 값은 대문자 enum 이름이며, `getLabel()`은 화면 표시용 한글 이름입니다.
 
 | 필드 | Java 타입 | DB 컬럼 | NULL |
 | --- | --- | --- | --- |
 | PROFILE.employment_code | EmploymentStatus | VARCHAR(20) | 불가 |
 | PROFILE.marriage_code | MaritalStatus | VARCHAR(10) | 허용 |
+| PROFILE.income_range_code | IncomeRange | VARCHAR(10) | 허용 |
 | PROFILE.education_code | EducationLevel | VARCHAR(30) | 허용 |
 | PROFILE.housing_type | HousingType | VARCHAR(20) | 허용 |
 | POLICY.category | PolicyCategory | VARCHAR(20) | 불가 |
 
 프로필 enum은 `com.hyeja.domain.profile.enums`, 정책 enum은 `com.hyeja.domain.policy.enums`에 둡니다.
-`@Enumerated(EnumType.STRING)`으로 이름을 저장하고, `@JdbcTypeCode(SqlTypes.VARCHAR)`로 기존 VARCHAR 타입을 유지합니다.
+기본적으로 `@Enumerated(EnumType.STRING)`으로 이름을 저장하고 `@JdbcTypeCode(SqlTypes.VARCHAR)`로
+기존 VARCHAR 타입을 유지합니다. 소득 구간과 정책 분류는 이전 DB 값도 읽을 수 있는 JPA converter를 사용하며,
+새로 저장할 때는 동일하게 현재 enum 이름을 저장합니다.
 취업 상태에는 `SHORT_TERM_WORKER`처럼 10자를 넘는 값이 있어 컬럼 길이를 10에서 20으로 늘렸습니다.
 학력에는 `HIGH_SCHOOL_EXPECTED_GRADUATE`처럼 10자를 넘는 값이 있어 컬럼 길이를 10에서 30으로 늘렸습니다.
-미선택인 혼인 상태·학력·주거 형태는 `null`을 사용하며, 빈 문자열이나 문자열 `"null"`을 보내지 않습니다.
+미선택인 혼인 상태·소득 구간·학력·주거 형태는 `null`을 사용하며, 빈 문자열이나 문자열 `"null"`을 보내지 않습니다.
 
 ## 선택지
 
@@ -42,6 +45,16 @@ API와 DB에 사용할 값은 대문자 enum 이름이며, `getLabel()`은 화�
 | --- | --- |
 | SINGLE | 미혼 |
 | MARRIED | 기혼 |
+
+### IncomeRange
+
+| 코드 | 표시명 |
+| --- | --- |
+| UNDER_2000 | 2천만원 미만 |
+| R2000_3000 | 2천만원 이상 3천만원 미만 |
+| R3000_4000 | 3천만원 이상 4천만원 미만 |
+| R4000_5000 | 4천만원 이상 5천만원 미만 |
+| OVER_5000 | 5천만원 이상 |
 
 ### HousingType
 
@@ -80,9 +93,9 @@ API와 DB에 사용할 값은 대문자 enum 이름이며, `getLabel()`은 화�
 
 ## 기존 DB 확인
 
-이전 시드에서 사용한 코드값은 모두 이번 enum에 포함됩니다. 기존 시드만 사용했다면 데이터 변환은 필요 없습니다.
 앱 시작 시 `ddl-auto: update`가 취업 상태와 학력 컬럼 길이를 확장합니다.
-`ddl-auto: update`나 시드 재실행이 기존 문자열의 의미를 바꾸어 주지는 않습니다.
+그다음 호환 스크립트가 이전 소득 코드 `INC_0_20`~`INC_40_UP`을 새 enum 이름으로 변환합니다.
+기존 `INC_40_UP`은 세부 금액을 알 수 없으므로 하한이 같은 `R4000_5000`으로 변환합니다.
 
 직접 넣거나 수정한 데이터가 있다면 앱 실행 전에 DB IDE에서 다음 쿼리를 실행합니다.
 각 쿼리의 결과가 없으면 해당 필드의 기존 값이 enum과 호환됩니다.
@@ -102,6 +115,14 @@ FROM profile
 WHERE marriage_code IS NOT NULL
   AND BINARY marriage_code NOT IN ('SINGLE', 'MARRIED')
 GROUP BY marriage_code;
+
+SELECT income_range_code, COUNT(*) AS row_count
+FROM profile
+WHERE income_range_code IS NOT NULL
+  AND BINARY income_range_code NOT IN (
+    'UNDER_2000', 'R2000_3000', 'R3000_4000', 'R4000_5000', 'OVER_5000'
+)
+GROUP BY income_range_code;
 
 SELECT housing_type, COUNT(*) AS row_count
 FROM profile
@@ -136,17 +157,16 @@ SET marriage_code = 'SINGLE'
 WHERE BINARY marriage_code = 'UNMARRIED';
 ```
 
-`TEST`, `주거`처럼 실제 선택지를 알 수 없는 값은 일괄적으로 `OTHER`나 특정 분류로 바꾸지 않습니다.
-해당 회원의 선택이나 정책 내용을 확인하여 정확한 코드로 수정한 뒤 위 확인 쿼리를 다시 실행합니다.
+정책 대분류 `주거`와 이전 소득 구간 코드는 호환 스크립트가 자동 변환합니다.
+그 밖의 `TEST`처럼 의미를 알 수 없는 값은 해당 회원의 선택이나 정책 내용을 확인하여
+정확한 코드로 수정한 뒤 위 확인 쿼리를 다시 실행합니다.
 알 수 없는 enum 이름이 남으면 JPA 조회 시 변환 오류가 발생할 수 있습니다.
 
-## 그대로 유지하는 필드
+## 문자열로 유지하는 외부 API 필드
 
-- PROFILE.income_range_code: 소득 구간 문자열. 숫자 연소득으로 바꾸지 않습니다.
 - POLICY.employment_codes, marriage_code, housing_type 등: 기존 외부 API 코드 문자열.
 - MEMBER.role: 기존 Role enum 유지.
 
-소득 구간은 선택지와 전환 범위를 확정한 후 별도 작업으로 전환합니다.
 프로필의 enum 이름은 외부 API 원본 코드와 구분하며, 외부 API와의 대응 관계는 연동 작업에서 정의합니다.
 
 ## 외부 정책 API 분류

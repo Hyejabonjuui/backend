@@ -7,6 +7,7 @@ import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.enums.EducationLevel;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import com.hyeja.domain.profile.enums.HousingType;
+import com.hyeja.domain.profile.enums.IncomeRange;
 import com.hyeja.domain.profile.enums.MaritalStatus;
 import jakarta.persistence.EntityManager;
 import java.util.LinkedHashMap;
@@ -92,6 +93,7 @@ class SeedDataTest {
         assertThat(profiles).extracting(Profile::getEmploymentCode).containsOnly(EmploymentStatus.values());
         assertThat(profiles).extracting(Profile::getMarriageCode).containsOnly(MaritalStatus.values());
         assertThat(profiles).extracting(Profile::getHousingType).containsOnly(HousingType.values());
+        assertThat(profiles).extracting(Profile::getIncomeRangeCode).containsOnly(IncomeRange.values());
         assertThat(profiles).filteredOn(profile -> profile.getEducationCode() != null)
                 .extracting(Profile::getEducationCode).containsOnly(EducationLevel.values());
         List<Policy> policies = entityManager.createQuery("select p from Policy p", Policy.class)
@@ -99,7 +101,7 @@ class SeedDataTest {
         assertThat(policies).extracting(Policy::getCategory).containsOnly(PolicyCategory.values());
 
         Profile profile = entityManager.find(Profile.class, "seed01@hyeja.test");
-        assertThat(profile.getIncomeRangeCode()).isEqualTo("INC_20_30");
+        assertThat(profile.getIncomeRangeCode()).isEqualTo(IncomeRange.R2000_3000);
         assertThat(profile.getEducationCode()).isEqualTo(EducationLevel.COLLEGE_STUDENT);
         assertThat(entityManager.find(Profile.class, "seed10@hyeja.test").getEducationCode()).isNull();
     }

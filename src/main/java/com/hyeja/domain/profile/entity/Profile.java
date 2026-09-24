@@ -1,13 +1,16 @@
 package com.hyeja.domain.profile.entity;
 
 import com.hyeja.domain.member.entity.Member;
+import com.hyeja.domain.profile.converter.IncomeRangeConverter;
 import com.hyeja.domain.profile.enums.EducationLevel;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import com.hyeja.domain.profile.enums.HousingType;
+import com.hyeja.domain.profile.enums.IncomeRange;
 import com.hyeja.domain.profile.enums.MaritalStatus;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.baseEntity.BaseEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -67,8 +70,9 @@ public class Profile extends BaseEntity {
     @Column(name = "marriage_code", length = 10)
     private MaritalStatus marriageCode;
 
+    @Convert(converter = IncomeRangeConverter.class)
     @Column(name = "income_range_code", length = 10)
-    private String incomeRangeCode;
+    private IncomeRange incomeRangeCode;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.VARCHAR)
@@ -82,7 +86,7 @@ public class Profile extends BaseEntity {
 
     @Builder
     public Profile(Member member, Region region, LocalDate birth, EmploymentStatus employmentCode,
-            Boolean houselessYn, MaritalStatus marriageCode, String incomeRangeCode,
+            Boolean houselessYn, MaritalStatus marriageCode, IncomeRange incomeRangeCode,
             EducationLevel educationCode, HousingType housingType) {
         this.member = Objects.requireNonNull(member, "회원은 필수입니다.");
         this.email = Objects.requireNonNull(member.getEmail(), "회원 이메일은 필수입니다.");
