@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.hyeja.domain.notification.controller.NotificationController;
 import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationItemDTO;
 import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationListDTO;
 import com.hyeja.domain.notification.service.NotificationService;

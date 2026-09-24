@@ -1,10 +1,11 @@
-package com.hyeja.domain.notification.ctrl;
+package com.hyeja.domain.notification.controller;
 
 import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationListDTO;
 import com.hyeja.domain.notification.service.NotificationService;
 import com.hyeja.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -53,10 +54,10 @@ public class NotificationController {
     public ApiResponse<NotificationListDTO> getNotifications(
             @Parameter(description = "조회할 회원 ID", example = "1", required = true) // 추후 memberId는 없앨 예정
             @PathVariable("memberId") @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId,
-            @Parameter(description = "페이지 번호(0부터 시작)", example = "0")
+            @Parameter(name = "page", description = "페이지 번호(0부터 시작)", in = ParameterIn.QUERY, example = "0")
             @RequestParam(name = "page", defaultValue = "0")
             @PositiveOrZero(message = "페이지 번호는 0 이상이어야 합니다.") int page,
-            @Parameter(description = "페이지당 알림 개수", example = "8")
+            @Parameter(name = "size", description = "페이지당 알림 개수", in = ParameterIn.QUERY, example = "8")
             @RequestParam(name = "size", defaultValue = "8")
             @Positive(message = "페이지 크기는 양수여야 합니다.") int size
     ) {
