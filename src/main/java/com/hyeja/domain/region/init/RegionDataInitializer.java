@@ -9,6 +9,7 @@ import com.hyeja.domain.region.repository.RegionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
@@ -16,9 +17,9 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -27,11 +28,18 @@ import java.util.stream.Collectors;
 public class RegionDataInitializer implements CommandLineRunner {
 
     private final RegionRepository regionRepository;
-
+    private final Environment environment; // 환경 정보를 읽기 위한 주입
+    
     @Override
     public void run(String... args) throws Exception {
+        // [중요] 테스트 환경("test")인 경우 CSV 로드 및 초기화 로직을 실행하지 않음
+        List<String> activeProfiles = Arrays.asList(environment.getActiveProfiles());
+        if (activeProfiles.contains("test")) {
+            log.info("[RegionDataInitializer] Test environment detected. Skipping CSV initialization.");
+            return;
+        }
         // 1. 이미 데이터가 존재한다면 실행하지 않음 (최초 1회 보장) - seed데이터로 인해 임시로 10이 아닐 때 reload하도록 설정
-        if (regionRepository.count() !=10) {
+        if (regionRepository.count() >0) {
             log.info("[RegionDataInitializer] Region data already exists. Skipping initialization.");
             return;
         }
