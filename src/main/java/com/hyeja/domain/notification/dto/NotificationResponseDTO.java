@@ -8,7 +8,7 @@ import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 
-public class NotificationResponseDTO {
+public final class NotificationResponseDTO {
 
     private NotificationResponseDTO() {
     }
