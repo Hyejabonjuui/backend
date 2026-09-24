@@ -22,9 +22,9 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
 
     public NotificationListDTO getNotifications(Long memberId, int page, int size) {
-        if (!memberRepository.existsByMemberIdAndDeletedAtIsNull(memberId)) {
-            throw new GeneralException(ErrorStatus.MEMBER_NOT_FOUND);
-        }
+        memberRepository.findById(memberId)
+                .filter(member -> !member.isDeleted())
+                .orElseThrow(() -> new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
 
         Page<Notification> notificationPage = notificationRepository.findAllByMemberId(
                 memberId,
