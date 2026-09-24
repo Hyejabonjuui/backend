@@ -4,6 +4,7 @@ import com.hyeja.domain.cardnews.entity.CardNews;
 import com.hyeja.domain.cardnews.repository.CardNewsRepository;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO;
 import com.hyeja.domain.policy.entity.Policy;
+import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.repository.PolicyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +51,8 @@ public class PolicyService {
                     .build()
                     .toUri();
 
-            log.info("Requesting Youth Policy API URL: {}", uri);
+            // API 키가 쿼리 파라미터에 포함되므로 전체 URI를 로그에 남기지 않습니다.
+            log.info("온통청년 정책 API 요청을 시작합니다.");
 
             // 1. API 호출 후 DTO로 바로 매핑
             PolicyApiResponseDTO response = restTemplate.getForObject(uri, PolicyApiResponseDTO.class);
@@ -72,7 +74,8 @@ public class PolicyService {
                     Policy policy = Policy.builder()
                             .policyId(item.getPolicyId())
                             .policyName(item.getPolicyName() != null ? item.getPolicyName() : "제목 없음")
-                            .category("주거")
+                            // 외부 API의 "주거"는 대분류이므로 세부 분류 정보가 없으면 기타로 저장합니다.
+                            .category(PolicyCategory.OTHER)
                             .description(item.getDescription())
                             .supportContent(item.getSupportContent())
                             .applyPeriodCode("003") // 기본 코드 또는 파싱 값
@@ -136,6 +139,6 @@ public class PolicyService {
     }
 
     public List<Policy> getHousingPolicies() {
-        return policyRepository.findByCategoryOrderByApplyEndDateAsc("주거");
+        return policyRepository.findAllByOrderByApplyEndDateAsc();
     }
 }
