@@ -1,5 +1,6 @@
 package com.hyeja.domain.policy.entity;
 
+import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.config.JpaAuditingConfig;
 import jakarta.persistence.EntityManager;
@@ -123,7 +124,7 @@ class PolicyRegionTest {
 
     private Policy persistPolicy(String id) {
         Policy value = Policy.builder().policyId(id).policyName("테스트 정책")
-                .category("주거").ageLimitYn(false).applyPeriodCode("TEST").build();
+                .category(PolicyCategory.MONTHLY_RENT).ageLimitYn(false).applyPeriodCode("TEST").build();
         entityManager.persist(value);
         return value;
     }

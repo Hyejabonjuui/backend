@@ -2,7 +2,13 @@ package com.hyeja.global.seed;
 
 import com.hyeja.domain.cardnews.entity.CardNews;
 import com.hyeja.domain.policy.entity.Policy;
+import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.profile.entity.Profile;
+import com.hyeja.domain.profile.enums.EducationLevel;
+import com.hyeja.domain.profile.enums.EmploymentStatus;
+import com.hyeja.domain.profile.enums.HousingType;
+import com.hyeja.domain.profile.enums.IncomeRange;
+import com.hyeja.domain.profile.enums.MaritalStatus;
 import jakarta.persistence.EntityManager;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,8 +65,11 @@ class SeedDataTest {
         Profile profile = entityManager.find(Profile.class, "seed01@hyeja.test");
         assertThat(profile.getMember().getEmail()).isEqualTo("seed01@hyeja.test");
         assertThat(profile.getRegion().getRegionCode()).isEqualTo("11440");
-        assertThat(profile.getHousingType()).isEqualTo("MONTHLY_RENT");
+        assertThat(profile.getEmploymentCode()).isEqualTo(EmploymentStatus.UNEMPLOYED);
+        assertThat(profile.getMarriageCode()).isEqualTo(MaritalStatus.SINGLE);
+        assertThat(profile.getHousingType()).isEqualTo(HousingType.MONTHLY_RENT);
         Policy policy = entityManager.find(Policy.class, "DEMO-HOUSING-001");
+        assertThat(policy.getCategory()).isEqualTo(PolicyCategory.MONTHLY_RENT);
         assertThat(policy.getHousingType()).isEqualTo("MONTHLY_RENT");
         CardNews card = entityManager.createQuery(
                 "select c from CardNews c where c.policy.policyId = :id", CardNews.class)
@@ -78,6 +87,26 @@ class SeedDataTest {
     }
 
     @Test
+    void seedCoversEveryProfileOptionAndPolicyCategory() {
+        List<Profile> profiles = entityManager.createQuery("select p from Profile p", Profile.class)
+                .getResultList();
+        assertThat(profiles).extracting(Profile::getEmploymentCode).containsOnly(EmploymentStatus.values());
+        assertThat(profiles).extracting(Profile::getMarriageCode).containsOnly(MaritalStatus.values());
+        assertThat(profiles).extracting(Profile::getHousingType).containsOnly(HousingType.values());
+        assertThat(profiles).extracting(Profile::getIncomeRangeCode).containsOnly(IncomeRange.values());
+        assertThat(profiles).filteredOn(profile -> profile.getEducationCode() != null)
+                .extracting(Profile::getEducationCode).containsOnly(EducationLevel.values());
+        List<Policy> policies = entityManager.createQuery("select p from Policy p", Policy.class)
+                .getResultList();
+        assertThat(policies).extracting(Policy::getCategory).containsOnly(PolicyCategory.values());
+
+        Profile profile = entityManager.find(Profile.class, "seed01@hyeja.test");
+        assertThat(profile.getIncomeRangeCode()).isEqualTo(IncomeRange.R2000_3000);
+        assertThat(profile.getEducationCode()).isEqualTo(EducationLevel.COLLEGE_STUDENT);
+        assertThat(entityManager.find(Profile.class, "seed10@hyeja.test").getEducationCode()).isNull();
+    }
+
+    @Test
     void allTestAccountsHaveValidBcryptPasswords() {
         List<String> passwords = jdbc.queryForList("SELECT password FROM member", String.class);
         assertThat(passwords).hasSize(10).allSatisfy(password -> {
@@ -90,7 +119,7 @@ class SeedDataTest {
     @Test
     void rerunDoesNotDuplicateOverwriteOrRestoreExistingRows() {
         jdbc.update("UPDATE member SET nickname = '수정한 닉네임' WHERE email = 'seed01@hyeja.test'");
-        jdbc.update("UPDATE profile SET housing_type = 'JEONSE' WHERE email = 'seed01@hyeja.test'");
+        jdbc.update("UPDATE profile SET housing_type = 'JEONSE', education_code = 'OTHER' WHERE email = 'seed01@hyeja.test'");
         jdbc.update("UPDATE region SET sigungu_name = '수정한 지역명' WHERE region_code = '11440'");
         jdbc.update("UPDATE policy SET view_count = 123, active_yn = FALSE WHERE policy_id = 'DEMO-HOUSING-001'");
         jdbc.update("UPDATE policy_region SET deleted_at = CURRENT_TIMESTAMP WHERE policy_id = 'DEMO-HOUSING-001'");

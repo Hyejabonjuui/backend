@@ -2,16 +2,19 @@
 -- 로컬 앱 시작 시 실행합니다. DB_SEED_MODE=never로 끌 수 있으며, 기존 행은 수정·삭제하지 않습니다.
 -- IDENTITY PK는 DB가 생성하고, FK는 이메일/정책 ID/지역 코드로 연결합니다.
 -- 재실행 시 같은 키의 행이 있으면 건너뜁니다. deleted_at이 있는 행도 복구하지 않습니다.
--- 임시 코드(프론트 및 enum 합의 후 변경):
--- employment_code: EMPLOYED(재직), UNEMPLOYED(미취업), FREELANCER(프리랜서)
+-- 프로필·정책 분류는 Java enum 이름과 동일하게 저장합니다. 전체 목록: docs/profile-policy-enums.md
+-- employment_code: EMPLOYED / SELF_EMPLOYED / UNEMPLOYED / FREELANCER / DAILY_WORKER
+--                  ENTREPRENEUR / SHORT_TERM_WORKER / FARMER / OTHER
 -- marriage_code: SINGLE(미혼), MARRIED(기혼)
--- income_range_code: INC_0_20 / INC_20_30 / INC_30_40 / INC_40_UP
--- 연소득 구간: 2천만원 미만 / 2천 이상 3천 미만 / 3천 이상 4천 미만 / 4천 이상
+-- income_range_code: UNDER_2000 / R2000_3000 / R3000_4000 / R4000_5000 / OVER_5000
+-- 연소득 구간: 2천만원 미만 / 2천~3천 / 3천~4천 / 4천~5천 / 5천만원 이상
+-- education_code: BELOW_HIGH_SCHOOL / HIGH_SCHOOL_STUDENT / HIGH_SCHOOL_EXPECTED_GRADUATE
+--                 HIGH_SCHOOL_GRADUATE / COLLEGE_GRADUATE / COLLEGE_EXPECTED_GRADUATE
+--                 COLLEGE_STUDENT / MASTER_OR_DOCTOR / OTHER / NULL(미선택)
 -- housing_type: PARENTS / MONTHLY_RENT / JEONSE / OWNED
 -- category: MONTHLY_RENT / JEONSE / PURCHASE / PUBLIC_RENT / OTHER
 -- apply_period_code: PERIOD(기간 지정). 외부 API 공식 코드가 아닙니다.
 -- 외부 API 코드인 employment_codes 등은 확인 전까지 NULL로 둡니다.
--- 교육 선택지도 미정이므로 education_code는 NULL입니다.
 -- 공통 테스트 비밀번호 Hyeja1234!의 BCrypt 해시를 저장합니다.
 
 INSERT INTO region (region_code, sigungu_name, created_at, updated_at, deleted_at)
@@ -51,18 +54,18 @@ WHERE NOT EXISTS (
 );
 
 INSERT INTO profile (email, region_code, birth, employment_code, houseless_yn, marriage_code, income_range_code, housing_type, education_code, created_at, updated_at, deleted_at)
-SELECT seed.email, seed.region_code, CAST(seed.birth AS DATE), seed.employment_code, seed.houseless_yn, seed.marriage_code, seed.income_range_code, seed.housing_type, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL
+SELECT seed.email, seed.region_code, CAST(seed.birth AS DATE), seed.employment_code, seed.houseless_yn, seed.marriage_code, seed.income_range_code, seed.housing_type, seed.education_code, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL
 FROM (
-    SELECT 'seed01@hyeja.test' AS email, '11440' AS region_code, '1999-03-12' AS birth, 'UNEMPLOYED' AS employment_code, TRUE AS houseless_yn, 'SINGLE' AS marriage_code, 'INC_20_30' AS income_range_code, 'MONTHLY_RENT' AS housing_type
-    UNION ALL SELECT 'seed02@hyeja.test', '11680', '1996-07-21', 'EMPLOYED', TRUE, 'SINGLE', 'INC_30_40', 'JEONSE'
-    UNION ALL SELECT 'seed03@hyeja.test', '11200', '2001-11-05', 'FREELANCER', TRUE, 'SINGLE', 'INC_0_20', 'PARENTS'
-    UNION ALL SELECT 'seed04@hyeja.test', '11620', '1994-02-18', 'EMPLOYED', FALSE, 'MARRIED', 'INC_40_UP', 'OWNED'
-    UNION ALL SELECT 'seed05@hyeja.test', '11710', '2000-08-30', 'UNEMPLOYED', TRUE, 'SINGLE', 'INC_0_20', 'PARENTS'
-    UNION ALL SELECT 'seed06@hyeja.test', '11350', '1998-05-09', 'FREELANCER', TRUE, 'SINGLE', 'INC_20_30', 'MONTHLY_RENT'
-    UNION ALL SELECT 'seed07@hyeja.test', '11500', '1995-12-14', 'EMPLOYED', TRUE, 'MARRIED', 'INC_40_UP', 'JEONSE'
-    UNION ALL SELECT 'seed08@hyeja.test', '11590', '2002-01-27', 'UNEMPLOYED', TRUE, 'SINGLE', 'INC_0_20', 'PARENTS'
-    UNION ALL SELECT 'seed09@hyeja.test', '11410', '1997-09-03', 'EMPLOYED', TRUE, 'SINGLE', 'INC_30_40', 'MONTHLY_RENT'
-    UNION ALL SELECT 'seed10@hyeja.test', '11740', '1993-06-16', 'FREELANCER', FALSE, 'MARRIED', 'INC_40_UP', 'OWNED'
+    SELECT 'seed01@hyeja.test' AS email, '11440' AS region_code, '1999-03-12' AS birth, 'UNEMPLOYED' AS employment_code, TRUE AS houseless_yn, 'SINGLE' AS marriage_code, 'R2000_3000' AS income_range_code, 'MONTHLY_RENT' AS housing_type, 'COLLEGE_STUDENT' AS education_code
+    UNION ALL SELECT 'seed02@hyeja.test', '11680', '1996-07-21', 'EMPLOYED', TRUE, 'SINGLE', 'R3000_4000', 'JEONSE', 'COLLEGE_GRADUATE'
+    UNION ALL SELECT 'seed03@hyeja.test', '11200', '2001-11-05', 'FREELANCER', TRUE, 'SINGLE', 'UNDER_2000', 'PARENTS', 'COLLEGE_EXPECTED_GRADUATE'
+    UNION ALL SELECT 'seed04@hyeja.test', '11620', '1994-02-18', 'SELF_EMPLOYED', FALSE, 'MARRIED', 'OVER_5000', 'OWNED', 'MASTER_OR_DOCTOR'
+    UNION ALL SELECT 'seed05@hyeja.test', '11710', '2000-08-30', 'DAILY_WORKER', TRUE, 'SINGLE', 'UNDER_2000', 'PARENTS', 'BELOW_HIGH_SCHOOL'
+    UNION ALL SELECT 'seed06@hyeja.test', '11350', '1998-05-09', 'ENTREPRENEUR', TRUE, 'SINGLE', 'R2000_3000', 'MONTHLY_RENT', 'HIGH_SCHOOL_GRADUATE'
+    UNION ALL SELECT 'seed07@hyeja.test', '11500', '1995-12-14', 'SHORT_TERM_WORKER', TRUE, 'MARRIED', 'R4000_5000', 'JEONSE', 'HIGH_SCHOOL_EXPECTED_GRADUATE'
+    UNION ALL SELECT 'seed08@hyeja.test', '11590', '2002-01-27', 'FARMER', TRUE, 'SINGLE', 'UNDER_2000', 'PARENTS', 'HIGH_SCHOOL_STUDENT'
+    UNION ALL SELECT 'seed09@hyeja.test', '11410', '1997-09-03', 'OTHER', TRUE, 'SINGLE', 'R3000_4000', 'MONTHLY_RENT', 'OTHER'
+    UNION ALL SELECT 'seed10@hyeja.test', '11740', '1993-06-16', 'FREELANCER', FALSE, 'MARRIED', 'OVER_5000', 'OWNED', NULL
 ) seed
 JOIN member m ON m.email = seed.email
 JOIN region r ON r.region_code = seed.region_code

@@ -1,7 +1,10 @@
 package com.hyeja.domain.policy.entity;
 
+import com.hyeja.domain.policy.converter.PolicyCategoryConverter;
+import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.global.baseEntity.BaseEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -24,8 +27,9 @@ public class Policy extends BaseEntity {
     @Column(name = "policy_name", nullable = false, length = 200)
     private String policyName;
 
+    @Convert(converter = PolicyCategoryConverter.class)
     @Column(name = "category", nullable = false, length = 20)
-    private String category;
+    private PolicyCategory category;
 
     @Column(name = "api_sub_category", length = 50)
     private String apiSubCategory;
@@ -103,7 +107,7 @@ public class Policy extends BaseEntity {
     private Boolean activeYn;
 
     @Builder
-    public Policy(String policyId, String policyName, String category, String apiSubCategory,
+    public Policy(String policyId, String policyName, PolicyCategory category, String apiSubCategory,
             String subtypeCode, String keywords, String description, String supportContent,
             Integer minAge, Integer maxAge, Boolean ageLimitYn, String incomeConditionCode,
             Integer incomeMin, Integer incomeMax, String incomeEtc, String marriageCode,
