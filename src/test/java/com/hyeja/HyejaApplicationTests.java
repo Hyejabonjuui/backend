@@ -5,6 +5,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -70,5 +71,20 @@ class HyejaApplicationTests {
         assertThat(response.headers().firstValue("Content-Type").orElse(""))
                 .startsWith("text/html");
         assertThat(response.body()).contains("swagger-ui-bundle.js");
+    }
+
+    @Test
+    void policyDetailOpenApiExposesBothPathVariables() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + "/v3/api-docs"))
+                .GET().build();
+
+        HttpResponse<String> response = HttpClient.newHttpClient()
+                .send(request, HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        List<String> parameterNames = JsonPath.parse(response.body()).read(
+                "$.paths['/api/policies/{policyId}/{memberId}'].get.parameters[*].name");
+        assertThat(parameterNames).containsExactlyInAnyOrder("policyId", "memberId");
     }
 }

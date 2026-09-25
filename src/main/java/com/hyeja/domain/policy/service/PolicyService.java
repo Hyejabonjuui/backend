@@ -6,8 +6,19 @@ import com.hyeja.domain.policy.converter.PolicyApiCodeConverter;
 import com.hyeja.domain.policy.converter.PolicyApiConverter;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
+import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO;
+import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO.ConditionResultDTO;
 import com.hyeja.domain.policy.entity.Policy;
+import com.hyeja.domain.policy.entity.PolicyRegion;
+import com.hyeja.domain.policy.enums.EligibilityStatus;
 import com.hyeja.domain.policy.repository.PolicyRepository;
+import com.hyeja.domain.policy.repository.PolicyRegionRepository;
+import com.hyeja.domain.member.entity.Member;
+import com.hyeja.domain.member.repository.MemberRepository;
+import com.hyeja.domain.profile.entity.Profile;
+import com.hyeja.domain.profile.repository.ProfileRepository;
+import com.hyeja.global.apiPayload.status.ErrorStatus;
+import com.hyeja.global.exception.GeneralException;
 import java.net.URI;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +44,10 @@ public class PolicyService {
     private final PolicyApiConverter policyApiConverter;
     private final PolicyApiCodeConverter policyApiCodeConverter;
     private final PolicyAiAnalyzer policyAiAnalyzer;
+    private final MemberRepository memberRepository;
+    private final ProfileRepository profileRepository;
+    private final PolicyRegionRepository policyRegionRepository;
+    private final PolicyEligibilityEvaluator policyEligibilityEvaluator;
 
     @Value("${youth.api.key}")
     private String apiKey;
@@ -119,5 +134,47 @@ public class PolicyService {
 
     public List<Policy> getHousingPolicies() {
         return policyRepository.findAllByOrderByApplyEndDateAsc();
+    }
+
+    public PolicyDetailResponseDTO getPolicyDetailForMember(String policyId, Long memberId) {
+        Policy policy = policyRepository.findById(policyId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.POLICY_NOT_FOUND));
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
+        Profile profile = profileRepository.findById(member.getEmail())
+                .orElseThrow(() -> new GeneralException(ErrorStatus.PROFILE_NOT_FOUND));
+        List<PolicyRegion> policyRegions =
+                policyRegionRepository.findAllByPolicy_PolicyId(policyId);
+        List<ConditionResultDTO> conditions =
+                policyEligibilityEvaluator.evaluate(policy, profile, policyRegions);
+
+        return new PolicyDetailResponseDTO(
+                policy.getPolicyId(),
+                policy.getPolicyName(),
+                policy.getCategory(),
+                policy.getCategory().getLabel(),
+                policy.getApiSubCategory(),
+                policy.getKeywords(),
+                policy.getDescription(),
+                policy.getSupportContent(),
+                policy.getExtraQualification(),
+                policy.getApplyStartDate(),
+                policy.getApplyEndDate(),
+                policy.getApplyMethod(),
+                policy.getApplyUrl(),
+                policy.getRefUrl(),
+                policy.getActiveYn(),
+                overallStatus(conditions),
+                conditions);
+    }
+
+    private EligibilityStatus overallStatus(List<ConditionResultDTO> conditions) {
+        if (conditions.stream().anyMatch(condition -> condition.status() == EligibilityStatus.N)) {
+            return EligibilityStatus.N;
+        }
+        if (conditions.stream().anyMatch(condition -> condition.status() == EligibilityStatus.U)) {
+            return EligibilityStatus.U;
+        }
+        return EligibilityStatus.Y;
     }
 }

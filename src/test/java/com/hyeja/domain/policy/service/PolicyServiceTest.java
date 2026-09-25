@@ -8,18 +8,25 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.hyeja.domain.cardnews.repository.CardNewsRepository;
+import com.hyeja.domain.member.entity.Member;
+import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.domain.policy.converter.PolicyApiCodeConverter;
 import com.hyeja.domain.policy.converter.PolicyApiConverter;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO;
+import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
 import com.hyeja.domain.policy.enums.PolicyMarriageCondition;
 import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
 import com.hyeja.domain.policy.repository.PolicyRepository;
+import com.hyeja.domain.policy.repository.PolicyRegionRepository;
+import com.hyeja.domain.profile.repository.ProfileRepository;
+import com.hyeja.domain.profile.entity.Profile;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -32,9 +39,15 @@ class PolicyServiceTest {
     private final PolicyApiCodeConverter codeConverter = new PolicyApiCodeConverter();
     private final PolicyApiConverter apiConverter = new PolicyApiConverter(codeConverter);
     private final PolicyAiAnalyzer policyAiAnalyzer = mock(PolicyAiAnalyzer.class);
+    private final MemberRepository memberRepository = mock(MemberRepository.class);
+    private final ProfileRepository profileRepository = mock(ProfileRepository.class);
+    private final PolicyRegionRepository policyRegionRepository = mock(PolicyRegionRepository.class);
+    private final PolicyEligibilityEvaluator policyEligibilityEvaluator =
+            new PolicyEligibilityEvaluator(new PolicyIncomeEligibilityEvaluator());
     private final PolicyService service = new PolicyService(
             policyRepository, cardNewsRepository, restTemplate, apiConverter, codeConverter,
-            policyAiAnalyzer);
+            policyAiAnalyzer, memberRepository, profileRepository, policyRegionRepository,
+            policyEligibilityEvaluator);
 
     @Test
     void mapsYouthPolicyApiFieldsToPolicyEntity() {
@@ -271,6 +284,34 @@ class PolicyServiceTest {
         item.setMarriageCode(code);
         return apiConverter.convert(item, PolicyCategory.OTHER, null,
                 PolicyIncomeCondition.UNKNOWN, null, null).getMarriageCode();
+    }
+
+    @Test
+    void returnsPolicyDetailWithFiveMemberEligibilityConditions() {
+        Policy policy = mock(Policy.class);
+        when(policy.getPolicyId()).thenReturn("policy-detail");
+        when(policy.getPolicyName()).thenReturn("청년 주거 정책");
+        when(policy.getCategory()).thenReturn(PolicyCategory.OTHER);
+        when(policy.getAgeLimitYn()).thenReturn(true);
+        when(policy.getIncomeConditionCode()).thenReturn(PolicyIncomeCondition.UNKNOWN);
+
+        Member member = mock(Member.class);
+        when(member.getEmail()).thenReturn("member@example.com");
+        Profile profile = mock(Profile.class);
+
+        when(policyRepository.findById("policy-detail")).thenReturn(Optional.of(policy));
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(profileRepository.findById("member@example.com")).thenReturn(Optional.of(profile));
+        when(policyRegionRepository.findAllByPolicy_PolicyId("policy-detail"))
+                .thenReturn(List.of());
+
+        PolicyDetailResponseDTO response =
+                service.getPolicyDetailForMember("policy-detail", 1L);
+
+        assertThat(response.policyId()).isEqualTo("policy-detail");
+        assertThat(response.conditions()).hasSize(5);
+        assertThat(response.overallStatus()).isEqualTo(
+                com.hyeja.domain.policy.enums.EligibilityStatus.U);
     }
 
     private Set<PolicyEmploymentCondition> mapEmploymentConditions(String codes) {
