@@ -12,11 +12,13 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -133,5 +135,51 @@ public class FavoriteController {
         FavoriteItemDTO result = favoriteService.createFavorite(memberId, policyId);
         return ResponseEntity.status(SuccessStatus.CREATED.getHttpStatus())
                 .body(ApiResponse.of(SuccessStatus.CREATED, result));
+    }
+
+    @Operation(
+            summary = "관심 정책 삭제",
+            description = "회원이 등록한 관심 정책을 데이터베이스에서 영구 삭제합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "관심 정책 삭제 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "회원 ID 또는 정책 ID 누락",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "없거나 탈퇴한 회원 (MEMBER_001), 존재하지 않는 정책 (POLICY_001), "
+                            + "등록되지 않은 관심 정책 (FAVORITE_002)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            )
+    })
+    @DeleteMapping("/{policyId}")
+    public ApiResponse<Void> deleteFavorite(
+            @Parameter(
+                    name = "policyId",
+                    description = "삭제할 관심 정책의 정책 ID",
+                    in = ParameterIn.PATH,
+                    example = "R202609230001",
+                    required = true
+            )
+            @PathVariable(name = "policyId")
+            @NotBlank(message = "정책 ID는 필수입니다.") String policyId,
+            @Parameter(
+                    name = "memberId",
+                    description = "관심 정책을 삭제할 회원 ID",
+                    in = ParameterIn.QUERY,
+                    example = "1",
+                    required = true
+            )
+            @RequestParam(name = "memberId")
+            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
+    ) {
+        favoriteService.deleteFavorite(memberId, policyId);
+        return ApiResponse.onSuccess(null);
     }
 }

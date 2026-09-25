@@ -50,6 +50,21 @@ public class FavoriteService {
         }
     }
 
+    @Transactional
+    public void deleteFavorite(Long memberId, String policyId) {
+        memberService.getActiveMember(memberId);
+
+        if (!policyRepository.existsById(policyId)) {
+            throw new GeneralException(ErrorStatus.POLICY_NOT_FOUND);
+        }
+
+        Favorite favorite = favoriteRepository
+                .findByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(memberId, policyId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.FAVORITE_NOT_FOUND));
+
+        favoriteRepository.delete(favorite);
+    }
+
     public FavoriteListDTO getMyFavorites(Long memberId, int page, int size) {
         memberService.getActiveMember(memberId);
         return FavoriteConverter.toFavoriteListDTO(

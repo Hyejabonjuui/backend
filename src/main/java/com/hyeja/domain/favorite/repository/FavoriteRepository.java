@@ -1,6 +1,7 @@
 package com.hyeja.domain.favorite.repository;
 
 import com.hyeja.domain.favorite.entity.Favorite;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,6 +13,11 @@ import org.springframework.stereotype.Repository;
 public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
 
     boolean existsByMemberMemberIdAndPolicyPolicyId(Long memberId, String policyId);
+
+    Optional<Favorite> findByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(
+            Long memberId,
+            String policyId
+    );
 
     @Query(
             value = """
