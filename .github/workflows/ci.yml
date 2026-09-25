@@ -19,6 +19,9 @@ jobs:
     env:
       SPRING_PROFILES_ACTIVE: test
       YOUTH_API_KEY: ${{ secrets.YOUTH_API_KEY }}
+      OPEN_AI_KEY: ${{ secrets.OPEN_AI_KEY }}
+      OPEN_AI_MODEL: ${{ secrets.OPEN_AI_MODEL }}
+      
 
     steps:
       - name: Checkout repository
