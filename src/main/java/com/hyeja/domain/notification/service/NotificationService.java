@@ -22,14 +22,29 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
 
     public NotificationListDTO getNotifications(Long memberId, int page, int size) {
-        memberRepository.findById(memberId)
-                .filter(member -> !member.isDeleted())
-                .orElseThrow(() -> new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
+        validateActiveMember(memberId);
 
         Page<Notification> notificationPage = notificationRepository.findAllByMemberId(
                 memberId,
                 PageRequest.of(page, size)
         );
         return NotificationConverter.toNotificationListDTO(notificationPage);
+    }
+
+    @Transactional
+    public void deleteNotification(Long memberId, Long notificationId) {
+        validateActiveMember(memberId);
+
+        Notification notification = notificationRepository
+                .findByNotificationIdAndMemberMemberIdAndDeletedAtIsNull(notificationId, memberId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.NOTIFICATION_NOT_FOUND));
+
+        notificationRepository.delete(notification);
+    }
+
+    private void validateActiveMember(Long memberId) {
+        memberRepository.findById(memberId)
+                .filter(member -> !member.isDeleted())
+                .orElseThrow(() -> new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
     }
 }
