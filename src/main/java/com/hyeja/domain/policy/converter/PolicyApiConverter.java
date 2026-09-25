@@ -16,12 +16,12 @@ public class PolicyApiConverter {
 
     private final PolicyApiCodeConverter codeConverter;
 
-    public Policy convert(PolicyItem item) {
+    public Policy convert(PolicyItem item, PolicyCategory category) {
         DateRange dates = parseDateRange(item.getApplyYmd());
         return Policy.builder()
                 .policyId(trimToNull(item.getPolicyId()))
                 .policyName(defaultIfBlank(item.getPolicyName(), "제목 없음"))
-                .category(classifyCategory(item))
+                .category(category)
                 .apiSubCategory(trimToNull(item.getSubCategory()))
                 .subtypeCode(null)
                 .keywords(trimToNull(item.getKeywords()))
@@ -49,29 +49,6 @@ public class PolicyApiConverter {
                 .viewCount(parseInteger(item.getViewCount(), 0))
                 .activeYn(codeConverter.isApproved(item.getApprovalStatusCode()))
                 .build();
-    }
-
-    private PolicyCategory classifyCategory(PolicyItem item) {
-        String source = String.join(" ",
-                defaultIfBlank(item.getPolicyName(), ""),
-                defaultIfBlank(item.getKeywords(), ""),
-                defaultIfBlank(item.getPolicyExplanation(), ""),
-                defaultIfBlank(item.getSupportContent(), "")).toLowerCase();
-
-        if (containsAny(source, "공공임대", "공공주택", "임대주택", "행복주택",
-                "매입임대", "전세임대", "lh주택", "sh주택")) {
-            return PolicyCategory.PUBLIC_RENT;
-        }
-        if (containsAny(source, "전세", "전세자금", "전세보증금", "보증금 지원", "보증금 대출")) {
-            return PolicyCategory.JEONSE;
-        }
-        if (containsAny(source, "월세", "월 임대료", "주거급여", "임차료")) {
-            return PolicyCategory.MONTHLY_RENT;
-        }
-        if (containsAny(source, "청약", "주택구입", "주택 구입", "내집마련", "내 집 마련")) {
-            return PolicyCategory.PURCHASE;
-        }
-        return PolicyCategory.OTHER;
     }
 
     private DateRange parseDateRange(String value) {
@@ -111,13 +88,6 @@ public class PolicyApiConverter {
         String text = trimToNull(value);
         return text == null ? defaultValue
                 : "Y".equalsIgnoreCase(text) || "true".equalsIgnoreCase(text) || "1".equals(text);
-    }
-
-    private boolean containsAny(String source, String... keywords) {
-        for (String keyword : keywords) {
-            if (source.contains(keyword)) return true;
-        }
-        return false;
     }
 
     private String joinNonBlank(String first, String second) {

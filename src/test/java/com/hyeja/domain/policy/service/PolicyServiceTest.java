@@ -30,8 +30,10 @@ class PolicyServiceTest {
     private final RestTemplate restTemplate = mock(RestTemplate.class);
     private final PolicyApiCodeConverter codeConverter = new PolicyApiCodeConverter();
     private final PolicyApiConverter apiConverter = new PolicyApiConverter(codeConverter);
+    private final PolicyCategoryClassifier categoryClassifier = mock(PolicyCategoryClassifier.class);
     private final PolicyService service = new PolicyService(
-            policyRepository, cardNewsRepository, restTemplate, apiConverter, codeConverter);
+            policyRepository, cardNewsRepository, restTemplate, apiConverter, codeConverter,
+            categoryClassifier);
 
     @Test
     void mapsYouthPolicyApiFieldsToPolicyEntity() {
@@ -59,7 +61,7 @@ class PolicyServiceTest {
         item.setViewCount("123");
         item.setApprovalStatusCode("0044002");
 
-        Policy policy = apiConverter.convert(item);
+        Policy policy = apiConverter.convert(item, PolicyCategory.MONTHLY_RENT);
 
         assertThat(policy.getPolicyId()).isEqualTo("202609250001");
         assertThat(policy.getPolicyName()).isEqualTo("청년 주거 지원");
@@ -92,7 +94,7 @@ class PolicyServiceTest {
         item.setPolicyId("policy-2"); item.setPolicyName(" "); item.setCategory("주거");
         item.setMinAge("-"); item.setApplyYmd("2026년 연중");
 
-        Policy policy = apiConverter.convert(item);
+        Policy policy = apiConverter.convert(item, PolicyCategory.OTHER);
 
         assertThat(policy.getPolicyName()).isEqualTo("제목 없음");
         assertThat(policy.getMinAge()).isNull();
@@ -110,7 +112,7 @@ class PolicyServiceTest {
         item.setCategory("주거");
         item.setApprovalStatusCode("NOT_APPROVED");
 
-        assertThat(apiConverter.convert(item).getActiveYn()).isFalse();
+        assertThat(apiConverter.convert(item, PolicyCategory.OTHER).getActiveYn()).isFalse();
     }
 
     @Test
@@ -177,15 +179,51 @@ class PolicyServiceTest {
         assertThat(service.fetchAndSaveHousingPolicies()).isZero();
         verify(policyRepository, never()).save(org.mockito.ArgumentMatchers.any(Policy.class));
         verify(cardNewsRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(categoryClassifier, never()).classify(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
-    void classifiesHousingPolicyCategoriesByPolicyContent() {
-        assertThat(mapCategory("청년 공공임대주택 입주자 모집")).isEqualTo(PolicyCategory.PUBLIC_RENT);
-        assertThat(mapCategory("전세보증금 대출이자 지원")).isEqualTo(PolicyCategory.JEONSE);
-        assertThat(mapCategory("청년월세 한시 특별지원")).isEqualTo(PolicyCategory.MONTHLY_RENT);
-        assertThat(mapCategory("청년 주택청약 교육")).isEqualTo(PolicyCategory.PURCHASE);
-        assertThat(mapCategory("대학생 기숙사비 지원")).isEqualTo(PolicyCategory.OTHER);
+    void savesCategoryReturnedByAiClassifier() {
+        ReflectionTestUtils.setField(service, "apiKey", "test-key");
+        ReflectionTestUtils.setField(service, "apiUrl", "https://example.com/policies");
+
+        PolicyItem item = new PolicyItem();
+        item.setPolicyId("ai-policy");
+        item.setPolicyName("청년 임대주택 정책");
+        item.setCategory("주거");
+        item.setApprovalStatusCode("44002");
+
+        PolicyApiResponseDTO.Pagging pagging = new PolicyApiResponseDTO.Pagging();
+        pagging.setTotCount(1);
+        PolicyApiResponseDTO.ResultData result = new PolicyApiResponseDTO.ResultData();
+        result.setPagging(pagging);
+        result.setYouthPolicyList(List.of(item));
+        PolicyApiResponseDTO response = new PolicyApiResponseDTO();
+        response.setResult(result);
+
+        when(restTemplate.getForObject(org.mockito.ArgumentMatchers.any(java.net.URI.class),
+                org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class))).thenReturn(response);
+        when(categoryClassifier.classify(item)).thenReturn(new PolicyCategoryClassification(
+                PolicyCategory.PUBLIC_RENT, 0.95, "공공임대주택 입주 정책"));
+        when(policyRepository.save(org.mockito.ArgumentMatchers.any(Policy.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(cardNewsRepository.existsByPolicy_PolicyIdAndCardNo("ai-policy", 1L))
+                .thenReturn(true);
+
+        assertThat(service.fetchAndSaveHousingPolicies()).isEqualTo(1);
+        verify(policyRepository).save(org.mockito.ArgumentMatchers.argThat(
+                policy -> policy.getCategory() == PolicyCategory.PUBLIC_RENT));
+    }
+
+    @Test
+    void storesCategoryProvidedByAiClassifier() {
+        PolicyItem item = new PolicyItem();
+        item.setPolicyId("ai-category-policy");
+        item.setPolicyName("청년 주거 정책");
+
+        Policy policy = apiConverter.convert(item, PolicyCategory.PUBLIC_RENT);
+
+        assertThat(policy.getCategory()).isEqualTo(PolicyCategory.PUBLIC_RENT);
     }
 
     @Test
@@ -214,22 +252,13 @@ class PolicyServiceTest {
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class));
     }
 
-    private PolicyCategory mapCategory(String policyName) {
-        PolicyItem item = new PolicyItem();
-        item.setPolicyId("category-test");
-        item.setPolicyName(policyName);
-        item.setCategory("주거");
-        item.setSubCategory("전월세 및 주거급여 지원");
-        return apiConverter.convert(item).getCategory();
-    }
-
     private PolicyMarriageCondition mapMarriageCondition(String code) {
         PolicyItem item = new PolicyItem();
         item.setPolicyId("marriage-test");
         item.setPolicyName("혼인 조건 테스트");
         item.setCategory("주거");
         item.setMarriageCode(code);
-        return apiConverter.convert(item).getMarriageCode();
+        return apiConverter.convert(item, PolicyCategory.OTHER).getMarriageCode();
     }
 
     private Set<PolicyEmploymentCondition> mapEmploymentConditions(String codes) {
@@ -238,6 +267,6 @@ class PolicyServiceTest {
         item.setPolicyName("취업 조건 테스트");
         item.setCategory("주거");
         item.setEmploymentCodes(codes);
-        return apiConverter.convert(item).getEmploymentCodes();
+        return apiConverter.convert(item, PolicyCategory.OTHER).getEmploymentCodes();
     }
 }
