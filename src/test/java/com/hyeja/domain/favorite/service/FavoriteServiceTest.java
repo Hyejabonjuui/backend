@@ -174,8 +174,57 @@ class FavoriteServiceTest {
         assertCreateError(1L, "policy-1", ErrorStatus.FAVORITE_ALREADY_EXISTS);
     }
 
+    @Test
+    void hardDeletesFavoritePolicy() {
+        Member member = member();
+        Favorite favorite = favorite(10L, member);
+        when(memberService.getActiveMember(1L)).thenReturn(member);
+        when(policyRepository.existsById("policy-1")).thenReturn(true);
+        when(favoriteRepository.findByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(
+                1L, "policy-1")).thenReturn(Optional.of(favorite));
+
+        favoriteService.deleteFavorite(1L, "policy-1");
+
+        verify(favoriteRepository).delete(favorite);
+    }
+
+    @Test
+    void deleteThrowsMemberNotFoundBeforePolicyLookup() {
+        when(memberService.getActiveMember(99L))
+                .thenThrow(new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
+
+        assertDeleteError(99L, "policy-1", ErrorStatus.MEMBER_NOT_FOUND);
+        verifyNoInteractions(policyRepository, favoriteRepository);
+    }
+
+    @Test
+    void deleteThrowsPolicyNotFoundWhenPolicyDoesNotExist() {
+        when(memberService.getActiveMember(1L)).thenReturn(member());
+        when(policyRepository.existsById("missing-policy")).thenReturn(false);
+
+        assertDeleteError(1L, "missing-policy", ErrorStatus.POLICY_NOT_FOUND);
+        verifyNoInteractions(favoriteRepository);
+    }
+
+    @Test
+    void deleteThrowsFavoriteNotFoundWhenFavoriteDoesNotExist() {
+        when(memberService.getActiveMember(1L)).thenReturn(member());
+        when(policyRepository.existsById("policy-1")).thenReturn(true);
+        when(favoriteRepository.findByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(
+                1L, "policy-1")).thenReturn(Optional.empty());
+
+        assertDeleteError(1L, "policy-1", ErrorStatus.FAVORITE_NOT_FOUND);
+    }
+
     private void assertCreateError(Long memberId, String policyId, ErrorStatus expected) {
         assertThatThrownBy(() -> favoriteService.createFavorite(memberId, policyId))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(expected);
+    }
+
+    private void assertDeleteError(Long memberId, String policyId, ErrorStatus expected) {
+        assertThatThrownBy(() -> favoriteService.deleteFavorite(memberId, policyId))
                 .isInstanceOf(GeneralException.class)
                 .extracting("code")
                 .isEqualTo(expected);
