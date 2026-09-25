@@ -61,6 +61,30 @@ class FavoriteRepositoryTest {
                 assertThat(persistenceUnitUtil.isLoaded(favorite, "policy")).isTrue());
     }
 
+    @Test
+    void detectsFavoriteAndAllowsRegistrationAfterHardDelete() {
+        Member member = persistMember("register@example.com");
+        Policy policy = persistPolicy("register-policy", "등록할 정책");
+        Favorite favorite = favoriteRepository.saveAndFlush(
+                Favorite.builder().member(member).policy(policy).build()
+        );
+
+        assertThat(favoriteRepository.existsByMemberMemberIdAndPolicyPolicyId(
+                member.getMemberId(), policy.getPolicyId())).isTrue();
+
+        Long deletedId = favorite.getFavoriteId();
+        favoriteRepository.delete(favorite);
+        favoriteRepository.flush();
+
+        assertThat(favoriteRepository.existsByMemberMemberIdAndPolicyPolicyId(
+                member.getMemberId(), policy.getPolicyId())).isFalse();
+
+        Favorite registeredAgain = favoriteRepository.saveAndFlush(
+                Favorite.builder().member(member).policy(policy).build()
+        );
+        assertThat(registeredAgain.getFavoriteId()).isNotEqualTo(deletedId);
+    }
+
     private Member persistMember(String email) {
         Member member = Member.builder()
                 .email(email)
