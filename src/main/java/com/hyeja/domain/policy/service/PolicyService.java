@@ -24,15 +24,15 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Transactional(readOnly = true)
 public class PolicyService {
     private static final String HOUSING_CATEGORY = "주거";
-    private static final int PAGE_SIZE = 100;
-    private static final int MAX_PAGES = 1;
+    private static final int PAGE_SIZE = 20; // 100
+    private static final int MAX_PAGES = 1; // 20
 
     private final PolicyRepository policyRepository;
     private final CardNewsRepository cardNewsRepository;
     private final RestTemplate restTemplate;
     private final PolicyApiConverter policyApiConverter;
     private final PolicyApiCodeConverter policyApiCodeConverter;
-    private final PolicyCategoryClassifier policyCategoryClassifier;
+    private final PolicyAiAnalyzer policyAiAnalyzer;
 
     @Value("${youth.api.key}")
     private String apiKey;
@@ -60,9 +60,12 @@ public class PolicyService {
 
             for (PolicyItem item : items) {
                 if (!isSavableHousingPolicy(item)) continue;
-                PolicyCategoryClassification classification = policyCategoryClassifier.classify(item);
+                PolicyAiAnalysis analysis = policyAiAnalyzer.analyze(item);
                 Policy policy = policyRepository.save(
-                        policyApiConverter.convert(item, classification.category()));
+                        policyApiConverter.convert(
+                                item, analysis.category(), analysis.houselessYn(),
+                                analysis.incomeCondition(), analysis.incomeMin(),
+                                analysis.incomeMax()));
                 createTestCardNewsIfAbsent(policy);
                 processedCount++;
             }

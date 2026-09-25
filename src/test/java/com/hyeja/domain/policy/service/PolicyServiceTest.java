@@ -16,6 +16,7 @@ import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
 import com.hyeja.domain.policy.enums.PolicyMarriageCondition;
+import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
 import com.hyeja.domain.policy.repository.PolicyRepository;
 import java.time.LocalDate;
 import java.util.List;
@@ -30,10 +31,10 @@ class PolicyServiceTest {
     private final RestTemplate restTemplate = mock(RestTemplate.class);
     private final PolicyApiCodeConverter codeConverter = new PolicyApiCodeConverter();
     private final PolicyApiConverter apiConverter = new PolicyApiConverter(codeConverter);
-    private final PolicyCategoryClassifier categoryClassifier = mock(PolicyCategoryClassifier.class);
+    private final PolicyAiAnalyzer policyAiAnalyzer = mock(PolicyAiAnalyzer.class);
     private final PolicyService service = new PolicyService(
             policyRepository, cardNewsRepository, restTemplate, apiConverter, codeConverter,
-            categoryClassifier);
+            policyAiAnalyzer);
 
     @Test
     void mapsYouthPolicyApiFieldsToPolicyEntity() {
@@ -61,7 +62,8 @@ class PolicyServiceTest {
         item.setViewCount("123");
         item.setApprovalStatusCode("0044002");
 
-        Policy policy = apiConverter.convert(item, PolicyCategory.MONTHLY_RENT);
+        Policy policy = apiConverter.convert(item, PolicyCategory.MONTHLY_RENT, true,
+                PolicyIncomeCondition.COMPARABLE, 100, 300);
 
         assertThat(policy.getPolicyId()).isEqualTo("202609250001");
         assertThat(policy.getPolicyName()).isEqualTo("청년 주거 지원");
@@ -79,7 +81,7 @@ class PolicyServiceTest {
         assertThat(policy.getEmploymentCodes()).containsExactlyInAnyOrder(
                 PolicyEmploymentCondition.EMPLOYED,
                 PolicyEmploymentCondition.SELF_EMPLOYED);
-        assertThat(policy.getHouselessYn()).isNull();
+        assertThat(policy.getHouselessYn()).isTrue();
         assertThat(policy.getHousingType()).isEqualTo("주택 및 거주지");
         assertThat(policy.getExtraQualification()).contains("서울 거주", "무주택 청년");
         assertThat(policy.getApplyStartDate()).isEqualTo(LocalDate.of(2026, 9, 1));
@@ -94,7 +96,8 @@ class PolicyServiceTest {
         item.setPolicyId("policy-2"); item.setPolicyName(" "); item.setCategory("주거");
         item.setMinAge("-"); item.setApplyYmd("2026년 연중");
 
-        Policy policy = apiConverter.convert(item, PolicyCategory.OTHER);
+        Policy policy = apiConverter.convert(item, PolicyCategory.OTHER, null,
+                PolicyIncomeCondition.UNKNOWN, null, null);
 
         assertThat(policy.getPolicyName()).isEqualTo("제목 없음");
         assertThat(policy.getMinAge()).isNull();
@@ -112,7 +115,8 @@ class PolicyServiceTest {
         item.setCategory("주거");
         item.setApprovalStatusCode("NOT_APPROVED");
 
-        assertThat(apiConverter.convert(item, PolicyCategory.OTHER).getActiveYn()).isFalse();
+        assertThat(apiConverter.convert(item, PolicyCategory.OTHER, null,
+                PolicyIncomeCondition.UNKNOWN, null, null).getActiveYn()).isFalse();
     }
 
     @Test
@@ -179,7 +183,7 @@ class PolicyServiceTest {
         assertThat(service.fetchAndSaveHousingPolicies()).isZero();
         verify(policyRepository, never()).save(org.mockito.ArgumentMatchers.any(Policy.class));
         verify(cardNewsRepository, never()).save(org.mockito.ArgumentMatchers.any());
-        verify(categoryClassifier, never()).classify(org.mockito.ArgumentMatchers.any());
+        verify(policyAiAnalyzer, never()).analyze(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -203,8 +207,11 @@ class PolicyServiceTest {
 
         when(restTemplate.getForObject(org.mockito.ArgumentMatchers.any(java.net.URI.class),
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class))).thenReturn(response);
-        when(categoryClassifier.classify(item)).thenReturn(new PolicyCategoryClassification(
-                PolicyCategory.PUBLIC_RENT, 0.95, "공공임대주택 입주 정책"));
+        when(policyAiAnalyzer.analyze(item)).thenReturn(new PolicyAiAnalysis(
+                PolicyCategory.PUBLIC_RENT, 0.95, "공공임대주택 입주 정책",
+                true, 0.91, "무주택 세대구성원 조건이 명시됨",
+                PolicyIncomeCondition.COMPARABLE, null, 50_000_000,
+                0.90, "개인 연소득 5천만원 이하"));
         when(policyRepository.save(org.mockito.ArgumentMatchers.any(Policy.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(cardNewsRepository.existsByPolicy_PolicyIdAndCardNo("ai-policy", 1L))
@@ -212,7 +219,10 @@ class PolicyServiceTest {
 
         assertThat(service.fetchAndSaveHousingPolicies()).isEqualTo(1);
         verify(policyRepository).save(org.mockito.ArgumentMatchers.argThat(
-                policy -> policy.getCategory() == PolicyCategory.PUBLIC_RENT));
+                policy -> policy.getCategory() == PolicyCategory.PUBLIC_RENT
+                        && Boolean.TRUE.equals(policy.getHouselessYn())
+                        && policy.getIncomeConditionCode() == PolicyIncomeCondition.COMPARABLE
+                        && policy.getIncomeMax() == 50_000_000));
     }
 
     @Test
@@ -221,13 +231,14 @@ class PolicyServiceTest {
         item.setPolicyId("ai-category-policy");
         item.setPolicyName("청년 주거 정책");
 
-        Policy policy = apiConverter.convert(item, PolicyCategory.PUBLIC_RENT);
+        Policy policy = apiConverter.convert(item, PolicyCategory.PUBLIC_RENT, null,
+                PolicyIncomeCondition.UNKNOWN, null, null);
 
         assertThat(policy.getCategory()).isEqualTo(PolicyCategory.PUBLIC_RENT);
     }
 
     @Test
-    void loadsAtMostTwentyPages() {
+    void loadsAtMostConfiguredPages() {
         ReflectionTestUtils.setField(service, "apiKey", "test-key");
         ReflectionTestUtils.setField(service, "apiUrl", "https://example.com/policies");
 
@@ -247,7 +258,7 @@ class PolicyServiceTest {
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class))).thenReturn(response);
 
         assertThat(service.fetchAndSaveHousingPolicies()).isZero();
-        verify(restTemplate, times(20)).getForObject(
+        verify(restTemplate, times(1)).getForObject(
                 org.mockito.ArgumentMatchers.any(java.net.URI.class),
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class));
     }
@@ -258,7 +269,8 @@ class PolicyServiceTest {
         item.setPolicyName("혼인 조건 테스트");
         item.setCategory("주거");
         item.setMarriageCode(code);
-        return apiConverter.convert(item, PolicyCategory.OTHER).getMarriageCode();
+        return apiConverter.convert(item, PolicyCategory.OTHER, null,
+                PolicyIncomeCondition.UNKNOWN, null, null).getMarriageCode();
     }
 
     private Set<PolicyEmploymentCondition> mapEmploymentConditions(String codes) {
@@ -267,6 +279,7 @@ class PolicyServiceTest {
         item.setPolicyName("취업 조건 테스트");
         item.setCategory("주거");
         item.setEmploymentCodes(codes);
-        return apiConverter.convert(item, PolicyCategory.OTHER).getEmploymentCodes();
+        return apiConverter.convert(item, PolicyCategory.OTHER, null,
+                PolicyIncomeCondition.UNKNOWN, null, null).getEmploymentCodes();
     }
 }

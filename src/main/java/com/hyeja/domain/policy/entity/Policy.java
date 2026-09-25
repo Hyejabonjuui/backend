@@ -5,6 +5,7 @@ import com.hyeja.domain.policy.converter.PolicyEmploymentConditionsConverter;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
 import com.hyeja.domain.policy.enums.PolicyMarriageCondition;
+import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
 import com.hyeja.global.baseEntity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -61,8 +62,9 @@ public class Policy extends BaseEntity {
     @Column(name = "age_limit_yn", nullable = false)
     private Boolean ageLimitYn;
 
-    @Column(name = "income_condition_code", length = 10)
-    private String incomeConditionCode;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "income_condition_code", length = 20)
+    private PolicyIncomeCondition incomeConditionCode;
 
     @Column(name = "income_min")
     private Integer incomeMin;
@@ -117,7 +119,8 @@ public class Policy extends BaseEntity {
     @Builder
     public Policy(String policyId, String policyName, PolicyCategory category, String apiSubCategory,
             String subtypeCode, String keywords, String description, String supportContent,
-            Integer minAge, Integer maxAge, Boolean ageLimitYn, String incomeConditionCode,
+            Integer minAge, Integer maxAge, Boolean ageLimitYn,
+            PolicyIncomeCondition incomeConditionCode,
             Integer incomeMin, Integer incomeMax, String incomeEtc,
             PolicyMarriageCondition marriageCode, Set<PolicyEmploymentCondition> employmentCodes,
             Boolean houselessYn, String housingType, String applyPeriodCode,

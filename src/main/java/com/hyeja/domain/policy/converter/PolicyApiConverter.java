@@ -3,6 +3,7 @@ package com.hyeja.domain.policy.converter;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -16,7 +17,8 @@ public class PolicyApiConverter {
 
     private final PolicyApiCodeConverter codeConverter;
 
-    public Policy convert(PolicyItem item, PolicyCategory category) {
+    public Policy convert(PolicyItem item, PolicyCategory category, Boolean houselessYn,
+            PolicyIncomeCondition incomeCondition, Integer incomeMin, Integer incomeMax) {
         DateRange dates = parseDateRange(item.getApplyYmd());
         return Policy.builder()
                 .policyId(trimToNull(item.getPolicyId()))
@@ -30,13 +32,13 @@ public class PolicyApiConverter {
                 .minAge(parseNullableInteger(item.getMinAge()))
                 .maxAge(parseNullableInteger(item.getMaxAge()))
                 .ageLimitYn(toBoolean(item.getAgeLimitYn(), false))
-                .incomeConditionCode(trimToNull(item.getIncomeConditionCode()))
-                .incomeMin(parseNullableInteger(item.getIncomeMin()))
-                .incomeMax(parseNullableInteger(item.getIncomeMax()))
+                .incomeConditionCode(incomeCondition)
+                .incomeMin(incomeMin)
+                .incomeMax(incomeMax)
                 .incomeEtc(trimToNull(item.getIncomeEtc()))
                 .marriageCode(codeConverter.convertMarriage(item.getMarriageCode()))
                 .employmentCodes(codeConverter.convertEmployment(item.getEmploymentCodes()))
-                .houselessYn(null)
+                .houselessYn(houselessYn)
                 .housingType(trimToNull(item.getSubCategory()))
                 .applyPeriodCode(defaultIfBlank(item.getApplyPeriodCode(), "UNKNOWN"))
                 .extraQualification(joinNonBlank(
