@@ -1,6 +1,7 @@
 package com.hyeja.domain.notification.controller;
 
 import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationListDTO;
+import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationItemDTO;
 import com.hyeja.domain.notification.service.NotificationService;
 import com.hyeja.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "알림", description = "회원 알림 API")
 @Validated
 @RestController
-@RequestMapping("/api/members")
+@RequestMapping("/api/notification")
 @RequiredArgsConstructor
 public class NotificationController {
 
@@ -50,7 +52,7 @@ public class NotificationController {
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             )
     })
-    @GetMapping("/notifications/{memberId}")
+    @GetMapping("/{memberId}")
     public ApiResponse<NotificationListDTO> getNotifications(
             @Parameter(description = "조회할 회원 ID", example = "1", required = true) // 추후 memberId는 없앨 예정
             @PathVariable("memberId") @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId,
@@ -62,6 +64,46 @@ public class NotificationController {
             @Positive(message = "페이지 크기는 양수여야 합니다.") int size
     ) {
         NotificationListDTO result = notificationService.getNotifications(memberId, page, size);
+        return ApiResponse.onSuccess(result);
+    }
+
+    @Operation(
+            summary = "알림 읽음 처리",
+            description = "회원 본인의 삭제되지 않은 알림을 읽음 상태로 변경합니다. "
+                    + "이미 읽은 알림에 다시 요청해도 읽음 상태를 유지합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "알림 읽음 처리 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 회원 ID 또는 알림 ID",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "회원을 찾을 수 없음 (MEMBER_001) 또는 알림을 찾을 수 없음 (NOTIFICATION_001)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            )
+    })
+    @PatchMapping("/{notificationId}/read")
+    public ApiResponse<NotificationItemDTO> markNotificationAsRead(
+            @Parameter(description = "읽음 처리할 알림 ID", example = "1", required = true)
+            @PathVariable("notificationId")
+            @Positive(message = "알림 ID는 양수여야 합니다.") Long notificationId,
+            @Parameter(
+                    name = "memberId",
+                    description = "알림 소유 회원 ID",
+                    in = ParameterIn.QUERY,
+                    example = "1",
+                    required = true
+            ) // 추후 인증 도입 시 제거 예정
+            @RequestParam("memberId")
+            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
+    ) {
+        NotificationItemDTO result = notificationService.markAsRead(memberId, notificationId);
         return ApiResponse.onSuccess(result);
     }
 }
