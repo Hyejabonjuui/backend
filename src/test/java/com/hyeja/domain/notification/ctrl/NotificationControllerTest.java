@@ -2,6 +2,7 @@ package com.hyeja.domain.notification.ctrl;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -77,5 +78,18 @@ class NotificationControllerTest {
                 .andExpect(jsonPath("$.result.hasNext").value(true));
 
         verify(notificationService).getNotifications(1L, 0, 8);
+    }
+
+    @Test
+    void deletesNotificationForMember() throws Exception {
+        mockMvc.perform(delete("/api/notification/{notificationId}", 10L)
+                        .param("memberId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true))
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"))
+                .andExpect(jsonPath("$.message").value("성공입니다."))
+                .andExpect(jsonPath("$.result").doesNotExist());
+
+        verify(notificationService).deleteNotification(1L, 10L);
     }
 }
