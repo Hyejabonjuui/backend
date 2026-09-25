@@ -1,14 +1,20 @@
 package com.hyeja.domain.policy.entity;
 
 import com.hyeja.domain.policy.converter.PolicyCategoryConverter;
+import com.hyeja.domain.policy.converter.PolicyEmploymentConditionsConverter;
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
+import com.hyeja.domain.policy.enums.PolicyMarriageCondition;
 import com.hyeja.global.baseEntity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -67,11 +73,13 @@ public class Policy extends BaseEntity {
     @Column(name = "income_etc", columnDefinition = "TEXT")
     private String incomeEtc;
 
-    @Column(name = "marriage_code", length = 10)
-    private String marriageCode;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "marriage_code", length = 20)
+    private PolicyMarriageCondition marriageCode;
 
+    @Convert(converter = PolicyEmploymentConditionsConverter.class)
     @Column(name = "employment_codes", length = 200)
-    private String employmentCodes;
+    private Set<PolicyEmploymentCondition> employmentCodes;
 
     @Column(name = "houseless_yn")
     private Boolean houselessYn;
@@ -110,8 +118,9 @@ public class Policy extends BaseEntity {
     public Policy(String policyId, String policyName, PolicyCategory category, String apiSubCategory,
             String subtypeCode, String keywords, String description, String supportContent,
             Integer minAge, Integer maxAge, Boolean ageLimitYn, String incomeConditionCode,
-            Integer incomeMin, Integer incomeMax, String incomeEtc, String marriageCode,
-            String employmentCodes, Boolean houselessYn, String housingType, String applyPeriodCode,
+            Integer incomeMin, Integer incomeMax, String incomeEtc,
+            PolicyMarriageCondition marriageCode, Set<PolicyEmploymentCondition> employmentCodes,
+            Boolean houselessYn, String housingType, String applyPeriodCode,
             String extraQualification, LocalDate applyStartDate, LocalDate applyEndDate,
             String applyMethod, String applyUrl, String refUrl, Integer viewCount, Boolean activeYn) {
         this.policyId = policyId;

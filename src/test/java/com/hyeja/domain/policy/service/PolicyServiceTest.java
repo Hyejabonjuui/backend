@@ -2,18 +2,24 @@ package com.hyeja.domain.policy.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.hyeja.domain.cardnews.repository.CardNewsRepository;
+import com.hyeja.domain.policy.converter.PolicyApiCodeConverter;
+import com.hyeja.domain.policy.converter.PolicyApiConverter;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
+import com.hyeja.domain.policy.enums.PolicyMarriageCondition;
 import com.hyeja.domain.policy.repository.PolicyRepository;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
@@ -22,8 +28,10 @@ class PolicyServiceTest {
     private final PolicyRepository policyRepository = mock(PolicyRepository.class);
     private final CardNewsRepository cardNewsRepository = mock(CardNewsRepository.class);
     private final RestTemplate restTemplate = mock(RestTemplate.class);
+    private final PolicyApiCodeConverter codeConverter = new PolicyApiCodeConverter();
+    private final PolicyApiConverter apiConverter = new PolicyApiConverter(codeConverter);
     private final PolicyService service = new PolicyService(
-            policyRepository, cardNewsRepository, restTemplate);
+            policyRepository, cardNewsRepository, restTemplate, apiConverter, codeConverter);
 
     @Test
     void mapsYouthPolicyApiFieldsToPolicyEntity() {
@@ -32,7 +40,6 @@ class PolicyServiceTest {
         item.setPolicyName(" 청년 주거 지원 ");
         item.setCategory("주거");
         item.setSubCategory("주택 및 거주지");
-        item.setSubBusinessCode("0014005");
         item.setKeywords("청년,월세");
         item.setPolicyExplanation("API에서 받은 원문 설명");
         item.setSupportContent("월 20만 원 지원");
@@ -52,7 +59,7 @@ class PolicyServiceTest {
         item.setViewCount("123");
         item.setApprovalStatusCode("0044002");
 
-        Policy policy = service.toPolicy(item);
+        Policy policy = apiConverter.convert(item);
 
         assertThat(policy.getPolicyId()).isEqualTo("202609250001");
         assertThat(policy.getPolicyName()).isEqualTo("청년 주거 지원");
@@ -66,7 +73,10 @@ class PolicyServiceTest {
         assertThat(policy.getAgeLimitYn()).isTrue();
         assertThat(policy.getIncomeMin()).isEqualTo(100);
         assertThat(policy.getIncomeMax()).isEqualTo(300);
-        assertThat(policy.getEmploymentCodes()).isEqualTo("0013001,0013002");
+        assertThat(policy.getMarriageCode()).isEqualTo(PolicyMarriageCondition.MARRIED);
+        assertThat(policy.getEmploymentCodes()).containsExactlyInAnyOrder(
+                PolicyEmploymentCondition.EMPLOYED,
+                PolicyEmploymentCondition.SELF_EMPLOYED);
         assertThat(policy.getHouselessYn()).isNull();
         assertThat(policy.getHousingType()).isEqualTo("주택 및 거주지");
         assertThat(policy.getExtraQualification()).contains("서울 거주", "무주택 청년");
@@ -82,7 +92,7 @@ class PolicyServiceTest {
         item.setPolicyId("policy-2"); item.setPolicyName(" "); item.setCategory("주거");
         item.setMinAge("-"); item.setApplyYmd("2026년 연중");
 
-        Policy policy = service.toPolicy(item);
+        Policy policy = apiConverter.convert(item);
 
         assertThat(policy.getPolicyName()).isEqualTo("제목 없음");
         assertThat(policy.getMinAge()).isNull();
@@ -100,7 +110,73 @@ class PolicyServiceTest {
         item.setCategory("주거");
         item.setApprovalStatusCode("NOT_APPROVED");
 
-        assertThat(service.toPolicy(item).getActiveYn()).isFalse();
+        assertThat(apiConverter.convert(item).getActiveYn()).isFalse();
+    }
+
+    @Test
+    void mapsMarriageConditionCodesToReadableValues() {
+        assertThat(mapMarriageCondition("0055001")).isEqualTo(PolicyMarriageCondition.MARRIED);
+        assertThat(mapMarriageCondition("55002")).isEqualTo(PolicyMarriageCondition.SINGLE);
+        assertThat(mapMarriageCondition("0055003"))
+                .isEqualTo(PolicyMarriageCondition.NO_RESTRICTION);
+        assertThat(mapMarriageCondition("unknown")).isNull();
+        assertThat(mapMarriageCondition(" ")).isNull();
+    }
+
+    @Test
+    void mapsEmploymentCodesToReadableValues() {
+        assertThat(mapEmploymentConditions("0013001"))
+                .containsExactly(PolicyEmploymentCondition.EMPLOYED);
+        assertThat(mapEmploymentConditions("13002"))
+                .containsExactly(PolicyEmploymentCondition.SELF_EMPLOYED);
+        assertThat(mapEmploymentConditions("0013003"))
+                .containsExactly(PolicyEmploymentCondition.UNEMPLOYED);
+        assertThat(mapEmploymentConditions("13004"))
+                .containsExactly(PolicyEmploymentCondition.FREELANCER);
+        assertThat(mapEmploymentConditions("0013005"))
+                .containsExactly(PolicyEmploymentCondition.DAILY_WORKER);
+        assertThat(mapEmploymentConditions("13006"))
+                .containsExactly(PolicyEmploymentCondition.ENTREPRENEUR);
+        assertThat(mapEmploymentConditions("0013007"))
+                .containsExactly(PolicyEmploymentCondition.SHORT_TERM_WORKER);
+        assertThat(mapEmploymentConditions("13008"))
+                .containsExactly(PolicyEmploymentCondition.FARMER);
+        assertThat(mapEmploymentConditions("0013009"))
+                .containsExactly(PolicyEmploymentCondition.OTHER);
+        assertThat(mapEmploymentConditions("13010"))
+                .containsExactly(PolicyEmploymentCondition.NO_RESTRICTION);
+        assertThat(mapEmploymentConditions("0013001,0013004"))
+                .containsExactlyInAnyOrder(
+                        PolicyEmploymentCondition.EMPLOYED,
+                        PolicyEmploymentCondition.FREELANCER);
+        assertThat(mapEmploymentConditions("unknown")).isEmpty();
+    }
+
+    @Test
+    void doesNotSaveNonApprovedHousingPolicy() {
+        ReflectionTestUtils.setField(service, "apiKey", "test-key");
+        ReflectionTestUtils.setField(service, "apiUrl", "https://example.com/policies");
+
+        PolicyItem rejected = new PolicyItem();
+        rejected.setPolicyId("rejected-policy");
+        rejected.setPolicyName("반려된 주거 정책");
+        rejected.setCategory("주거");
+        rejected.setApprovalStatusCode("44003");
+
+        PolicyApiResponseDTO.Pagging pagging = new PolicyApiResponseDTO.Pagging();
+        pagging.setTotCount(1);
+        PolicyApiResponseDTO.ResultData result = new PolicyApiResponseDTO.ResultData();
+        result.setPagging(pagging);
+        result.setYouthPolicyList(List.of(rejected));
+        PolicyApiResponseDTO response = new PolicyApiResponseDTO();
+        response.setResult(result);
+
+        when(restTemplate.getForObject(org.mockito.ArgumentMatchers.any(java.net.URI.class),
+                org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class))).thenReturn(response);
+
+        assertThat(service.fetchAndSaveHousingPolicies()).isZero();
+        verify(policyRepository, never()).save(org.mockito.ArgumentMatchers.any(Policy.class));
+        verify(cardNewsRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -144,6 +220,24 @@ class PolicyServiceTest {
         item.setPolicyName(policyName);
         item.setCategory("주거");
         item.setSubCategory("전월세 및 주거급여 지원");
-        return service.toPolicy(item).getCategory();
+        return apiConverter.convert(item).getCategory();
+    }
+
+    private PolicyMarriageCondition mapMarriageCondition(String code) {
+        PolicyItem item = new PolicyItem();
+        item.setPolicyId("marriage-test");
+        item.setPolicyName("혼인 조건 테스트");
+        item.setCategory("주거");
+        item.setMarriageCode(code);
+        return apiConverter.convert(item).getMarriageCode();
+    }
+
+    private Set<PolicyEmploymentCondition> mapEmploymentConditions(String codes) {
+        PolicyItem item = new PolicyItem();
+        item.setPolicyId("employment-test");
+        item.setPolicyName("취업 조건 테스트");
+        item.setCategory("주거");
+        item.setEmploymentCodes(codes);
+        return apiConverter.convert(item).getEmploymentCodes();
     }
 }

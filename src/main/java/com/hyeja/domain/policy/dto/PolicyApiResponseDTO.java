@@ -36,9 +36,8 @@ public class PolicyApiResponseDTO {
     public static class PolicyItem {
         @JsonProperty("plcyNo") private String policyId;
         @JsonProperty("plcyNm") private String policyName;
-        @JsonProperty("lclsfNm") private String category;
+        @JsonProperty("lclsfNm") private String category; // ai
         @JsonProperty("mclsfNm") private String subCategory;
-        @JsonProperty("sbizCd") private String subBusinessCode;
         @JsonProperty("plcyKywdNm") private String keywords;
         @JsonProperty("plcyExplnCn") private String policyExplanation;
         @JsonProperty("plcySprtCn") private String supportContent;
