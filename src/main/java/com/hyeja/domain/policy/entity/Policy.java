@@ -113,7 +113,7 @@ public class Policy extends BaseEntity {
             Integer incomeMin, Integer incomeMax, String incomeEtc, String marriageCode,
             String employmentCodes, Boolean houselessYn, String housingType, String applyPeriodCode,
             String extraQualification, LocalDate applyStartDate, LocalDate applyEndDate,
-            String applyMethod, String applyUrl, String refUrl) {
+            String applyMethod, String applyUrl, String refUrl, Integer viewCount, Boolean activeYn) {
         this.policyId = policyId;
         this.policyName = policyName;
         this.category = category;
@@ -140,7 +140,7 @@ public class Policy extends BaseEntity {
         this.applyMethod = applyMethod;
         this.applyUrl = applyUrl;
         this.refUrl = refUrl;
-        this.viewCount = 0;
-        this.activeYn = true;
+        this.viewCount = viewCount == null ? 0 : viewCount;
+        this.activeYn = activeYn == null ? true : activeYn;
     }
 }
