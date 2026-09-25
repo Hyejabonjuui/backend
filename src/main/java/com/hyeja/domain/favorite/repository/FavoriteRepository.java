@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
 
+    boolean existsByMemberMemberIdAndPolicyPolicyId(Long memberId, String policyId);
+
     @Query(
             value = """
                     select favorite
