@@ -271,7 +271,7 @@ class PolicyServiceTest {
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class))).thenReturn(response);
 
         assertThat(service.fetchAndSaveHousingPolicies()).isZero();
-        verify(restTemplate, times(1)).getForObject(
+        verify(restTemplate, times(20)).getForObject(
                 org.mockito.ArgumentMatchers.any(java.net.URI.class),
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class));
     }

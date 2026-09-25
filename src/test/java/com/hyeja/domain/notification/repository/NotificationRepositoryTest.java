@@ -60,6 +60,69 @@ class NotificationRepositoryTest {
         });
     }
 
+    @Test
+    void findsOnlyActiveNotificationOwnedByRequestedMember() {
+        Member requestedMember = persistMember("member@example.com", "회원");
+        Member otherMember = persistMember("other@example.com", "다른 회원");
+        Policy policy = persistPolicy("policy-1", LocalDate.of(2026, 10, 1));
+        Notification active = Notification.builder()
+                .member(requestedMember).policy(policy).build();
+        Notification deleted = Notification.builder()
+                .member(requestedMember).policy(policy).build();
+        Notification other = Notification.builder()
+                .member(otherMember).policy(policy).build();
+        entityManager.persist(active);
+        entityManager.persist(deleted);
+        entityManager.persist(other);
+        deleted.softDelete();
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(notificationRepository
+                .findByNotificationIdAndMemberMemberIdAndDeletedAtIsNull(
+                        active.getNotificationId(), requestedMember.getMemberId()))
+                .isPresent();
+        assertThat(notificationRepository
+                .findByNotificationIdAndMemberMemberIdAndDeletedAtIsNull(
+                        deleted.getNotificationId(), requestedMember.getMemberId()))
+                .isEmpty();
+        assertThat(notificationRepository
+                .findByNotificationIdAndMemberMemberIdAndDeletedAtIsNull(
+                        other.getNotificationId(), requestedMember.getMemberId()))
+                .isEmpty();
+    }
+
+    @Test
+    void hardDeletesOnlyOwnedActiveNotification() {
+        Member requestedMember = persistMember("delete-member@example.com", "삭제 회원");
+        Member otherMember = persistMember("delete-other@example.com", "다른 회원");
+        Policy policy = persistPolicy("delete-policy", LocalDate.of(2026, 12, 1));
+        Notification target = Notification.builder()
+                .member(requestedMember).policy(policy).build();
+        Notification other = Notification.builder()
+                .member(otherMember).policy(policy).build();
+        entityManager.persist(target);
+        entityManager.persist(other);
+        entityManager.flush();
+        entityManager.clear();
+
+        Notification ownedNotification = notificationRepository
+                .findByNotificationIdAndMemberMemberIdAndDeletedAtIsNull(
+                        target.getNotificationId(), requestedMember.getMemberId())
+                .orElseThrow();
+        assertThat(notificationRepository
+                .findByNotificationIdAndMemberMemberIdAndDeletedAtIsNull(
+                        other.getNotificationId(), requestedMember.getMemberId()))
+                .isEmpty();
+
+        notificationRepository.delete(ownedNotification);
+        notificationRepository.flush();
+        entityManager.clear();
+
+        assertThat(notificationRepository.findById(target.getNotificationId())).isEmpty();
+        assertThat(notificationRepository.findById(other.getNotificationId())).isPresent();
+    }
+
     private Member persistMember(String email, String nickname) {
         Member member = Member.builder()
                 .email(email).password("encoded-password").nickname(nickname).build();
