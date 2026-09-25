@@ -58,7 +58,7 @@ class NotificationControllerTest {
                 .build();
         when(notificationService.getNotifications(1L, 0, 8)).thenReturn(pageResponse);
 
-        mockMvc.perform(get("/api/members/notifications/{memberId}", 1L)
+        mockMvc.perform(get("/api/notification/{memberId}", 1L)
                         .param("page", "0")
                         .param("size", "8"))
                 .andExpect(status().isOk())

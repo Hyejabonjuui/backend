@@ -2,6 +2,7 @@ package com.hyeja.domain.notification.service;
 
 import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.domain.notification.converter.NotificationConverter;
+import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationItemDTO;
 import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationListDTO;
 import com.hyeja.domain.notification.entity.Notification;
 import com.hyeja.domain.notification.repository.NotificationRepository;
@@ -22,14 +23,30 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
 
     public NotificationListDTO getNotifications(Long memberId, int page, int size) {
-        memberRepository.findById(memberId)
-                .filter(member -> !member.isDeleted())
-                .orElseThrow(() -> new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
+        validateActiveMember(memberId);
 
         Page<Notification> notificationPage = notificationRepository.findAllByMemberId(
                 memberId,
                 PageRequest.of(page, size)
         );
         return NotificationConverter.toNotificationListDTO(notificationPage);
+    }
+
+    @Transactional
+    public NotificationItemDTO markAsRead(Long memberId, Long notificationId) {
+        validateActiveMember(memberId);
+
+        Notification notification = notificationRepository
+                .findByNotificationIdAndMemberMemberIdAndDeletedAtIsNull(notificationId, memberId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.NOTIFICATION_NOT_FOUND));
+
+        notification.markAsRead();
+        return NotificationConverter.toNotificationItemDTO(notification);
+    }
+
+    private void validateActiveMember(Long memberId) {
+        memberRepository.findById(memberId)
+                .filter(member -> !member.isDeleted())
+                .orElseThrow(() -> new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
     }
 }
