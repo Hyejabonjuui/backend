@@ -73,7 +73,20 @@ class NotificationServiceTest {
     }
 
     @Test
-    void throwsMemberNotFoundWhenMemberDoesNotExist() {
+    void hardDeletesOwnedNotification() {
+        Member member = member(1L);
+        Notification notification = notification(10L, member);
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(notificationRepository.findByNotificationIdAndMemberMemberIdAndDeletedAtIsNull(10L, 1L))
+                .thenReturn(Optional.of(notification));
+
+        notificationService.deleteNotification(1L, 10L);
+
+        verify(notificationRepository).delete(notification);
+    }
+
+    @Test
+    void throwsMemberNotFoundWhenMarkingAsRead() {
         when(memberRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> notificationService.markAsRead(99L, 10L))
@@ -84,13 +97,37 @@ class NotificationServiceTest {
     }
 
     @Test
-    void throwsNotificationNotFoundWhenNotificationIsMissingOrNotOwned() {
+    void throwsNotificationNotFoundWhenMarkingAsRead() {
         Member member = member(1L);
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
         when(notificationRepository.findByNotificationIdAndMemberMemberIdAndDeletedAtIsNull(10L, 1L))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> notificationService.markAsRead(1L, 10L))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(ErrorStatus.NOTIFICATION_NOT_FOUND);
+    }
+
+    @Test
+    void throwsMemberNotFoundWhenDeletingNotification() {
+        when(memberRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> notificationService.deleteNotification(99L, 10L))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(ErrorStatus.MEMBER_NOT_FOUND);
+        verifyNoInteractions(notificationRepository);
+    }
+
+    @Test
+    void throwsNotificationNotFoundWhenDeletingNotification() {
+        Member member = member(1L);
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(notificationRepository.findByNotificationIdAndMemberMemberIdAndDeletedAtIsNull(10L, 1L))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> notificationService.deleteNotification(1L, 10L))
                 .isInstanceOf(GeneralException.class)
                 .extracting("code")
                 .isEqualTo(ErrorStatus.NOTIFICATION_NOT_FOUND);

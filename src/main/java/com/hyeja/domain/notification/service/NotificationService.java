@@ -44,6 +44,17 @@ public class NotificationService {
         return NotificationConverter.toNotificationItemDTO(notification);
     }
 
+    @Transactional
+    public void deleteNotification(Long memberId, Long notificationId) {
+        validateActiveMember(memberId);
+
+        Notification notification = notificationRepository
+                .findByNotificationIdAndMemberMemberIdAndDeletedAtIsNull(notificationId, memberId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.NOTIFICATION_NOT_FOUND));
+
+        notificationRepository.delete(notification);
+    }
+
     private void validateActiveMember(Long memberId) {
         memberRepository.findById(memberId)
                 .filter(member -> !member.isDeleted())
