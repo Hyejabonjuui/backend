@@ -1,7 +1,7 @@
 package com.hyeja.domain.notification.controller;
 
-import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationListDTO;
 import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationItemDTO;
+import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationListDTO;
 import com.hyeja.domain.notification.service.NotificationService;
 import com.hyeja.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +15,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -105,5 +106,44 @@ public class NotificationController {
     ) {
         NotificationItemDTO result = notificationService.markAsRead(memberId, notificationId);
         return ApiResponse.onSuccess(result);
+    }
+
+    @Operation(
+            summary = "알림 삭제",
+            description = "회원 본인의 삭제되지 않은 알림을 데이터베이스에서 영구 삭제합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "알림 삭제 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 회원 ID 또는 알림 ID",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "회원을 찾을 수 없음 (MEMBER_001) 또는 알림을 찾을 수 없음 (NOTIFICATION_001)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            )
+    })
+    @DeleteMapping("/{notificationId}")
+    public ApiResponse<Void> deleteNotification(
+            @Parameter(description = "삭제할 알림 ID", example = "1", required = true)
+            @PathVariable("notificationId")
+            @Positive(message = "알림 ID는 양수여야 합니다.") Long notificationId,
+            @Parameter(
+                    name = "memberId",
+                    description = "알림 소유 회원 ID",
+                    in = ParameterIn.QUERY,
+                    example = "1",
+                    required = true
+            ) // 추후 인증 도입 시 제거 예정
+            @RequestParam("memberId")
+            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
+    ) {
+        notificationService.deleteNotification(memberId, notificationId);
+        return ApiResponse.onSuccess(null);
     }
 }
