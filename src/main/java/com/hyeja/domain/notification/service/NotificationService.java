@@ -2,6 +2,7 @@ package com.hyeja.domain.notification.service;
 
 import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.domain.notification.converter.NotificationConverter;
+import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationItemDTO;
 import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationListDTO;
 import com.hyeja.domain.notification.entity.Notification;
 import com.hyeja.domain.notification.repository.NotificationRepository;
@@ -29,6 +30,18 @@ public class NotificationService {
                 PageRequest.of(page, size)
         );
         return NotificationConverter.toNotificationListDTO(notificationPage);
+    }
+
+    @Transactional
+    public NotificationItemDTO markAsRead(Long memberId, Long notificationId) {
+        validateActiveMember(memberId);
+
+        Notification notification = notificationRepository
+                .findByNotificationIdAndMemberMemberIdAndDeletedAtIsNull(notificationId, memberId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.NOTIFICATION_NOT_FOUND));
+
+        notification.markAsRead();
+        return NotificationConverter.toNotificationItemDTO(notification);
     }
 
     @Transactional

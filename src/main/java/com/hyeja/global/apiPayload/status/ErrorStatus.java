@@ -23,11 +23,11 @@ public enum ErrorStatus implements BaseErrorCode {
     // 회원
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
 
-    // 프로필
-    PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "PROFILE_001", "등록된 조건이 없습니다."),
-
     // 알림
-    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_001", "존재하지 않는 알림입니다.");
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_001", "존재하지 않는 알림입니다."),
+
+    // 프로필
+    PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "PROFILE_001", "등록된 조건이 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
