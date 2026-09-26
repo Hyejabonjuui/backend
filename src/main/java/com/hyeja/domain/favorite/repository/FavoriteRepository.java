@@ -39,4 +39,35 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
             @Param("memberId") Long memberId,
             Pageable pageable
     );
+
+    @Query(
+            value = """
+                    select favorite
+                    from Favorite favorite
+                    join fetch favorite.policy policy
+                    where favorite.member.memberId = :memberId
+                      and favorite.deletedAt is null
+                      and (
+                          lower(policy.policyName) like lower(concat('%', :keyword, '%')) escape '!'
+                          or lower(policy.supportContent) like lower(concat('%', :keyword, '%')) escape '!'
+                      )
+                    order by favorite.createdAt desc, favorite.favoriteId desc
+                    """,
+            countQuery = """
+                    select count(favorite)
+                    from Favorite favorite
+                    join favorite.policy policy
+                    where favorite.member.memberId = :memberId
+                      and favorite.deletedAt is null
+                      and (
+                          lower(policy.policyName) like lower(concat('%', :keyword, '%')) escape '!'
+                          or lower(policy.supportContent) like lower(concat('%', :keyword, '%')) escape '!'
+                      )
+                    """
+    )
+    Page<Favorite> searchAllActiveByMemberIdAndKeyword(
+            @Param("memberId") Long memberId,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
 }

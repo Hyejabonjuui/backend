@@ -3,6 +3,7 @@ package com.hyeja.domain.favorite.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -55,7 +56,7 @@ class FavoriteServiceTest {
         when(favoriteRepository.findAllActiveByMemberId(1L, PageRequest.of(0, 8)))
                 .thenReturn(new PageImpl<>(List.of(favorite), PageRequest.of(0, 8), 9));
 
-        FavoriteListDTO result = favoriteService.getMyFavorites(1L, 0, 8);
+        FavoriteListDTO result = favoriteService.getMyFavorites(1L, null, 0, 8);
 
         assertThat(result.getFavorites()).singleElement().satisfies(item -> {
             assertThat(item.getFavoriteId()).isEqualTo(10L);
@@ -65,6 +66,7 @@ class FavoriteServiceTest {
             assertThat(item.getCategoryName()).isEqualTo("월세");
             assertThat(item.getSupportContent()).isEqualTo("월세를 지원합니다.");
             assertThat(item.getApplyEndDate()).isEqualTo(LocalDate.of(2026, 9, 30));
+            assertThat(item.getApplyPeriodCode()).isEqualTo("0057003");
             assertThat(item.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 9, 24, 10, 30));
         });
         assertThat(result.getPage()).isZero();
@@ -81,7 +83,7 @@ class FavoriteServiceTest {
         when(favoriteRepository.findAllActiveByMemberId(1L, PageRequest.of(0, 8)))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 8), 0));
 
-        FavoriteListDTO result = favoriteService.getMyFavorites(1L, 0, 8);
+        FavoriteListDTO result = favoriteService.getMyFavorites(1L, null, 0, 8);
 
         assertThat(result.getFavorites()).isEmpty();
         assertThat(result.getTotalElements()).isZero();
@@ -90,11 +92,70 @@ class FavoriteServiceTest {
     }
 
     @Test
+    void searchesFavoritesWithTrimmedKeyword() {
+        Favorite favorite = favorite(10L, member());
+        when(memberService.getActiveMember(1L)).thenReturn(member());
+        when(favoriteRepository.searchAllActiveByMemberIdAndKeyword(
+                1L, "월세", PageRequest.of(0, 8)))
+                .thenReturn(new PageImpl<>(List.of(favorite), PageRequest.of(0, 8), 1));
+
+        FavoriteListDTO result = favoriteService.getMyFavorites(1L, "  월세  ", 0, 8);
+
+        assertThat(result.getFavorites()).singleElement()
+                .extracting(FavoriteItemDTO::getPolicyName)
+                .isEqualTo("청년 월세 지원");
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        verify(favoriteRepository).searchAllActiveByMemberIdAndKeyword(
+                1L, "월세", PageRequest.of(0, 8));
+    }
+
+    @Test
+    void escapesLikeWildcardsAndEscapeCharacterInKeyword() {
+        when(memberService.getActiveMember(1L)).thenReturn(member());
+        when(favoriteRepository.searchAllActiveByMemberIdAndKeyword(
+                1L, "50!%!_할인!!", PageRequest.of(0, 8)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 8), 0));
+
+        favoriteService.getMyFavorites(1L, "  50%_할인!  ", 0, 8);
+
+        verify(favoriteRepository).searchAllActiveByMemberIdAndKeyword(
+                1L, "50!%!_할인!!", PageRequest.of(0, 8));
+    }
+
+    @Test
+    void treatsBlankKeywordAsUnfilteredList() {
+        when(memberService.getActiveMember(1L)).thenReturn(member());
+        when(favoriteRepository.findAllActiveByMemberId(1L, PageRequest.of(0, 8)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 8), 0));
+
+        FavoriteListDTO result = favoriteService.getMyFavorites(1L, "   ", 0, 8);
+
+        assertThat(result.getFavorites()).isEmpty();
+        verify(favoriteRepository).findAllActiveByMemberId(1L, PageRequest.of(0, 8));
+        verify(favoriteRepository, never()).searchAllActiveByMemberIdAndKeyword(
+                any(), any(), any());
+    }
+
+    @Test
+    void returnsEmptyListWhenSearchHasNoMatches() {
+        when(memberService.getActiveMember(1L)).thenReturn(member());
+        when(favoriteRepository.searchAllActiveByMemberIdAndKeyword(
+                1L, "없는 정책", PageRequest.of(0, 8)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 8), 0));
+
+        FavoriteListDTO result = favoriteService.getMyFavorites(1L, "없는 정책", 0, 8);
+
+        assertThat(result.getFavorites()).isEmpty();
+        assertThat(result.getTotalElements()).isZero();
+        assertThat(result.getTotalPages()).isZero();
+    }
+
+    @Test
     void throwsMemberNotFoundWithoutQueryingFavorites() {
         when(memberService.getActiveMember(99L))
                 .thenThrow(new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
 
-        assertThatThrownBy(() -> favoriteService.getMyFavorites(99L, 0, 8))
+        assertThatThrownBy(() -> favoriteService.getMyFavorites(99L, null, 0, 8))
                 .isInstanceOf(GeneralException.class)
                 .extracting("code")
                 .isEqualTo(ErrorStatus.MEMBER_NOT_FOUND);
@@ -119,6 +180,7 @@ class FavoriteServiceTest {
         assertThat(result.getPolicyName()).isEqualTo("청년 월세 지원");
         assertThat(result.getCategoryCode()).isEqualTo(PolicyCategory.MONTHLY_RENT);
         assertThat(result.getCategoryName()).isEqualTo("월세");
+        assertThat(result.getApplyPeriodCode()).isEqualTo("0057003");
         assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 9, 24, 10, 30));
         verify(favoriteRepository).saveAndFlush(any(Favorite.class));
     }
@@ -249,7 +311,7 @@ class FavoriteServiceTest {
                 .category(PolicyCategory.MONTHLY_RENT)
                 .supportContent("월세를 지원합니다.")
                 .ageLimitYn(false)
-                .applyPeriodCode("PERIOD")
+                .applyPeriodCode("0057003")
                 .applyEndDate(LocalDate.of(2026, 9, 30))
                 .applyUrl("https://example.com/apply")
                 .build();

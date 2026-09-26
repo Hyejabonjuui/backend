@@ -6,6 +6,8 @@ import com.hyeja.global.apiPayload.status.ErrorStatus;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.Errors;
+import org.springframework.validation.method.ParameterErrors;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @Slf4j
@@ -31,12 +34,38 @@ public class ExceptionAdvice extends ResponseEntityExceptionHandler {
             MethodArgumentNotValidException exception, HttpHeaders headers,
             HttpStatusCode status, WebRequest request) {
         Map<String, String> errors = new LinkedHashMap<>();
-        exception.getBindingResult().getFieldErrors().forEach(error ->
+        collectValidationErrors(exception.getBindingResult(), errors);
+        return validationErrorResponse(exception, errors, headers, status, request);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(
+            HandlerMethodValidationException exception, HttpHeaders headers,
+            HttpStatusCode status, WebRequest request) {
+        Map<String, String> errors = new LinkedHashMap<>();
+        exception.getParameterValidationResults().stream()
+                .filter(ParameterErrors.class::isInstance)
+                .map(ParameterErrors.class::cast)
+                .forEach(parameterErrors -> collectValidationErrors(parameterErrors, errors));
+
+        if (errors.isEmpty()) {
+            return super.handleHandlerMethodValidationException(exception, headers, status, request);
+        }
+        return validationErrorResponse(exception, errors, headers, status, request);
+    }
+
+    private void collectValidationErrors(Errors validationErrors, Map<String, String> errors) {
+        validationErrors.getFieldErrors().forEach(error ->
                 errors.putIfAbsent(error.getField(), error.getDefaultMessage() == null
                         ? "유효하지 않은 값입니다." : error.getDefaultMessage()));
-        exception.getBindingResult().getGlobalErrors().forEach(error ->
+        validationErrors.getGlobalErrors().forEach(error ->
                 errors.putIfAbsent("_global", error.getDefaultMessage() == null
                         ? "입력값을 확인해 주세요." : error.getDefaultMessage()));
+    }
+
+    private ResponseEntity<Object> validationErrorResponse(
+            Exception exception, Map<String, String> errors, HttpHeaders headers,
+            HttpStatusCode status, WebRequest request) {
         ErrorStatus error = ErrorStatus.VALIDATION_ERROR;
         return handleExceptionInternal(exception,
                 ApiResponse.onFailure(error.getCode(), error.getMessage(), errors),

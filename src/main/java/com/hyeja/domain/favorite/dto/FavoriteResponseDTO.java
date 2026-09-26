@@ -47,6 +47,10 @@ public final class FavoriteResponseDTO {
         @Schema(description = "신청 마감일", example = "2026-09-30", nullable = true)
         private LocalDate applyEndDate;
 
+        @JsonProperty("apply_period_code")
+        @Schema(description = "신청 기간 구분 코드", example = "0057003")
+        private String applyPeriodCode;
+
         @JsonProperty("apply_url")
         @Schema(description = "신청 URL", example = "https://example.com/apply", nullable = true)
         private String applyUrl;
