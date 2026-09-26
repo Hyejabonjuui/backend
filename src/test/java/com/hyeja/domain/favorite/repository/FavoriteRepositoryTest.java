@@ -15,6 +15,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @ActiveProfiles("test")
@@ -62,6 +63,51 @@ class FavoriteRepositoryTest {
     }
 
     @Test
+    void searchesPolicyNameOrSupportContentAndKeepsInactivePolicies() {
+        Member member = persistMember("search@example.com");
+        Member otherMember = persistMember("search-other@example.com");
+        Policy nameMatch = persistPolicy(
+                "name-match", "청년 월세 지원", "임차료를 지원합니다.");
+        Policy contentMatch = persistPolicy(
+                "content-match", "청년 주거 지원", "월세 보증금을 지원합니다.");
+        Policy noMatch = persistPolicy(
+                "no-match", "전세 이자 지원", "이자를 지원합니다.");
+        Policy deletedMatch = persistPolicy(
+                "deleted-match", "삭제된 월세 정책", "월세를 지원합니다.");
+        ReflectionTestUtils.setField(contentMatch, "activeYn", false);
+        ReflectionTestUtils.setField(contentMatch, "applyEndDate", null);
+
+        Favorite nameFavorite = Favorite.builder().member(member).policy(nameMatch).build();
+        Favorite contentFavorite = Favorite.builder().member(member).policy(contentMatch).build();
+        Favorite noMatchFavorite = Favorite.builder().member(member).policy(noMatch).build();
+        Favorite deletedFavorite = Favorite.builder().member(member).policy(deletedMatch).build();
+        Favorite otherFavorite = Favorite.builder().member(otherMember).policy(nameMatch).build();
+        entityManager.persist(nameFavorite);
+        entityManager.persist(contentFavorite);
+        entityManager.persist(noMatchFavorite);
+        entityManager.persist(deletedFavorite);
+        entityManager.persist(otherFavorite);
+        deletedFavorite.softDelete();
+        entityManager.flush();
+        entityManager.clear();
+
+        var allMatches = favoriteRepository.searchAllActiveByMemberIdAndKeyword(
+                member.getMemberId(), "월세", PageRequest.of(0, 8));
+        var firstPage = favoriteRepository.searchAllActiveByMemberIdAndKeyword(
+                member.getMemberId(), "월세", PageRequest.of(0, 1));
+
+        assertThat(allMatches.getContent())
+                .extracting(favorite -> favorite.getPolicy().getPolicyId())
+                .containsExactly("content-match", "name-match");
+        assertThat(allMatches.getContent().get(0).getPolicy().getActiveYn()).isFalse();
+        assertThat(allMatches.getContent().get(0).getPolicy().getApplyEndDate()).isNull();
+        assertThat(firstPage.getContent()).hasSize(1);
+        assertThat(firstPage.getTotalElements()).isEqualTo(2);
+        assertThat(firstPage.getTotalPages()).isEqualTo(2);
+        assertThat(firstPage.hasNext()).isTrue();
+    }
+
+    @Test
     void detectsFavoriteAndAllowsRegistrationAfterHardDelete() {
         Member member = persistMember("register@example.com");
         Policy policy = persistPolicy("register-policy", "등록할 정책");
@@ -100,13 +146,17 @@ class FavoriteRepositoryTest {
     }
 
     private Policy persistPolicy(String policyId, String policyName) {
+        return persistPolicy(policyId, policyName, "월세를 지원합니다.");
+    }
+
+    private Policy persistPolicy(String policyId, String policyName, String supportContent) {
         Policy policy = Policy.builder()
                 .policyId(policyId)
                 .policyName(policyName)
                 .category(PolicyCategory.MONTHLY_RENT)
-                .supportContent("월세를 지원합니다.")
+                .supportContent(supportContent)
                 .ageLimitYn(false)
-                .applyPeriodCode("PERIOD")
+                .applyPeriodCode("0057003")
                 .applyEndDate(LocalDate.of(2026, 9, 30))
                 .applyUrl("https://example.com/apply")
                 .build();
