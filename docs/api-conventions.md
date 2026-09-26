@@ -30,7 +30,9 @@
 | Method | Path | 입력 | 로그인 | 비고 |
 | --- | --- | --- | --- | --- |
 | `GET` | `/api/health` | 없음 | 불필요 | 공통 래퍼의 `result.status`로 `UP` 반환 |
-| `POST` | `/api/members` | body 계정 + `profile` | 불필요 | 회원가입(계정과 내 조건을 한 번에) |
+| `POST` | `/api/members` | body 계정 + `profile` | 불필요 | 회원가입(계정과 내 조건을 한 번에). 이메일 인증을 먼저 마쳐야 함(`VERIFY_003`) |
+| `POST` | `/api/members/email-verifications` | body `email` | 불필요 | 회원가입 인증 코드(6자리) 메일 발송. 유효 5분, 재발송 60초 제한 |
+| `POST` | `/api/members/email-verifications/confirmation` | body `email`, `code` | 불필요 | 인증 코드 확인. 통과 후 30분 안에 가입 가능, 5회 실패 시 코드 무효 |
 | `POST` | `/api/members/login` | body `email`, `password` | 불필요 | accessToken(30분)·memberId·nickname 반환 |
 | `POST` | `/api/members/logout` | 없음 | 필요 | 토큰을 Redis 블랙리스트에 등록 |
 | `GET` | `/api/members/find-email` | query `nickname`, `birth` | 불필요 | 가린 이메일과 가입일 |

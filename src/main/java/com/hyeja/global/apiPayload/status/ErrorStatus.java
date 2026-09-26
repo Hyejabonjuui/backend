@@ -29,6 +29,14 @@ public enum ErrorStatus implements BaseErrorCode {
     // 로그인 실패: 이메일·비밀번호 중 무엇이 틀렸는지, 탈퇴 회원인지 구분하지 않습니다(가입된 이메일 노출 방지).
     MEMBER_LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "MEMBER_005", "이메일 또는 비밀번호가 올바르지 않아요."),
 
+    // 회원가입 이메일 인증
+    VERIFY_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "VERIFY_001", "인증 코드가 일치하지 않아요."),
+    VERIFY_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "VERIFY_002", "인증 코드가 만료됐어요. 다시 받아 주세요."),
+    VERIFY_REQUIRED(HttpStatus.BAD_REQUEST, "VERIFY_003", "이메일 인증을 먼저 완료해 주세요."),
+    VERIFY_RESEND_TOO_SOON(HttpStatus.TOO_MANY_REQUESTS, "VERIFY_004", "잠시 후에 다시 요청해 주세요."),
+    VERIFY_TOO_MANY_FAILURES(HttpStatus.TOO_MANY_REQUESTS, "VERIFY_005", "시도 횟수를 초과했어요. 인증 코드를 다시 받아 주세요."),
+    MAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "MAIL_001", "메일 발송에 실패했어요. 잠시 후 다시 시도해 주세요."),
+
     // 알림
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_001", "존재하지 않는 알림입니다."),
 

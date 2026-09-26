@@ -22,6 +22,9 @@ API 개발과 프론트 시연을 위한 가상 데이터입니다. 실제 지�
    DB_SEED_MODE=always
    SERVER_PORT=8080
    JWT_SECRET=32자_이상의_아무_문자열
+   # 선택: 비워 두면 회원가입 인증 코드가 메일 대신 서버 로그에 출력됩니다.
+   MAIL_USERNAME=
+   MAIL_PASSWORD=
    ```
 
    `DB_USERNAME`과 `DB_PASSWORD`는 본인의 MariaDB 계정 정보로 바꿉니다.
