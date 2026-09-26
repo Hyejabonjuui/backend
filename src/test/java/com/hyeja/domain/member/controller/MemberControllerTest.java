@@ -1,11 +1,15 @@
 package com.hyeja.domain.member.controller;
 
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
+import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
+import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO.FoundEmailDTO;
 import com.hyeja.domain.member.service.MemberService;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.ExceptionAdvice;
 import com.hyeja.global.exception.GeneralException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -176,5 +180,44 @@ class MemberControllerTest {
 
     private RequestBuilder signupRequest(String body) {
         return post("/api/members").contentType(MediaType.APPLICATION_JSON).content(body);
+    }
+
+    @Test
+    void findsEmail() throws Exception {
+        when(memberService.findEmail("민지", LocalDate.of(2000, 3, 15))).thenReturn(MemberFindEmailResponseDTO.builder()
+                .emails(List.of(FoundEmailDTO.builder()
+                        .email("hye***@example.com")
+                        .joinedAt(LocalDate.of(2026, 9, 20))
+                        .build()))
+                .build());
+
+        mvc.perform(get("/api/members/find-email").param("nickname", "민지").param("birth", "2000-03-15"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"))
+                .andExpect(jsonPath("$.result.emails[0].email").value("hye***@example.com"))
+                .andExpect(jsonPath("$.result.emails[0].joinedAt").value("2026-09-20"));
+    }
+
+    @Test
+    void returnsNotFoundWhenEmailIsNotFound() throws Exception {
+        when(memberService.findEmail("민지", LocalDate.of(1999, 1, 1)))
+                .thenThrow(new GeneralException(ErrorStatus.MEMBER_EMAIL_NOT_FOUND));
+
+        mvc.perform(get("/api/members/find-email").param("nickname", "민지").param("birth", "1999-01-01"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("MEMBER_004"))
+                .andExpect(jsonPath("$.message").value("가입된 정보가 없어요."));
+    }
+
+    // 생년월일 누락이나 yyyy-MM-dd가 아닌 형식은 400입니다.
+    @Test
+    void rejectsMissingOrMalformedBirth() throws Exception {
+        mvc.perform(get("/api/members/find-email").param("nickname", "민지"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_001"));
+        mvc.perform(get("/api/members/find-email").param("nickname", "민지").param("birth", "20000315"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_001"));
+        verifyNoInteractions(memberService);
     }
 }

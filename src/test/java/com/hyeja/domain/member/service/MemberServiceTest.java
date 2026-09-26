@@ -1,6 +1,7 @@
 package com.hyeja.domain.member.service;
 
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
+import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
 import com.hyeja.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.member.repository.MemberRepository;
@@ -170,6 +171,64 @@ class MemberServiceTest {
                         .employmentCode(EmploymentStatus.EMPLOYED)
                         .houselessYn(true)
                         .build())
+                .build();
+    }
+
+    @Test
+    void findEmailReturnsMaskedEmailAndJoinDate() {
+        Member member = member(1L, LocalDateTime.of(2026, 9, 20, 14, 3, 11));
+        when(memberRepository.findByNickname("민지")).thenReturn(Optional.of(member));
+        when(profileRepository.findById("hyeja@example.com"))
+                .thenReturn(Optional.of(profile(member, LocalDate.of(2000, 3, 15))));
+
+        MemberFindEmailResponseDTO result = memberService.findEmail("민지", LocalDate.of(2000, 3, 15));
+
+        assertThat(result.getEmails()).hasSize(1);
+        assertThat(result.getEmails().get(0).getEmail()).isEqualTo("hye***@example.com");
+        assertThat(result.getEmails().get(0).getJoinedAt()).isEqualTo(LocalDate.of(2026, 9, 20));
+    }
+
+    @Test
+    void findEmailThrowsSameErrorWhenNicknameIsWrong() {
+        when(memberRepository.findByNickname("없는닉네임")).thenReturn(Optional.empty());
+
+        assertFindEmailFails("없는닉네임", LocalDate.of(2000, 3, 15));
+    }
+
+    @Test
+    void findEmailThrowsSameErrorWhenBirthIsWrong() {
+        Member member = member(1L, LocalDateTime.now());
+        when(memberRepository.findByNickname("민지")).thenReturn(Optional.of(member));
+        when(profileRepository.findById("hyeja@example.com"))
+                .thenReturn(Optional.of(profile(member, LocalDate.of(2000, 3, 15))));
+
+        assertFindEmailFails("민지", LocalDate.of(1999, 1, 1));
+    }
+
+    @Test
+    void findEmailThrowsSameErrorWhenMemberIsDeleted() {
+        Member deleted = member(1L, LocalDateTime.now());
+        deleted.softDelete();
+        when(memberRepository.findByNickname("민지")).thenReturn(Optional.of(deleted));
+
+        assertFindEmailFails("민지", LocalDate.of(2000, 3, 15));
+    }
+
+    // 닉네임·생년월일·탈퇴 중 무엇이 원인이든 같은 에러여야 합니다 (가입된 닉네임 노출 방지).
+    private void assertFindEmailFails(String nickname, LocalDate birth) {
+        assertThatThrownBy(() -> memberService.findEmail(nickname, birth))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(ErrorStatus.MEMBER_EMAIL_NOT_FOUND);
+    }
+
+    private Profile profile(Member member, LocalDate birth) {
+        return Profile.builder()
+                .member(member)
+                .region(Region.builder().regionCode("11440").sigunguName("서울특별시 마포구").build())
+                .birth(birth)
+                .employmentCode(EmploymentStatus.EMPLOYED)
+                .houselessYn(true)
                 .build();
     }
 
