@@ -1,9 +1,6 @@
 package com.hyeja.domain.policy.service;
 
-import com.hyeja.domain.cardnews.entity.CardNews;
-import com.hyeja.domain.cardnews.repository.CardNewsRepository;
 import com.hyeja.domain.policy.converter.PolicyApiCodeConverter;
-import com.hyeja.domain.policy.converter.PolicyApiConverter;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO;
@@ -32,18 +29,16 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class PolicyService {
     private static final String HOUSING_CATEGORY = "주거";
     private static final int PAGE_SIZE = 100; // 100
     private static final int MAX_PAGES = 20; // 20
 
     private final PolicyRepository policyRepository;
-    private final CardNewsRepository cardNewsRepository;
     private final RestTemplate restTemplate;
-    private final PolicyApiConverter policyApiConverter;
     private final PolicyApiCodeConverter policyApiCodeConverter;
     private final PolicyAiAnalyzer policyAiAnalyzer;
+    private final PolicySyncItemService policySyncItemService;
     private final MemberRepository memberRepository;
     private final ProfileRepository profileRepository;
     private final PolicyRegionRepository policyRegionRepository;
@@ -55,11 +50,11 @@ public class PolicyService {
     @Value("${youth.api.url}")
     private String apiUrl;
 
-    @Transactional
     public int fetchAndSaveHousingPolicies() {
         int pageNumber = 1;
         int totalCount = Integer.MAX_VALUE;
         int processedCount = 0;
+        int failedCount = 0;
 
         do {
             PolicyApiResponseDTO response = requestPage(pageNumber);
@@ -75,20 +70,22 @@ public class PolicyService {
 
             for (PolicyItem item : items) {
                 if (!isSavableHousingPolicy(item)) continue;
-                PolicyAiAnalysis analysis = policyAiAnalyzer.analyze(item);
-                Policy policy = policyRepository.save(
-                        policyApiConverter.convert(
-                                item, analysis.category(), analysis.houselessYn(),
-                                analysis.incomeCondition(), analysis.incomeMin(),
-                                analysis.incomeMax()));
-                createTestCardNewsIfAbsent(policy);
-                processedCount++;
+                try {
+                    PolicyAiAnalysis analysis = policyAiAnalyzer.analyze(item);
+                    policySyncItemService.save(item, analysis);
+                    processedCount++;
+                } catch (Exception exception) {
+                    failedCount++;
+                    log.error("정책 동기화 항목 처리 실패 - page={}, policyId={}, policyName={}",
+                            pageNumber, item.getPolicyId(), item.getPolicyName(), exception);
+                }
             }
             pageNumber++;
         } while (pageNumber <= MAX_PAGES
                 && (long) (pageNumber - 1) * PAGE_SIZE < totalCount);
 
-        log.info("온통청년 1~{}페이지 중 주거 정책 {}건 적재 완료", MAX_PAGES, processedCount);
+        log.info("온통청년 정책 적재 완료 - maxPages={}, successCount={}, failureCount={}",
+                MAX_PAGES, processedCount, failedCount);
         return processedCount;
     }
 
@@ -111,31 +108,16 @@ public class PolicyService {
         return restTemplate.getForObject(uri, PolicyApiResponseDTO.class);
     }
 
-    private void createTestCardNewsIfAbsent(Policy policy) {
-        if (cardNewsRepository.existsByPolicy_PolicyIdAndCardNo(policy.getPolicyId(), 1L)) return;
-        String body = defaultIfBlank(policy.getSupportContent(), "지원 내용이 등록되지 않았습니다.");
-        if (body.length() > 500) body = body.substring(0, 497) + "...";
-        cardNewsRepository.save(CardNews.builder()
-                .policy(policy)
-                .title(policy.getPolicyName())
-                .body(body)
-                .cardNo(1L)
-                .build());
-    }
-
-    private String defaultIfBlank(String value, String defaultValue) {
-        String text = trimToNull(value);
-        return text == null ? defaultValue : text;
-    }
-
     private String trimToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
+    @Transactional(readOnly = true)
     public List<Policy> getHousingPolicies() {
         return policyRepository.findAllByOrderByApplyEndDateAsc();
     }
 
+    @Transactional(readOnly = true)
     public PolicyDetailResponseDTO getPolicyDetailForMember(String policyId, Long memberId) {
         Policy policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.POLICY_NOT_FOUND));

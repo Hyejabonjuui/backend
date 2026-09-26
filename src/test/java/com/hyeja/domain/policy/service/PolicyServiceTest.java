@@ -7,7 +7,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.hyeja.domain.cardnews.repository.CardNewsRepository;
 import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.domain.policy.converter.PolicyApiCodeConverter;
@@ -34,19 +33,19 @@ import org.springframework.web.client.RestTemplate;
 
 class PolicyServiceTest {
     private final PolicyRepository policyRepository = mock(PolicyRepository.class);
-    private final CardNewsRepository cardNewsRepository = mock(CardNewsRepository.class);
     private final RestTemplate restTemplate = mock(RestTemplate.class);
     private final PolicyApiCodeConverter codeConverter = new PolicyApiCodeConverter();
     private final PolicyApiConverter apiConverter = new PolicyApiConverter(codeConverter);
     private final PolicyAiAnalyzer policyAiAnalyzer = mock(PolicyAiAnalyzer.class);
+    private final PolicySyncItemService policySyncItemService = mock(PolicySyncItemService.class);
     private final MemberRepository memberRepository = mock(MemberRepository.class);
     private final ProfileRepository profileRepository = mock(ProfileRepository.class);
     private final PolicyRegionRepository policyRegionRepository = mock(PolicyRegionRepository.class);
     private final PolicyEligibilityEvaluator policyEligibilityEvaluator =
             new PolicyEligibilityEvaluator(new PolicyIncomeEligibilityEvaluator());
     private final PolicyService service = new PolicyService(
-            policyRepository, cardNewsRepository, restTemplate, apiConverter, codeConverter,
-            policyAiAnalyzer, memberRepository, profileRepository, policyRegionRepository,
+            policyRepository, restTemplate, codeConverter, policyAiAnalyzer,
+            policySyncItemService, memberRepository, profileRepository, policyRegionRepository,
             policyEligibilityEvaluator);
 
     @Test
@@ -194,8 +193,8 @@ class PolicyServiceTest {
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class))).thenReturn(response);
 
         assertThat(service.fetchAndSaveHousingPolicies()).isZero();
-        verify(policyRepository, never()).save(org.mockito.ArgumentMatchers.any(Policy.class));
-        verify(cardNewsRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(policySyncItemService, never()).save(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
         verify(policyAiAnalyzer, never()).analyze(org.mockito.ArgumentMatchers.any());
     }
 
@@ -220,22 +219,46 @@ class PolicyServiceTest {
 
         when(restTemplate.getForObject(org.mockito.ArgumentMatchers.any(java.net.URI.class),
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class))).thenReturn(response);
-        when(policyAiAnalyzer.analyze(item)).thenReturn(new PolicyAiAnalysis(
+        PolicyAiAnalysis analysis = new PolicyAiAnalysis(
                 PolicyCategory.PUBLIC_RENT, 0.95, "공공임대주택 입주 정책",
                 true, 0.91, "무주택 세대구성원 조건이 명시됨",
                 PolicyIncomeCondition.COMPARABLE, null, 50_000_000,
-                0.90, "개인 연소득 5천만원 이하"));
-        when(policyRepository.save(org.mockito.ArgumentMatchers.any(Policy.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-        when(cardNewsRepository.existsByPolicy_PolicyIdAndCardNo("ai-policy", 1L))
-                .thenReturn(true);
+                0.90, "개인 연소득 5천만원 이하");
+        when(policyAiAnalyzer.analyze(item)).thenReturn(analysis);
 
         assertThat(service.fetchAndSaveHousingPolicies()).isEqualTo(1);
-        verify(policyRepository).save(org.mockito.ArgumentMatchers.argThat(
-                policy -> policy.getCategory() == PolicyCategory.PUBLIC_RENT
-                        && Boolean.TRUE.equals(policy.getHouselessYn())
-                        && policy.getIncomeConditionCode() == PolicyIncomeCondition.COMPARABLE
-                        && policy.getIncomeMax() == 50_000_000));
+        verify(policySyncItemService).save(item, analysis);
+    }
+
+    @Test
+    void skipsFailedItemAndContinuesWithNextPolicy() {
+        ReflectionTestUtils.setField(service, "apiKey", "test-key");
+        ReflectionTestUtils.setField(service, "apiUrl", "https://example.com/policies");
+
+        PolicyItem failed = approvedHousingPolicy("failed-policy");
+        PolicyItem succeeded = approvedHousingPolicy("succeeded-policy");
+        PolicyApiResponseDTO.Pagging pagging = new PolicyApiResponseDTO.Pagging();
+        pagging.setTotCount(2);
+        PolicyApiResponseDTO.ResultData result = new PolicyApiResponseDTO.ResultData();
+        result.setPagging(pagging);
+        result.setYouthPolicyList(List.of(failed, succeeded));
+        PolicyApiResponseDTO response = new PolicyApiResponseDTO();
+        response.setResult(result);
+
+        PolicyAiAnalysis analysis = new PolicyAiAnalysis(
+                PolicyCategory.OTHER, 0.8, "기타 주거 정책",
+                null, 0.5, "확인 필요",
+                PolicyIncomeCondition.UNKNOWN, null, null,
+                0.5, "확인 필요");
+        when(restTemplate.getForObject(org.mockito.ArgumentMatchers.any(java.net.URI.class),
+                org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class))).thenReturn(response);
+        when(policyAiAnalyzer.analyze(failed)).thenThrow(new RuntimeException("timeout"));
+        when(policyAiAnalyzer.analyze(succeeded)).thenReturn(analysis);
+
+        assertThat(service.fetchAndSaveHousingPolicies()).isEqualTo(1);
+        verify(policySyncItemService).save(succeeded, analysis);
+        verify(policySyncItemService, never()).save(
+                org.mockito.ArgumentMatchers.eq(failed), org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -284,6 +307,15 @@ class PolicyServiceTest {
         item.setMarriageCode(code);
         return apiConverter.convert(item, PolicyCategory.OTHER, null,
                 PolicyIncomeCondition.UNKNOWN, null, null).getMarriageCode();
+    }
+
+    private PolicyItem approvedHousingPolicy(String policyId) {
+        PolicyItem item = new PolicyItem();
+        item.setPolicyId(policyId);
+        item.setPolicyName(policyId);
+        item.setCategory("주거");
+        item.setApprovalStatusCode("44002");
+        return item;
     }
 
     @Test
