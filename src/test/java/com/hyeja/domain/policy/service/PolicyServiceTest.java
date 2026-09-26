@@ -20,6 +20,8 @@ import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
 import com.hyeja.domain.policy.enums.PolicyMarriageCondition;
 import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
+import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
+import com.hyeja.domain.policy.enums.PolicyHouselessRequirement;
 import com.hyeja.domain.policy.repository.PolicyRepository;
 import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.profile.repository.ProfileRepository;
@@ -76,14 +78,14 @@ class PolicyServiceTest {
         item.setViewCount("123");
         item.setApprovalStatusCode("0044002");
 
-        Policy policy = apiConverter.convert(item, PolicyCategory.MONTHLY_RENT, true,
+        Policy policy = apiConverter.convert(item, PolicyCategory.MONTHLY_RENT,
+                PolicyHouselessRequirement.REQUIRED,
                 PolicyIncomeCondition.COMPARABLE, 100, 300);
 
         assertThat(policy.getPolicyId()).isEqualTo("202609250001");
         assertThat(policy.getPolicyName()).isEqualTo("청년 주거 지원");
         assertThat(policy.getApiSubCategory()).isEqualTo("주택 및 거주지");
-        assertThat(policy.getCategory()).isEqualTo(PolicyCategory.MONTHLY_RENT);
-        assertThat(policy.getSubtypeCode()).isNull();
+        assertThat(policy.getCategories()).containsExactly(PolicyCategory.MONTHLY_RENT);
         assertThat(policy.getDescription()).isNull();
         assertThat(policy.getSupportContent()).isEqualTo("월 20만 원 지원");
         assertThat(policy.getMinAge()).isEqualTo(19);
@@ -95,7 +97,9 @@ class PolicyServiceTest {
         assertThat(policy.getEmploymentCodes()).containsExactlyInAnyOrder(
                 PolicyEmploymentCondition.EMPLOYED,
                 PolicyEmploymentCondition.SELF_EMPLOYED);
-        assertThat(policy.getHouselessYn()).isTrue();
+        assertThat(policy.getHouselessRequirement())
+                .isEqualTo(PolicyHouselessRequirement.REQUIRED);
+        assertThat(policy.getApplyPeriodCode()).isEqualTo(PolicyApplyPeriod.SPECIFIC_PERIOD);
         assertThat(policy.getHousingType()).isEqualTo("주택 및 거주지");
         assertThat(policy.getExtraQualification()).contains("서울 거주", "무주택 청년");
         assertThat(policy.getApplyStartDate()).isEqualTo(LocalDate.of(2026, 9, 1));
@@ -109,6 +113,7 @@ class PolicyServiceTest {
         PolicyItem item = new PolicyItem();
         item.setPolicyId("policy-2"); item.setPolicyName(" "); item.setCategory("주거");
         item.setMinAge("-"); item.setApplyYmd("2026년 연중");
+        item.setApplyPeriodCode("57002");
 
         Policy policy = apiConverter.convert(item, PolicyCategory.OTHER, null,
                 PolicyIncomeCondition.UNKNOWN, null, null);
@@ -117,8 +122,50 @@ class PolicyServiceTest {
         assertThat(policy.getMinAge()).isNull();
         assertThat(policy.getApplyStartDate()).isNull();
         assertThat(policy.getApplyEndDate()).isNull();
-        assertThat(policy.getApplyPeriodCode()).isEqualTo("UNKNOWN");
+        assertThat(policy.getApplyPeriodCode()).isEqualTo(PolicyApplyPeriod.ALWAYS);
         assertThat(policy.getViewCount()).isZero();
+    }
+
+    @Test
+    void mapsApplyPeriodCodesAndUsesDatesOnlyForSpecificPeriod() {
+        PolicyItem specific = new PolicyItem();
+        specific.setPolicyId("specific");
+        specific.setPolicyName("특정기간 정책");
+        specific.setApplyPeriodCode("0057001");
+        specific.setApplyYmd("20260901 ~ 20260930");
+
+        PolicyItem always = new PolicyItem();
+        always.setPolicyId("always");
+        always.setPolicyName("상시 정책");
+        always.setApplyPeriodCode("57002");
+        always.setApplyYmd("20260901 ~ 20260930");
+
+        PolicyItem closed = new PolicyItem();
+        closed.setPolicyId("closed");
+        closed.setPolicyName("마감 정책");
+        closed.setApplyPeriodCode("57003");
+        closed.setApplyYmd("20260901 ~ 20260930");
+
+        Policy specificPolicy = apiConverter.convert(specific, PolicyCategory.OTHER,
+                PolicyHouselessRequirement.UNKNOWN,
+                PolicyIncomeCondition.UNKNOWN, null, null);
+        Policy alwaysPolicy = apiConverter.convert(always, PolicyCategory.OTHER,
+                PolicyHouselessRequirement.UNKNOWN,
+                PolicyIncomeCondition.UNKNOWN, null, null);
+        Policy closedPolicy = apiConverter.convert(closed, PolicyCategory.OTHER,
+                PolicyHouselessRequirement.UNKNOWN,
+                PolicyIncomeCondition.UNKNOWN, null, null);
+
+        assertThat(specificPolicy.getApplyPeriodCode())
+                .isEqualTo(PolicyApplyPeriod.SPECIFIC_PERIOD);
+        assertThat(specificPolicy.getApplyStartDate()).isEqualTo(LocalDate.of(2026, 9, 1));
+        assertThat(specificPolicy.getApplyEndDate()).isEqualTo(LocalDate.of(2026, 9, 30));
+        assertThat(alwaysPolicy.getApplyPeriodCode()).isEqualTo(PolicyApplyPeriod.ALWAYS);
+        assertThat(alwaysPolicy.getApplyStartDate()).isNull();
+        assertThat(alwaysPolicy.getApplyEndDate()).isNull();
+        assertThat(closedPolicy.getApplyPeriodCode()).isEqualTo(PolicyApplyPeriod.CLOSED);
+        assertThat(closedPolicy.getApplyStartDate()).isNull();
+        assertThat(closedPolicy.getApplyEndDate()).isNull();
     }
 
     @Test
@@ -129,6 +176,7 @@ class PolicyServiceTest {
         item.setMinAge("0");
         item.setMaxAge("0");
         item.setAgeLimitYn("Y");
+        item.setApplyPeriodCode("57002");
 
         Policy policy = apiConverter.convert(item, PolicyCategory.OTHER, null,
                 PolicyIncomeCondition.UNKNOWN, null, null);
@@ -145,6 +193,7 @@ class PolicyServiceTest {
         item.setPolicyName("승인 대기 정책");
         item.setCategory("주거");
         item.setApprovalStatusCode("NOT_APPROVED");
+        item.setApplyPeriodCode("57003");
 
         assertThat(apiConverter.convert(item, PolicyCategory.OTHER, null,
                 PolicyIncomeCondition.UNKNOWN, null, null).getActiveYn()).isFalse();
@@ -239,8 +288,9 @@ class PolicyServiceTest {
         when(restTemplate.getForObject(org.mockito.ArgumentMatchers.any(java.net.URI.class),
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class))).thenReturn(response);
         PolicyAiAnalysis analysis = new PolicyAiAnalysis(
-                PolicyCategory.PUBLIC_RENT, 0.95, "공공임대주택 입주 정책",
-                true, 0.91, "무주택 세대구성원 조건이 명시됨",
+                "청년에게 공공임대주택 입주 기회를 제공합니다.",
+                Set.of(PolicyCategory.PUBLIC_RENT), 0.95, "공공임대주택 입주 정책",
+                PolicyHouselessRequirement.REQUIRED, 0.91, "무주택 세대구성원 조건이 명시됨",
                 PolicyIncomeCondition.COMPARABLE, null, 50_000_000,
                 0.90, "개인 연소득 5천만원 이하");
         when(policyAiAnalyzer.analyze(item)).thenReturn(analysis);
@@ -265,8 +315,9 @@ class PolicyServiceTest {
         response.setResult(result);
 
         PolicyAiAnalysis analysis = new PolicyAiAnalysis(
-                PolicyCategory.OTHER, 0.8, "기타 주거 정책",
-                null, 0.5, "확인 필요",
+                "기타 주거 지원 정책입니다.",
+                Set.of(PolicyCategory.OTHER), 0.8, "기타 주거 정책",
+                PolicyHouselessRequirement.UNKNOWN, 0.5, "확인 필요",
                 PolicyIncomeCondition.UNKNOWN, null, null,
                 0.5, "확인 필요");
         when(restTemplate.getForObject(org.mockito.ArgumentMatchers.any(java.net.URI.class),
@@ -285,11 +336,12 @@ class PolicyServiceTest {
         PolicyItem item = new PolicyItem();
         item.setPolicyId("ai-category-policy");
         item.setPolicyName("청년 주거 정책");
+        item.setApplyPeriodCode("57002");
 
         Policy policy = apiConverter.convert(item, PolicyCategory.PUBLIC_RENT, null,
                 PolicyIncomeCondition.UNKNOWN, null, null);
 
-        assertThat(policy.getCategory()).isEqualTo(PolicyCategory.PUBLIC_RENT);
+        assertThat(policy.getCategories()).containsExactly(PolicyCategory.PUBLIC_RENT);
     }
 
     @Test
@@ -326,6 +378,7 @@ class PolicyServiceTest {
         item.setPolicyName("혼인 조건 테스트");
         item.setCategory("주거");
         item.setMarriageCode(code);
+        item.setApplyPeriodCode("57002");
         return apiConverter.convert(item, PolicyCategory.OTHER, null,
                 PolicyIncomeCondition.UNKNOWN, null, null).getMarriageCode();
     }
@@ -344,7 +397,7 @@ class PolicyServiceTest {
         Policy policy = mock(Policy.class);
         when(policy.getPolicyId()).thenReturn("policy-detail");
         when(policy.getPolicyName()).thenReturn("청년 주거 정책");
-        when(policy.getCategory()).thenReturn(PolicyCategory.OTHER);
+        when(policy.getCategories()).thenReturn(Set.of(PolicyCategory.OTHER));
         when(policy.getAgeLimitYn()).thenReturn(true);
         when(policy.getIncomeConditionCode()).thenReturn(PolicyIncomeCondition.UNKNOWN);
 
@@ -368,7 +421,7 @@ class PolicyServiceTest {
         assertThat(response.conditions()).hasSize(5);
         assertThat(response.isFavorite()).isTrue();
         assertThat(response.overallStatus()).isEqualTo(
-                com.hyeja.domain.policy.enums.EligibilityStatus.U);
+                com.hyeja.domain.policy.enums.EligibilityStatus.UNKNOWN);
     }
 
     private Set<PolicyEmploymentCondition> mapEmploymentConditions(String codes) {
@@ -377,6 +430,7 @@ class PolicyServiceTest {
         item.setPolicyName("취업 조건 테스트");
         item.setCategory("주거");
         item.setEmploymentCodes(codes);
+        item.setApplyPeriodCode("57002");
         return apiConverter.convert(item, PolicyCategory.OTHER, null,
                 PolicyIncomeCondition.UNKNOWN, null, null).getEmploymentCodes();
     }

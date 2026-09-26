@@ -21,7 +21,7 @@ class PolicyIncomeEligibilityEvaluatorTest {
         assertThat(evaluator.evaluate(
                 policy(PolicyIncomeCondition.COMPARABLE, null, 50_000_000),
                 profile(IncomeRange.R4000_5000)))
-                .isEqualTo(EligibilityStatus.Y);
+                .isEqualTo(EligibilityStatus.ABLE);
     }
 
     @Test
@@ -29,7 +29,7 @@ class PolicyIncomeEligibilityEvaluatorTest {
         assertThat(evaluator.evaluate(
                 policy(PolicyIncomeCondition.COMPARABLE, null, 30_000_000),
                 profile(IncomeRange.R4000_5000)))
-                .isEqualTo(EligibilityStatus.N);
+                .isEqualTo(EligibilityStatus.DISABLE);
     }
 
     @Test
@@ -37,22 +37,22 @@ class PolicyIncomeEligibilityEvaluatorTest {
         assertThat(evaluator.evaluate(
                 policy(PolicyIncomeCondition.COMPARABLE, null, 45_000_000),
                 profile(IncomeRange.R4000_5000)))
-                .isEqualTo(EligibilityStatus.U);
+                .isEqualTo(EligibilityStatus.UNKNOWN);
     }
 
     @Test
     void handlesNoRestrictionConditionalAndMissingProfileIncome() {
         assertThat(evaluator.evaluate(
                 policy(PolicyIncomeCondition.NO_RESTRICTION, null, null), null))
-                .isEqualTo(EligibilityStatus.Y);
+                .isEqualTo(EligibilityStatus.ABLE);
         assertThat(evaluator.evaluate(
                 policy(PolicyIncomeCondition.CONDITIONAL, null, null),
                 profile(IncomeRange.UNDER_2000)))
-                .isEqualTo(EligibilityStatus.U);
+                .isEqualTo(EligibilityStatus.UNKNOWN);
         assertThat(evaluator.evaluate(
                 policy(PolicyIncomeCondition.COMPARABLE, null, 50_000_000),
                 profile(null)))
-                .isEqualTo(EligibilityStatus.U);
+                .isEqualTo(EligibilityStatus.UNKNOWN);
     }
 
     private Policy policy(

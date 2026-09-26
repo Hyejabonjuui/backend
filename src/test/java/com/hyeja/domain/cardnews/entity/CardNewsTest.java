@@ -135,7 +135,9 @@ class CardNewsTest {
 
     private Policy persistPolicy(String id) {
         Policy value = Policy.builder().policyId(id).policyName("테스트 정책")
-                .category(PolicyCategory.OTHER).ageLimitYn(false).applyPeriodCode("TEST").build();
+                .categories(java.util.Set.of(PolicyCategory.OTHER))
+                .ageLimitYn(false).applyPeriodCode(
+                        com.hyeja.domain.policy.enums.PolicyApplyPeriod.SPECIFIC_PERIOD).build();
         entityManager.persist(value);
         return value;
     }
