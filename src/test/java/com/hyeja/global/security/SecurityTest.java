@@ -100,12 +100,14 @@ class SecurityTest {
         assertThat(JsonPath.parse(response.body()).read("$.code", String.class)).isEqualTo("MEMBER_001");
     }
 
-    // 회원가입·로그인·이메일 찾기·지역 목록·비로그인 정책 화면·헬스체크는 토큰 없이 호출됩니다.
+    // 회원가입·로그인·이메일 인증·이메일 찾기·지역 목록·비로그인 정책 화면·헬스체크는 토큰 없이 호출됩니다.
     @Test
     void publicApisWorkWithoutToken() throws Exception {
         String[][] apis = {
                 {"POST", "/api/members"},
                 {"POST", "/api/members/login"},
+                {"POST", "/api/members/email-verifications"},
+                {"POST", "/api/members/email-verifications/confirmation"},
                 {"GET", "/api/members/find-email?nickname=minji&birth=2000-03-15"},
                 {"GET", "/api/regions"},
                 {"GET", "/api/policies/housing"},

@@ -39,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -69,6 +70,9 @@ class MemberServiceTest {
 
     @Mock
     private TokenBlacklist tokenBlacklist;
+
+    @Mock
+    private EmailVerificationService emailVerificationService;
 
     @InjectMocks
     private MemberService memberService;
@@ -146,6 +150,19 @@ class MemberServiceTest {
         assertThat(profile.getBirth()).isEqualTo(LocalDate.of(2000, 3, 15));
         assertThat(profile.getEmploymentCode()).isEqualTo(EmploymentStatus.EMPLOYED);
         assertThat(profile.getMarriageCode()).isNull();
+
+        // 이메일 인증을 확인한 뒤 가입하고, 가입이 끝나면 인증 완료 표시를 지웁니다.
+        verify(emailVerificationService).checkVerified("hyeja@example.com");
+        verify(emailVerificationService).clearVerified("hyeja@example.com");
+    }
+
+    @Test
+    void signupThrowsWhenEmailIsNotVerified() {
+        when(memberRepository.existsByEmail("hyeja@example.com")).thenReturn(false);
+        doThrow(new GeneralException(ErrorStatus.VERIFY_REQUIRED))
+                .when(emailVerificationService).checkVerified("hyeja@example.com");
+
+        assertSignupError("11440", ErrorStatus.VERIFY_REQUIRED);
     }
 
     @Test
