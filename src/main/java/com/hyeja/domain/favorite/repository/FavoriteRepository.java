@@ -58,6 +58,24 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
             @Param("deadlineDate") LocalDate deadlineDate
     );
 
+    @Query("""
+            select favorite
+            from Favorite favorite
+            join fetch favorite.member member
+            join fetch favorite.policy policy
+            where member.memberId = :memberId
+              and favorite.deletedAt is null
+              and member.deletedAt is null
+              and policy.deletedAt is null
+              and policy.activeYn = true
+              and policy.applyEndDate = :deadlineDate
+            order by favorite.favoriteId asc
+            """)
+    List<Favorite> findNotificationTargetsByMemberIdAndDeadlineDate(
+            @Param("memberId") Long memberId,
+            @Param("deadlineDate") LocalDate deadlineDate
+    );
+
     @Query(
             value = """
                     select favorite

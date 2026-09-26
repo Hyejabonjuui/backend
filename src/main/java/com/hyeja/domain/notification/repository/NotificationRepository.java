@@ -51,4 +51,17 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findAllByDeadlineDateWithMemberAndPolicy(
             @Param("deadlineDate") LocalDate deadlineDate
     );
+
+    @Query("""
+            select notification
+            from Notification notification
+            join fetch notification.member member
+            join fetch notification.policy policy
+            where member.memberId = :memberId
+              and notification.deadlineDate = :deadlineDate
+            """)
+    List<Notification> findAllByMemberIdAndDeadlineDateWithPolicy(
+            @Param("memberId") Long memberId,
+            @Param("deadlineDate") LocalDate deadlineDate
+    );
 }
