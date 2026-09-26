@@ -12,8 +12,10 @@ ALTER TABLE policy MODIFY COLUMN apply_period_code VARCHAR(20) NOT NULL;
 
 UPDATE policy
 SET apply_period_code = CASE
-    WHEN TRIM(LEADING '0' FROM apply_period_code) = '57001' THEN 'SPECIFIC_PERIOD'
-    WHEN TRIM(LEADING '0' FROM apply_period_code) = '57002' THEN 'ALWAYS'
-    WHEN TRIM(LEADING '0' FROM apply_period_code) = '57003' THEN 'CLOSED'
-    ELSE apply_period_code
+    WHEN UPPER(TRIM(apply_period_code)) IN ('SPECIFIC_PERIOD', 'ALWAYS', 'CLOSED')
+        THEN UPPER(TRIM(apply_period_code))
+    WHEN TRIM(LEADING '0' FROM TRIM(apply_period_code)) = '57001' THEN 'SPECIFIC_PERIOD'
+    WHEN TRIM(LEADING '0' FROM TRIM(apply_period_code)) = '57002' THEN 'ALWAYS'
+    WHEN TRIM(LEADING '0' FROM TRIM(apply_period_code)) = '57003' THEN 'CLOSED'
+    ELSE 'SPECIFIC_PERIOD'
 END;
