@@ -12,11 +12,14 @@
 | `Policy` | 외부 `policy_id` 문자열 | 현재 Java 컬럼 길이 30, 외부 ID를 가공하지 않고 사용 |
 | `PolicyRegion` | `(policy_id, region_code)` | `@EmbeddedId`와 `@MapsId`를 사용하는 식별 연결 엔티티 |
 | `Favorite` | `favorite_id BIGINT` | Member·Policy N:1, `(member_id, policy_id)` UNIQUE, 관심 해제는 물리 삭제 의도 |
-| `Notification` | `notification_id BIGINT` | Member·Policy N:1, 복수 알림 허용, 생성 시 `readYn=false` |
+| `Notification` | `notification_id BIGINT` | Member·Policy N:1, 마감일 스냅샷 저장, `(member_id, policy_id, deadline_date)` UNIQUE, 생성 시 `readYn=false` |
 | `CardNews` | `card_news_id BIGINT` | Policy N:1 비식별 관계, `(policy_id, card_no)` UNIQUE, `card_no` 1~4 |
 | `Term` | `term_id INT` | 독립 용어 풀이 테이블, term은 현재 코드상 UNIQUE 아님 |
 
 모든 엔티티는 `BaseEntity`의 `createdAt`, `updatedAt`, `deletedAt`을 상속한다. Cascade 설정은 현재 없다.
+
+마감 알림은 정책의 마감일이 이후 변경되어도 생성 당시 정보를 유지하도록 `deadlineDate`를 저장한다.
+동일 회원·정책·마감일 조합은 한 번만 생성할 수 있다.
 
 ## Profile 필드
 

@@ -150,11 +150,12 @@ class NotificationServiceTest {
                 .category(PolicyCategory.MONTHLY_RENT)
                 .ageLimitYn(false)
                 .applyPeriodCode("PERIOD")
-                .applyEndDate(LocalDate.of(2026, 9, 30))
+                .applyEndDate(LocalDate.of(2026, 10, 1))
                 .build();
         Notification notification = Notification.builder()
                 .member(member)
                 .policy(policy)
+                .deadlineDate(LocalDate.of(2026, 9, 30))
                 .build();
         ReflectionTestUtils.setField(notification, "notificationId", notificationId);
         ReflectionTestUtils.setField(notification, "createdAt", LocalDateTime.of(2026, 9, 24, 10, 30));

@@ -35,7 +35,7 @@ public final class NotificationResponseDTO {
         private Boolean readYn;
 
         @JsonProperty("apply_end_date")
-        @Schema(description = "정책 신청 마감일", example = "2026-09-30", nullable = true)
+        @Schema(description = "알림 생성 시 저장한 정책 신청 마감일", example = "2026-09-30")
         private LocalDate applyEndDate;
 
         @JsonProperty("created_at")

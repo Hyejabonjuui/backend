@@ -150,8 +150,11 @@ WHERE NOT EXISTS (
     SELECT 1 FROM favorite existing WHERE existing.member_id = m.member_id AND existing.policy_id = seed.policy_id
 );
 
-INSERT INTO notification (member_id, policy_id, read_yn, created_at, updated_at, deleted_at)
-SELECT m.member_id, seed.policy_id, seed.read_yn, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL
+INSERT INTO notification (
+    member_id, policy_id, deadline_date, read_yn, created_at, updated_at, deleted_at
+)
+SELECT m.member_id, seed.policy_id, p.apply_end_date, seed.read_yn,
+       CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL
 FROM (
     SELECT 'seed01@hyeja.test' AS email, 'DEMO-HOUSING-001' AS policy_id, FALSE AS read_yn
     UNION ALL SELECT 'seed02@hyeja.test', 'DEMO-HOUSING-002', TRUE
@@ -167,7 +170,11 @@ FROM (
 JOIN member m ON m.email = seed.email
 JOIN policy p ON p.policy_id = seed.policy_id
 WHERE NOT EXISTS (
-    SELECT 1 FROM notification existing WHERE existing.member_id = m.member_id AND existing.policy_id = seed.policy_id
+    SELECT 1
+    FROM notification existing
+    WHERE existing.member_id = m.member_id
+      AND existing.policy_id = seed.policy_id
+      AND existing.deadline_date = p.apply_end_date
 );
 
 INSERT INTO term (term, easy_description, example, created_at, updated_at, deleted_at)

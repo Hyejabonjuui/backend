@@ -1,6 +1,8 @@
 package com.hyeja.domain.notification.repository;
 
 import com.hyeja.domain.notification.entity.Notification;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,5 +39,29 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Page<Notification> findAllByMemberId(
             @Param("memberId") Long memberId,
             Pageable pageable
+    );
+
+    @Query("""
+            select notification
+            from Notification notification
+            join fetch notification.member member
+            join fetch notification.policy policy
+            where notification.deadlineDate = :deadlineDate
+            """)
+    List<Notification> findAllByDeadlineDateWithMemberAndPolicy(
+            @Param("deadlineDate") LocalDate deadlineDate
+    );
+
+    @Query("""
+            select notification
+            from Notification notification
+            join fetch notification.member member
+            join fetch notification.policy policy
+            where member.memberId = :memberId
+              and notification.deadlineDate = :deadlineDate
+            """)
+    List<Notification> findAllByMemberIdAndDeadlineDateWithPolicy(
+            @Param("memberId") Long memberId,
+            @Param("deadlineDate") LocalDate deadlineDate
     );
 }
