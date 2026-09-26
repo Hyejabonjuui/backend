@@ -63,7 +63,6 @@ public class ProfileController {
     }
 
     // 내 조건 수정 (마이페이지 S-08 내 조건 탭) — 예: PATCH /api/members/me/profile?memberId=1
-    // PATCH지만 수정 폼 전체를 받아 통째로 교체합니다(선택 항목을 null로 보내면 지워짐).
     // TODO: 인증(JWT) 기반이 생기면 memberId 쿼리 파라미터를 없애고 토큰에서 회원을 식별합니다.
     @Operation(
             summary = "내 조건 수정",

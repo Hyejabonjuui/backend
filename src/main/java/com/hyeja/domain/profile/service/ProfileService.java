@@ -36,7 +36,6 @@ public class ProfileService {
 
     /**
      * 회원 ID로 내 조건을 전체 교체하고, 바뀐 조건을 조회 응답과 같은 형식으로 돌려줍니다.
-     * 수정 폼 전체를 다시 저장하므로 선택 항목에 null이 오면 기존 값이 지워집니다.
      * 회원이 없거나 탈퇴했으면 MEMBER_NOT_FOUND(404), 조건이 없으면 PROFILE_NOT_FOUND(404),
      * 지역 코드가 REGION에 없으면 REGION_NOT_FOUND(404)를 던집니다.
      */
