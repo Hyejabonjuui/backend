@@ -2,6 +2,8 @@ package com.hyeja.domain.member.controller;
 
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
+import com.hyeja.domain.member.dto.MemberLoginRequestDTO;
+import com.hyeja.domain.member.dto.MemberLoginResponseDTO;
 import com.hyeja.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.domain.member.service.MemberService;
 import com.hyeja.global.apiPayload.ApiResponse;
@@ -11,12 +13,14 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -159,6 +163,60 @@ public class MemberController {
             @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
     ) {
         memberService.withdraw(memberId);
+        return ApiResponse.onSuccess(null);
+    }
+
+    // 로그인 — 예: POST /api/members/login
+    @Operation(
+            summary = "로그인",
+            description = "이메일·비밀번호가 맞으면 accessToken(30분 유효)을 발급합니다. "
+                    + "이후 요청 헤더에 Authorization: Bearer <accessToken>으로 보냅니다. "
+                    + "이메일이 없거나 비밀번호가 틀리거나 탈퇴한 회원이면 모두 MEMBER_005로 응답합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "로그인 성공 (SUCCESS_001)"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "이메일·비밀번호 누락 (COMMON_003)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "이메일 또는 비밀번호 불일치 (MEMBER_005)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            )
+    })
+    @PostMapping("/login")
+    public ApiResponse<MemberLoginResponseDTO> login(@Valid @RequestBody MemberLoginRequestDTO request) {
+        return ApiResponse.onSuccess(memberService.login(request));
+    }
+
+    // 로그아웃 — 예: POST /api/members/logout (헤더 Authorization: Bearer <accessToken>)
+    // 토큰이 없거나 잘못됐거나 이미 로그아웃한 토큰이면 SecurityConfig가 컨트롤러 전에 401(COMMON_002)로 막습니다.
+    @Operation(
+            summary = "로그아웃",
+            description = "요청 헤더의 토큰을 무효화합니다. 같은 토큰으로 다시 요청하면 401입니다. "
+                    + "Swagger에서는 오른쪽 위 Authorize 버튼에 로그인으로 받은 accessToken을 넣고 호출합니다."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "로그아웃 성공 (SUCCESS_001)"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "토큰 없음·잘못된 토큰·만료·이미 로그아웃한 토큰 (COMMON_002)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            )
+    })
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@Parameter(hidden = true) Authentication authentication) {
+        // 인증 필터가 credentials에 토큰 원문을 넣어 둡니다.
+        memberService.logout((String) authentication.getCredentials());
         return ApiResponse.onSuccess(null);
     }
 }
