@@ -35,11 +35,14 @@ class NotificationRepositoryTest {
         Policy secondPolicy = persistPolicy("policy-2", LocalDate.of(2026, 11, 1));
 
         Notification first = Notification.builder()
-                .member(requestedMember).policy(firstPolicy).build();
+                .member(requestedMember).policy(firstPolicy)
+                .deadlineDate(firstPolicy.getApplyEndDate()).build();
         Notification deleted = Notification.builder()
-                .member(requestedMember).policy(secondPolicy).build();
+                .member(requestedMember).policy(secondPolicy)
+                .deadlineDate(secondPolicy.getApplyEndDate()).build();
         Notification other = Notification.builder()
-                .member(otherMember).policy(firstPolicy).build();
+                .member(otherMember).policy(firstPolicy)
+                .deadlineDate(firstPolicy.getApplyEndDate()).build();
         entityManager.persist(first);
         entityManager.persist(deleted);
         entityManager.persist(other);
@@ -57,6 +60,33 @@ class NotificationRepositoryTest {
             assertThat(notification.getPolicy().getPolicyId()).isEqualTo("policy-1");
             assertThat(notification.getPolicy().getApplyEndDate())
                     .isEqualTo(LocalDate.of(2026, 10, 1));
+            assertThat(notification.getDeadlineDate()).isEqualTo(LocalDate.of(2026, 10, 1));
+        });
+    }
+
+    @Test
+    void findsExistingNotificationsForDeadlineWithAssociationsFetched() {
+        Member member = persistMember("deadline@example.com", "마감 회원");
+        Policy targetPolicy = persistPolicy("deadline-policy", LocalDate.of(2026, 10, 1));
+        Policy otherPolicy = persistPolicy("other-deadline-policy", LocalDate.of(2026, 10, 2));
+        entityManager.persist(Notification.builder()
+                .member(member).policy(targetPolicy)
+                .deadlineDate(targetPolicy.getApplyEndDate()).build());
+        entityManager.persist(Notification.builder()
+                .member(member).policy(otherPolicy)
+                .deadlineDate(otherPolicy.getApplyEndDate()).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        var result = notificationRepository.findAllByDeadlineDateWithMemberAndPolicy(
+                LocalDate.of(2026, 10, 1));
+
+        assertThat(result).singleElement().satisfies(notification -> {
+            assertThat(notification.getMember().getEmail()).isEqualTo("deadline@example.com");
+            assertThat(notification.getPolicy().getPolicyId()).isEqualTo("deadline-policy");
+            var persistenceUnitUtil = entityManager.getEntityManagerFactory().getPersistenceUnitUtil();
+            assertThat(persistenceUnitUtil.isLoaded(notification, "member")).isTrue();
+            assertThat(persistenceUnitUtil.isLoaded(notification, "policy")).isTrue();
         });
     }
 
@@ -66,11 +96,14 @@ class NotificationRepositoryTest {
         Member otherMember = persistMember("other@example.com", "다른 회원");
         Policy policy = persistPolicy("policy-1", LocalDate.of(2026, 10, 1));
         Notification active = Notification.builder()
-                .member(requestedMember).policy(policy).build();
+                .member(requestedMember).policy(policy)
+                .deadlineDate(policy.getApplyEndDate()).build();
         Notification deleted = Notification.builder()
-                .member(requestedMember).policy(policy).build();
+                .member(requestedMember).policy(policy)
+                .deadlineDate(policy.getApplyEndDate().plusDays(1)).build();
         Notification other = Notification.builder()
-                .member(otherMember).policy(policy).build();
+                .member(otherMember).policy(policy)
+                .deadlineDate(policy.getApplyEndDate()).build();
         entityManager.persist(active);
         entityManager.persist(deleted);
         entityManager.persist(other);
@@ -98,9 +131,11 @@ class NotificationRepositoryTest {
         Member otherMember = persistMember("delete-other@example.com", "다른 회원");
         Policy policy = persistPolicy("delete-policy", LocalDate.of(2026, 12, 1));
         Notification target = Notification.builder()
-                .member(requestedMember).policy(policy).build();
+                .member(requestedMember).policy(policy)
+                .deadlineDate(policy.getApplyEndDate()).build();
         Notification other = Notification.builder()
-                .member(otherMember).policy(policy).build();
+                .member(otherMember).policy(policy)
+                .deadlineDate(policy.getApplyEndDate()).build();
         entityManager.persist(target);
         entityManager.persist(other);
         entityManager.flush();
