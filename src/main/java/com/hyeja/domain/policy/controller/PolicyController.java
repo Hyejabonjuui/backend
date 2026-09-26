@@ -1,18 +1,27 @@
 package com.hyeja.domain.policy.controller;
 
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO;
-import com.hyeja.domain.policy.entity.Policy;
+import com.hyeja.domain.policy.dto.PolicyGuestResponseDTO.PolicyListDTO;
+import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicySort;
 import com.hyeja.domain.policy.service.PolicyService;
 import com.hyeja.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.List;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "정책", description = "정책 관련 API")
@@ -35,12 +44,56 @@ public class PolicyController {
     }
 
     @Operation(
-            summary = "주거 정책 목록 조회",
-            description = "데이터베이스에 저장된 주거 정책 목록을 조회합니다."
+            summary = "비로그인 주거 정책 목록 조회",
+            description = "인증 없이 진행 중인 주거 정책을 카테고리·정렬 조건으로 페이지 조회합니다. "
+                    + "마감일순에서는 상시 정책을 기간 지정 정책 뒤에 반환합니다."
     )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "비로그인 주거 정책 목록 조회 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 필터·정렬·페이지 조건 (COMMON_001)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            )
+    })
     @GetMapping("/housing")
-    public ApiResponse<List<Policy>> getHousingPolicies() {
-        return ApiResponse.onSuccess(policyService.getHousingPolicies());
+    public ApiResponse<PolicyListDTO> getGuestHousingPolicies(
+            @Parameter(
+                    name = "category",
+                    description = "정책 카테고리. 생략하면 전체",
+                    in = ParameterIn.QUERY,
+                    example = "MONTHLY_RENT"
+            )
+            @RequestParam(name = "category", required = false) PolicyCategory category,
+            @Parameter(
+                    name = "sort",
+                    description = "정렬 기준: DEADLINE(마감일), VIEW_COUNT(조회수), NAME(정책명)",
+                    in = ParameterIn.QUERY,
+                    example = "DEADLINE"
+            )
+            @RequestParam(name = "sort", defaultValue = "DEADLINE") PolicySort sort,
+            @Parameter(
+                    name = "page",
+                    description = "페이지 번호(0부터 시작)",
+                    in = ParameterIn.QUERY,
+                    example = "0"
+            )
+            @RequestParam(name = "page", defaultValue = "0")
+            @PositiveOrZero(message = "페이지 번호는 0 이상이어야 합니다.") int page,
+            @Parameter(
+                    name = "size",
+                    description = "페이지당 정책 개수",
+                    in = ParameterIn.QUERY,
+                    example = "8"
+            )
+            @RequestParam(name = "size", defaultValue = "8")
+            @Positive(message = "페이지 크기는 양수여야 합니다.") int size
+    ) {
+        return ApiResponse.onSuccess(
+                policyService.getGuestHousingPolicies(category, sort, page, size));
     }
 
     @Operation(

@@ -15,20 +15,26 @@ import com.hyeja.domain.policy.converter.PolicyApiConverter;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO;
+import com.hyeja.domain.policy.dto.PolicyGuestResponseDTO.PolicyListDTO;
 import com.hyeja.domain.policy.entity.Policy;
+import com.hyeja.domain.policy.entity.PolicyRegion;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
 import com.hyeja.domain.policy.enums.PolicyMarriageCondition;
 import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
+import com.hyeja.domain.policy.enums.PolicySort;
 import com.hyeja.domain.policy.repository.PolicyRepository;
 import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.profile.repository.ProfileRepository;
 import com.hyeja.domain.profile.entity.Profile;
+import com.hyeja.domain.region.entity.Region;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
@@ -337,6 +343,68 @@ class PolicyServiceTest {
         item.setCategory("주거");
         item.setApprovalStatusCode("44002");
         return item;
+    }
+
+    @Test
+    void returnsGuestPolicyPageWithRegionsAndDeadlineInformation() {
+        LocalDate today = LocalDate.now();
+        Region region = Region.builder()
+                .regionCode("11440")
+                .sigunguName("서울특별시 마포구")
+                .build();
+        Policy regionalPolicy = Policy.builder()
+                .policyId("POLICY-1")
+                .policyName("청년 월세 지원")
+                .category(PolicyCategory.MONTHLY_RENT)
+                .ageLimitYn(false)
+                .applyPeriodCode("PERIOD")
+                .applyEndDate(today.plusDays(4))
+                .build();
+        Policy alwaysOpenPolicy = Policy.builder()
+                .policyId("POLICY-2")
+                .policyName("상시 주거 상담")
+                .category(PolicyCategory.OTHER)
+                .ageLimitYn(false)
+                .applyPeriodCode("ALWAYS")
+                .applyEndDate(null)
+                .build();
+        PageRequest pageRequest = PageRequest.of(0, 8, PolicySort.DEADLINE.toSort());
+        when(policyRepository.findGuestHousingPolicies(
+                PolicyCategory.MONTHLY_RENT, today, pageRequest))
+                .thenReturn(new PageImpl<>(
+                        List.of(regionalPolicy, alwaysOpenPolicy), pageRequest, 9));
+        when(policyRegionRepository.findAllActiveByPolicyIds(
+                List.of("POLICY-1", "POLICY-2")))
+                .thenReturn(List.of(PolicyRegion.builder()
+                        .policy(regionalPolicy)
+                        .region(region)
+                        .build()));
+
+        PolicyListDTO result = service.getGuestHousingPolicies(
+                PolicyCategory.MONTHLY_RENT, PolicySort.DEADLINE, 0, 8);
+
+        assertThat(result.getPolicies()).hasSize(2);
+        assertThat(result.getPolicies().get(0)).satisfies(item -> {
+            assertThat(item.getPolicyId()).isEqualTo("POLICY-1");
+            assertThat(item.getCategoryCode()).isEqualTo(PolicyCategory.MONTHLY_RENT);
+            assertThat(item.getCategoryName()).isEqualTo("월세");
+            assertThat(item.getRegions()).singleElement().satisfies(itemRegion -> {
+                assertThat(itemRegion.getRegionCode()).isEqualTo("11440");
+                assertThat(itemRegion.getRegionName()).isEqualTo("서울특별시 마포구");
+            });
+            assertThat(item.isNationwide()).isFalse();
+            assertThat(item.getDDay()).isEqualTo(4);
+        });
+        assertThat(result.getPolicies().get(1)).satisfies(item -> {
+            assertThat(item.getPolicyId()).isEqualTo("POLICY-2");
+            assertThat(item.getRegions()).isEmpty();
+            assertThat(item.isNationwide()).isTrue();
+            assertThat(item.getApplyEndDate()).isNull();
+            assertThat(item.getDDay()).isNull();
+        });
+        assertThat(result.getTotalElements()).isEqualTo(9);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        assertThat(result.isHasNext()).isTrue();
     }
 
     @Test
