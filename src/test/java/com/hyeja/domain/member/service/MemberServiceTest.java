@@ -183,9 +183,8 @@ class MemberServiceTest {
 
         MemberFindEmailResponseDTO result = memberService.findEmail("민지", LocalDate.of(2000, 3, 15));
 
-        assertThat(result.getEmails()).hasSize(1);
-        assertThat(result.getEmails().get(0).getEmail()).isEqualTo("hye***@example.com");
-        assertThat(result.getEmails().get(0).getJoinedAt()).isEqualTo(LocalDate.of(2026, 9, 20));
+        assertThat(result.getEmail()).isEqualTo("hye***@example.com");
+        assertThat(result.getJoinedAt()).isEqualTo(LocalDate.of(2026, 9, 20));
     }
 
     @Test

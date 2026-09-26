@@ -2,10 +2,8 @@ package com.hyeja.domain.member.converter;
 
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
-import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO.FoundEmailDTO;
 import com.hyeja.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.domain.member.entity.Member;
-import java.util.List;
 
 // 회원 엔티티 ↔ DTO 변환을 모아 둡니다. 서비스는 조회·검증만 맡고 변환은 여기서 합니다.
 // (같은 converter 패키지명이지만 policy·profile의 JPA AttributeConverter와는 용도가 다릅니다.)
@@ -33,10 +31,8 @@ public class MemberConverter {
     // 이메일 찾기 응답으로 변환합니다. 이메일은 가리고, 가입일은 날짜만 내려줍니다.
     public static MemberFindEmailResponseDTO toFindEmailResponseDTO(Member member) {
         return MemberFindEmailResponseDTO.builder()
-                .emails(List.of(FoundEmailDTO.builder()
-                        .email(maskEmail(member.getEmail()))
-                        .joinedAt(member.getCreatedAt().toLocalDate())
-                        .build()))
+                .email(maskEmail(member.getEmail()))
+                .joinedAt(member.getCreatedAt().toLocalDate())
                 .build();
     }
 

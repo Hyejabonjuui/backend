@@ -2,14 +2,12 @@ package com.hyeja.domain.member.controller;
 
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
-import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO.FoundEmailDTO;
 import com.hyeja.domain.member.service.MemberService;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.ExceptionAdvice;
 import com.hyeja.global.exception.GeneralException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -185,17 +183,15 @@ class MemberControllerTest {
     @Test
     void findsEmail() throws Exception {
         when(memberService.findEmail("민지", LocalDate.of(2000, 3, 15))).thenReturn(MemberFindEmailResponseDTO.builder()
-                .emails(List.of(FoundEmailDTO.builder()
-                        .email("hye***@example.com")
-                        .joinedAt(LocalDate.of(2026, 9, 20))
-                        .build()))
+                .email("hye***@example.com")
+                .joinedAt(LocalDate.of(2026, 9, 20))
                 .build());
 
         mvc.perform(get("/api/members/find-email").param("nickname", "민지").param("birth", "2000-03-15"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS_001"))
-                .andExpect(jsonPath("$.result.emails[0].email").value("hye***@example.com"))
-                .andExpect(jsonPath("$.result.emails[0].joinedAt").value("2026-09-20"));
+                .andExpect(jsonPath("$.result.email").value("hye***@example.com"))
+                .andExpect(jsonPath("$.result.joinedAt").value("2026-09-20"));
     }
 
     @Test
