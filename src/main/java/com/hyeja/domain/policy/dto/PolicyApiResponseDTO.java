@@ -50,6 +50,7 @@ public class PolicyApiResponseDTO {
         @JsonProperty("earnEtcCn") private String incomeEtc;
         @JsonProperty("mrgSttsCd") private String marriageCode;
         @JsonProperty("jobCd") private String employmentCodes;
+        @JsonProperty("zipCd") private String regionCodes;
         @JsonProperty("aplyPrdSeCd") private String applyPeriodCode;
         @JsonProperty("addAplyQlfcCndCn") private String extraQualification;
         @JsonProperty("ptcpPrpTrgtCn") private String participantTarget;

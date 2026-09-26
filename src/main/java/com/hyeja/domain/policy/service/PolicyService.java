@@ -1,6 +1,7 @@
 package com.hyeja.domain.policy.service;
 
 import com.hyeja.domain.policy.converter.PolicyApiCodeConverter;
+import com.hyeja.domain.favorite.repository.FavoriteRepository;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO;
@@ -32,7 +33,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class PolicyService {
     private static final String HOUSING_CATEGORY = "주거";
     private static final int PAGE_SIZE = 100; // 100
-    private static final int MAX_PAGES = 20; // 20
+    private static final int MAX_PAGES = 1; // 20
 
     private final PolicyRepository policyRepository;
     private final RestTemplate restTemplate;
@@ -43,6 +44,7 @@ public class PolicyService {
     private final ProfileRepository profileRepository;
     private final PolicyRegionRepository policyRegionRepository;
     private final PolicyEligibilityEvaluator policyEligibilityEvaluator;
+    private final FavoriteRepository favoriteRepository;
 
     @Value("${youth.api.key}")
     private String apiKey;
@@ -146,6 +148,8 @@ public class PolicyService {
                 policy.getApplyUrl(),
                 policy.getRefUrl(),
                 policy.getActiveYn(),
+                favoriteRepository.existsByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(
+                        memberId, policyId),
                 overallStatus(conditions),
                 conditions);
     }

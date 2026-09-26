@@ -27,11 +27,14 @@ class RegionDataInitializerTest {
     @Test
     void loadsAllSigunguEvenWhenSeedExists() throws Exception {
         // dev-data.sql처럼 시드 지역이 먼저 들어가 있는 상태
-        regionRepository.save(Region.builder().regionCode("11440").sigunguName("서울특별시 마포구").build());
+        regionRepository.save(Region.builder()
+                .regionCode("11440").sigunguName("변경 전 이름").build());
 
         initializer().run();
 
         assertThat(regionRepository.count()).isEqualTo(SIGUNGU_COUNT);
+        assertThat(regionRepository.findById("11440")).get()
+                .extracting(Region::getSigunguName).isEqualTo("서울특별시 마포구");
         // 구 이름까지 온전히 저장 (예전 국토교통부 CSV에서는 "경기도 수원시"로 잘렸음)
         assertThat(regionRepository.findById("41111")).get()
                 .extracting(Region::getSigunguName).isEqualTo("경기도 수원시 장안구");

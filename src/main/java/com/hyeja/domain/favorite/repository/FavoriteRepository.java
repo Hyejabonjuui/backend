@@ -14,6 +14,11 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
 
     boolean existsByMemberMemberIdAndPolicyPolicyId(Long memberId, String policyId);
 
+    boolean existsByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(
+            Long memberId,
+            String policyId
+    );
+
     Optional<Favorite> findByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(
             Long memberId,
             String policyId

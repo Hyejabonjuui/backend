@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.member.repository.MemberRepository;
+import com.hyeja.domain.favorite.repository.FavoriteRepository;
 import com.hyeja.domain.policy.converter.PolicyApiCodeConverter;
 import com.hyeja.domain.policy.converter.PolicyApiConverter;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
@@ -43,10 +44,11 @@ class PolicyServiceTest {
     private final PolicyRegionRepository policyRegionRepository = mock(PolicyRegionRepository.class);
     private final PolicyEligibilityEvaluator policyEligibilityEvaluator =
             new PolicyEligibilityEvaluator(new PolicyIncomeEligibilityEvaluator());
+    private final FavoriteRepository favoriteRepository = mock(FavoriteRepository.class);
     private final PolicyService service = new PolicyService(
             policyRepository, restTemplate, codeConverter, policyAiAnalyzer,
             policySyncItemService, memberRepository, profileRepository, policyRegionRepository,
-            policyEligibilityEvaluator);
+            policyEligibilityEvaluator, favoriteRepository);
 
     @Test
     void mapsYouthPolicyApiFieldsToPolicyEntity() {
@@ -336,12 +338,16 @@ class PolicyServiceTest {
         when(profileRepository.findById("member@example.com")).thenReturn(Optional.of(profile));
         when(policyRegionRepository.findAllByPolicy_PolicyId("policy-detail"))
                 .thenReturn(List.of());
+        when(favoriteRepository
+                .existsByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(1L, "policy-detail"))
+                .thenReturn(true);
 
         PolicyDetailResponseDTO response =
                 service.getPolicyDetailForMember("policy-detail", 1L);
 
         assertThat(response.policyId()).isEqualTo("policy-detail");
         assertThat(response.conditions()).hasSize(5);
+        assertThat(response.isFavorite()).isTrue();
         assertThat(response.overallStatus()).isEqualTo(
                 com.hyeja.domain.policy.enums.EligibilityStatus.U);
     }

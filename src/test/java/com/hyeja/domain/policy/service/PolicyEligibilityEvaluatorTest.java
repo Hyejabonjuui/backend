@@ -76,4 +76,48 @@ class PolicyEligibilityEvaluatorTest {
                 .extracting(ConditionResultDTO::status)
                 .containsExactly(EligibilityStatus.Y);
     }
+
+    @Test
+    void comparesPolicyAndMemberSigunguRegionCodes() {
+        Policy policy = mock(Policy.class);
+        when(policy.getAgeLimitYn()).thenReturn(false);
+        when(policy.getIncomeConditionCode()).thenReturn(PolicyIncomeCondition.NO_RESTRICTION);
+        when(policy.getEmploymentCodes()).thenReturn(
+                Set.of(PolicyEmploymentCondition.NO_RESTRICTION));
+        when(policy.getHouselessYn()).thenReturn(false);
+
+        Region policyRegion = mock(Region.class);
+        when(policyRegion.getRegionCode()).thenReturn("11440");
+        when(policyRegion.getSigunguName()).thenReturn("서울특별시 마포구");
+        com.hyeja.domain.policy.entity.PolicyRegion policyRegionLink =
+                mock(com.hyeja.domain.policy.entity.PolicyRegion.class);
+        when(policyRegionLink.getRegion()).thenReturn(policyRegion);
+
+        Region matchingRegion = mock(Region.class);
+        when(matchingRegion.getRegionCode()).thenReturn("11440");
+        when(matchingRegion.getSigunguName()).thenReturn("서울특별시 마포구");
+        Profile matchingProfile = mock(Profile.class);
+        when(matchingProfile.getRegion()).thenReturn(matchingRegion);
+
+        Region differentRegion = mock(Region.class);
+        when(differentRegion.getRegionCode()).thenReturn("11680");
+        when(differentRegion.getSigunguName()).thenReturn("서울특별시 강남구");
+        Profile differentProfile = mock(Profile.class);
+        when(differentProfile.getRegion()).thenReturn(differentRegion);
+
+        ConditionResultDTO matchingResult = evaluator.evaluate(
+                        policy, matchingProfile, List.of(policyRegionLink)).stream()
+                .filter(result -> result.type() == EligibilityConditionType.REGION)
+                .findFirst().orElseThrow();
+        ConditionResultDTO differentResult = evaluator.evaluate(
+                        policy, differentProfile, List.of(policyRegionLink)).stream()
+                .filter(result -> result.type() == EligibilityConditionType.REGION)
+                .findFirst().orElseThrow();
+
+        assertThat(matchingResult.status()).isEqualTo(EligibilityStatus.Y);
+        assertThat(matchingResult.policyCondition()).isEqualTo("서울특별시 마포구");
+        assertThat(matchingResult.memberValue()).isEqualTo("서울특별시 마포구");
+        assertThat(differentResult.status()).isEqualTo(EligibilityStatus.N);
+        assertThat(differentResult.memberValue()).isEqualTo("서울특별시 강남구");
+    }
 }

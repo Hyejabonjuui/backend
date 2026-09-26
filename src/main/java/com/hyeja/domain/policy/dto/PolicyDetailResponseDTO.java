@@ -1,5 +1,6 @@
 package com.hyeja.domain.policy.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hyeja.domain.policy.enums.EligibilityConditionType;
 import com.hyeja.domain.policy.enums.EligibilityStatus;
 import com.hyeja.domain.policy.enums.PolicyCategory;
@@ -22,6 +23,7 @@ public record PolicyDetailResponseDTO(
         String applyUrl,
         String refUrl,
         Boolean activeYn,
+        @JsonProperty("isFavorite") boolean isFavorite,
         EligibilityStatus overallStatus,
         List<ConditionResultDTO> conditions) {
 
