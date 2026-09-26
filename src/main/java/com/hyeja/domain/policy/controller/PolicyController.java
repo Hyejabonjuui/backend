@@ -1,4 +1,4 @@
-package com.hyeja.domain.policy.ctrl;
+package com.hyeja.domain.policy.controller;
 
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.service.PolicyService;

@@ -1,4 +1,4 @@
-package com.hyeja.domain.cardnews.ctrl;
+package com.hyeja.domain.cardnews.controller;
 
 import java.util.List;
 

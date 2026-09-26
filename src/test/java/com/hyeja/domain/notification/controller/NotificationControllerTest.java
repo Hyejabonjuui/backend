@@ -1,4 +1,4 @@
-package com.hyeja.domain.notification.ctrl;
+package com.hyeja.domain.notification.controller;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.hyeja.domain.notification.controller.NotificationController;
 import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationItemDTO;
 import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationListDTO;
 import com.hyeja.domain.notification.service.NotificationService;

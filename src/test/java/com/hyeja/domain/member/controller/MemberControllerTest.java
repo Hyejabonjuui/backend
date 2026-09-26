@@ -1,4 +1,4 @@
-package com.hyeja.domain.member.ctrl;
+package com.hyeja.domain.member.controller;
 
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.domain.member.service.MemberService;

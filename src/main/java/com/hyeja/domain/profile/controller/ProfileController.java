@@ -1,4 +1,4 @@
-package com.hyeja.domain.profile.ctrl;
+package com.hyeja.domain.profile.controller;
 
 import com.hyeja.domain.profile.dto.ProfileResponseDTO;
 import com.hyeja.domain.profile.service.ProfileService;
