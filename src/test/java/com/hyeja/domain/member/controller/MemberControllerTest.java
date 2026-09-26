@@ -17,10 +17,13 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -215,5 +218,23 @@ class MemberControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_001"));
         verifyNoInteractions(memberService);
+    }
+
+    @Test
+    void withdraws() throws Exception {
+        mvc.perform(patch("/api/members/me/delete").param("memberId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"))
+                .andExpect(jsonPath("$.result").value(nullValue()));
+        verify(memberService).withdraw(1L);
+    }
+
+    @Test
+    void returnsNotFoundWhenWithdrawingDeletedMember() throws Exception {
+        doThrow(new GeneralException(ErrorStatus.MEMBER_NOT_FOUND)).when(memberService).withdraw(1L);
+
+        mvc.perform(patch("/api/members/me/delete").param("memberId", "1"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("MEMBER_001"));
     }
 }
