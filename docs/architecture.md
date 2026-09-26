@@ -98,6 +98,8 @@ HTTP 요청
 | `JWT_SECRET` | 로그인 토큰 서명 키 (32자 이상, 없으면 서버가 뜨지 않음) | 없음 |
 | `REDIS_HOST` | 로그아웃 토큰 저장용 Redis 호스트 | `localhost` |
 | `REDIS_PORT` | Redis 포트 | `6379` |
+| `MAIL_USERNAME` | 인증 메일을 보내는 Gmail 주소. 비어 있으면 메일 대신 서버 로그에 인증 코드를 출력 | 없음 |
+| `MAIL_PASSWORD` | Gmail 앱 비밀번호(16자리) | 없음 |
 
 ## 실행과 문서 경로
 
