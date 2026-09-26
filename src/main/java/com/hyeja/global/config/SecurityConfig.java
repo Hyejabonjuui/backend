@@ -36,11 +36,19 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // 기본은 로그인 필수입니다. 로그인 없이 쓰는 API만 아래에 허용합니다.
+                // 새 API를 만들면 자동으로 로그인 필수가 되므로, 비로그인용이면 여기에 추가해 주세요.
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/members/logout").authenticated()
-                        // TODO: memberId 쿼리 파라미터 → 토큰 전환 이슈에서 로그인이 필요한 API를 authenticated()로 바꿉니다.
-                        //       지금은 기존 API·프론트가 memberId로 동작하므로 모두 허용합니다.
-                        .anyRequest().permitAll())
+                        .requestMatchers(HttpMethod.POST, "/api/members", "/api/members/login").permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/members/find-email",
+                                "/api/regions",
+                                "/api/policies/housing",
+                                "/api/policies/card-news/guest",
+                                "/api/health").permitAll()
+                        // Swagger 화면, 그리고 예외 발생 시 Spring이 내부적으로 넘기는 /error
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/error").permitAll()
+                        .anyRequest().authenticated())
                 // 인증이 필요한 API에 토큰이 없거나 잘못됐으면 공통 응답 형식의 401을 내려줍니다.
                 .exceptionHandling(exception -> exception.authenticationEntryPoint((request, response, e) -> {
                     ErrorStatus error = ErrorStatus.UNAUTHORIZED;
