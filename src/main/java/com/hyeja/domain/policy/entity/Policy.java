@@ -89,6 +89,9 @@ public class Policy extends BaseEntity {
     @Column(name = "housing_type", length = 20)
     private String housingType;
 
+    @Column(name = "region_condition", length = 1000)
+    private String regionCondition;
+
     @Column(name = "apply_period_code", nullable = false, length = 10)
     private String applyPeriodCode;
 
@@ -123,7 +126,7 @@ public class Policy extends BaseEntity {
             PolicyIncomeCondition incomeConditionCode,
             Integer incomeMin, Integer incomeMax, String incomeEtc,
             PolicyMarriageCondition marriageCode, Set<PolicyEmploymentCondition> employmentCodes,
-            Boolean houselessYn, String housingType, String applyPeriodCode,
+            Boolean houselessYn, String housingType, String regionCondition, String applyPeriodCode,
             String extraQualification, LocalDate applyStartDate, LocalDate applyEndDate,
             String applyMethod, String applyUrl, String refUrl, Integer viewCount, Boolean activeYn) {
         this.policyId = policyId;
@@ -145,6 +148,7 @@ public class Policy extends BaseEntity {
         this.employmentCodes = employmentCodes;
         this.houselessYn = houselessYn;
         this.housingType = housingType;
+        this.regionCondition = regionCondition;
         this.applyPeriodCode = applyPeriodCode;
         this.extraQualification = extraQualification;
         this.applyStartDate = applyStartDate;
@@ -155,4 +159,5 @@ public class Policy extends BaseEntity {
         this.viewCount = viewCount == null ? 0 : viewCount;
         this.activeYn = activeYn == null ? true : activeYn;
     }
+
 }

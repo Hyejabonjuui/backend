@@ -19,6 +19,7 @@ import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.domain.region.repository.RegionRepository;
 import java.util.List;
+import java.util.stream.IntStream;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Propagation;
@@ -79,6 +80,8 @@ class PolicySyncItemServiceTest {
         assertThat(savedCardNews.get().getPolicy().getPolicyId()).isEqualTo("policy-1");
         assertThat(savedCardNews.get().getCardNo()).isEqualTo(1L);
         assertThat(savedCardNews.get().getBody()).isEqualTo("지원 내용");
+        assertThat(savedCardNews.get().getPolicy().getRegionCondition())
+                .isEqualTo("서울특별시 종로구, 서울특별시 마포구");
     }
 
     @Test
@@ -116,6 +119,8 @@ class PolicySyncItemServiceTest {
         service.save(item, analysis);
 
         verify(regionRepository).findAllByRegionCodeStartingWith("11");
+        verify(policyRepository).save(org.mockito.ArgumentMatchers.argThat(policy ->
+                "서울특별시".equals(policy.getRegionCondition())));
         verify(policyRegionRepository).saveAll(org.mockito.ArgumentMatchers.argThat(regions -> {
             java.util.List<com.hyeja.domain.policy.entity.PolicyRegion> values =
                     new java.util.ArrayList<>();
@@ -124,5 +129,36 @@ class PolicySyncItemServiceTest {
                     .collect(java.util.stream.Collectors.toSet())
                     .equals(java.util.Set.of("11110", "11680"));
         }));
+    }
+
+    @Test
+    void summarizesNationwideRegionCodesInsteadOfExceedingColumnLength() {
+        PolicyItem item = new PolicyItem();
+        item.setPolicyId("nationwide-policy");
+        item.setPolicyName("전국 정책");
+        List<Region> regions = IntStream.rangeClosed(1, 200)
+                .mapToObj(number -> Region.builder()
+                        .regionCode(String.format("%05d", number))
+                        .sigunguName("테스트도 지역" + number)
+                        .build())
+                .toList();
+        item.setRegionCodes(regions.stream()
+                .map(Region::getRegionCode)
+                .collect(java.util.stream.Collectors.joining(",")));
+        PolicyAiAnalysis analysis = new PolicyAiAnalysis(
+                PolicyCategory.OTHER, 0.8, "기타",
+                null, 0.5, "확인 필요",
+                PolicyIncomeCondition.UNKNOWN, null, null,
+                0.5, "확인 필요");
+        when(regionRepository.findAllById(any())).thenReturn(regions);
+        when(policyRepository.save(any(Policy.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(cardNewsRepository.existsByPolicy_PolicyIdAndCardNo("nationwide-policy", 1L))
+                .thenReturn(true);
+
+        service.save(item, analysis);
+
+        verify(policyRepository).save(org.mockito.ArgumentMatchers.argThat(policy ->
+                "전국".equals(policy.getRegionCondition())));
     }
 }

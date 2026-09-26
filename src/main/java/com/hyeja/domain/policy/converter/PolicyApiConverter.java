@@ -19,7 +19,17 @@ public class PolicyApiConverter {
 
     public Policy convert(PolicyItem item, PolicyCategory category, Boolean houselessYn,
             PolicyIncomeCondition incomeCondition, Integer incomeMin, Integer incomeMax) {
+        return convert(item, category, houselessYn, incomeCondition, incomeMin, incomeMax, null);
+    }
+
+    public Policy convert(PolicyItem item, PolicyCategory category, Boolean houselessYn,
+            PolicyIncomeCondition incomeCondition, Integer incomeMin, Integer incomeMax,
+            String regionCondition) {
         DateRange dates = parseDateRange(item.getApplyYmd());
+        Integer minAge = parsePositiveInteger(item.getMinAge());
+        Integer maxAge = parsePositiveInteger(item.getMaxAge());
+        boolean hasAgeLimit = toBoolean(item.getAgeLimitYn(), false)
+                && (minAge != null || maxAge != null);
         return Policy.builder()
                 .policyId(trimToNull(item.getPolicyId()))
                 .policyName(defaultIfBlank(item.getPolicyName(), "제목 없음"))
@@ -29,9 +39,9 @@ public class PolicyApiConverter {
                 .keywords(trimToNull(item.getKeywords()))
                 .description(null)
                 .supportContent(trimToNull(item.getSupportContent()))
-                .minAge(parseNullableInteger(item.getMinAge()))
-                .maxAge(parseNullableInteger(item.getMaxAge()))
-                .ageLimitYn(toBoolean(item.getAgeLimitYn(), false))
+                .minAge(minAge)
+                .maxAge(maxAge)
+                .ageLimitYn(hasAgeLimit)
                 .incomeConditionCode(incomeCondition)
                 .incomeMin(incomeMin)
                 .incomeMax(incomeMax)
@@ -40,6 +50,7 @@ public class PolicyApiConverter {
                 .employmentCodes(codeConverter.convertEmployment(item.getEmploymentCodes()))
                 .houselessYn(houselessYn)
                 .housingType(trimToNull(item.getSubCategory()))
+                .regionCondition(regionCondition)
                 .applyPeriodCode(defaultIfBlank(item.getApplyPeriodCode(), "UNKNOWN"))
                 .extraQualification(joinNonBlank(
                         item.getExtraQualification(), item.getParticipantTarget()))
@@ -79,6 +90,11 @@ public class PolicyApiConverter {
         } catch (NumberFormatException ignored) {
             return null;
         }
+    }
+
+    private Integer parsePositiveInteger(String value) {
+        Integer parsed = parseNullableInteger(value);
+        return parsed == null || parsed <= 0 ? null : parsed;
     }
 
     private int parseInteger(String value, int defaultValue) {

@@ -122,6 +122,23 @@ class PolicyServiceTest {
     }
 
     @Test
+    void mapsZeroAgeRangeToNoAgeLimit() {
+        PolicyItem item = new PolicyItem();
+        item.setPolicyId("no-age-limit-policy");
+        item.setPolicyName("연령 제한 없는 정책");
+        item.setMinAge("0");
+        item.setMaxAge("0");
+        item.setAgeLimitYn("Y");
+
+        Policy policy = apiConverter.convert(item, PolicyCategory.OTHER, null,
+                PolicyIncomeCondition.UNKNOWN, null, null);
+
+        assertThat(policy.getMinAge()).isNull();
+        assertThat(policy.getMaxAge()).isNull();
+        assertThat(policy.getAgeLimitYn()).isFalse();
+    }
+
+    @Test
     void mapsNonApprovedPolicyAsInactive() {
         PolicyItem item = new PolicyItem();
         item.setPolicyId("policy-3");
@@ -296,7 +313,9 @@ class PolicyServiceTest {
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class))).thenReturn(response);
 
         assertThat(service.fetchAndSaveHousingPolicies()).isZero();
-        verify(restTemplate, times(20)).getForObject(
+        int configuredMaxPages = (int) ReflectionTestUtils.getField(
+                PolicyService.class, "MAX_PAGES");
+        verify(restTemplate, times(configuredMaxPages)).getForObject(
                 org.mockito.ArgumentMatchers.any(java.net.URI.class),
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class));
     }
