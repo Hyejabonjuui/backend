@@ -57,7 +57,7 @@ public class MemberController {
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             )
     })
-    @PostMapping
+    @PostMapping("")
     public ApiResponse<MemberAccountResponseDTO> signup(
             @Valid @RequestBody MemberSignupRequestDTO request
     ) {

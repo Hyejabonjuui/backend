@@ -51,7 +51,7 @@ public class NotificationController {
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             )
     })
-    @GetMapping
+    @GetMapping("")
     public ApiResponse<NotificationListDTO> getNotifications(
             @Parameter(
                     name = "memberId",

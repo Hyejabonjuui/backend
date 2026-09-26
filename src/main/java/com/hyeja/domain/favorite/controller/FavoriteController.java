@@ -52,7 +52,7 @@ public class FavoriteController {
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             )
     })
-    @GetMapping
+    @GetMapping("")
     public ApiResponse<FavoriteListDTO> getMyFavorites(
             @Parameter(
                     name = "memberId",
