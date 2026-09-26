@@ -68,6 +68,7 @@ Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한
 - JSON 필드명은 기존 DTO의 Jackson 설정을 확인한다. snake_case와 camelCase를 임의로 일괄 변경하지 않는다.
 - 외부 정책 ID는 숫자로 변환하지 않고 문자열로 유지한다.
 - CardNews `title`은 배열이 아니라 nullable 문자열이다.
+- 알림 응답의 `apply_end_date`는 알림 생성 시 저장한 정책 마감일 스냅샷이다.
 - enum은 표시 문구가 아니라 코드의 enum 상수와 converter 규칙을 사용한다.
 
 ## API 추가·수정 체크리스트

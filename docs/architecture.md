@@ -21,7 +21,7 @@ com.hyeja
 │   ├── cardnews       # ctrl, dto, entity, repository, service
 │   ├── favorite       # entity
 │   ├── member         # ctrl, dto, entity, repository, service, converter, enums
-│   ├── notification   # controller, dto, entity, repository, service, converter
+│   ├── notification   # controller, dto, entity, repository, service, scheduler, converter
 │   ├── policy         # ctrl, dto, entity, repository, service, converter, enums
 │   ├── profile        # entity, converter, enums
 │   ├── region         # entity
@@ -29,7 +29,7 @@ com.hyeja
 └── global
     ├── apiPayload     # 공통 응답과 상태 코드
     ├── baseEntity     # 감사 시각과 deletedAt
-    ├── config         # JPA Auditing, Swagger, RestTemplate
+    ├── config         # JPA Auditing, Scheduling, Swagger, RestTemplate
     ├── exception      # 전역 예외 처리
     └── health         # 헬스체크
 ```
@@ -71,6 +71,14 @@ HTTP 요청
 - 외부 분류가 `주거`인 데이터만 저장한다.
 - 동기화 스케줄러는 없고 `/api/policies/sync`로 수동 실행한다.
 - 외부 정책 ID를 서비스의 문자열 PK로 그대로 저장한다.
+
+## 관심 정책 마감 알림
+
+- 서버 스케줄러는 `Asia/Seoul` 기준 매일 00시 05분에 실행된다.
+- 실행일로부터 7일 뒤 마감되는 활성 관심 정책을 회원별로 조회한다.
+- 삭제된 관심 정책·회원·정책과 비활성 정책은 알림 생성 대상에서 제외한다.
+- 동일 회원·정책·마감일 알림은 중복 생성하지 않는다.
+- 스케줄러는 기준일을 전달하고, 조회와 생성 트랜잭션은 알림 생성 서비스가 담당한다.
 
 ## 환경변수
 
