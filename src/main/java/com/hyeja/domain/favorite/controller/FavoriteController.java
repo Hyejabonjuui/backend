@@ -15,6 +15,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,7 +45,7 @@ public class FavoriteController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "회원 ID 누락 (COMMON_001)",
+                    description = "page가 0 미만이거나 size가 0 이하 (COMMON_001)",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -55,15 +56,7 @@ public class FavoriteController {
     })
     @GetMapping("")
     public ApiResponse<FavoriteListDTO> getMyFavorites(
-            @Parameter(
-                    name = "memberId",
-                    description = "조회할 회원 ID",
-                    in = ParameterIn.QUERY,
-                    example = "1",
-                    required = true
-            )
-            @RequestParam(name = "memberId")
-            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId,
+            @AuthenticationPrincipal Long memberId,
             @Parameter(
                     name = "keyword",
                     description = "정책명 또는 지원 내용 검색어. 생략하거나 공백이면 전체 목록을 조회합니다.",
@@ -103,11 +96,6 @@ public class FavoriteController {
                     description = "관심 정책 등록 성공 (SUCCESS_001)"
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "400",
-                    description = "회원 ID 누락",
-                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
                     description = "없거나 탈퇴한 회원 (MEMBER_001) 또는 유효하지 않은 정책 (POLICY_001)",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
@@ -128,15 +116,7 @@ public class FavoriteController {
                     required = true
             )
             @PathVariable(name = "policyId") String policyId,
-            @Parameter(
-                    name = "memberId",
-                    description = "관심 정책을 등록할 회원 ID",
-                    in = ParameterIn.QUERY,
-                    example = "1",
-                    required = true
-            )
-            @RequestParam(name = "memberId")
-            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
+            @AuthenticationPrincipal Long memberId
     ) {
         FavoriteItemDTO result = favoriteService.createFavorite(memberId, policyId);
         return ApiResponse.onSuccess(result);
@@ -153,7 +133,7 @@ public class FavoriteController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "회원 ID 또는 정책 ID 누락",
+                    description = "정책 ID 누락",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -174,15 +154,7 @@ public class FavoriteController {
             )
             @PathVariable(name = "policyId")
             @NotBlank(message = "정책 ID는 필수입니다.") String policyId,
-            @Parameter(
-                    name = "memberId",
-                    description = "관심 정책을 삭제할 회원 ID",
-                    in = ParameterIn.QUERY,
-                    example = "1",
-                    required = true
-            )
-            @RequestParam(name = "memberId")
-            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
+            @AuthenticationPrincipal Long memberId
     ) {
         favoriteService.deleteFavorite(memberId, policyId);
         return ApiResponse.onSuccess(null);

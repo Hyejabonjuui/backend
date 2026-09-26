@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,12 +45,12 @@ public class PolicyController {
 
     @Operation(
             summary = "정책 상세 조회",
-            description = "정책 ID와 회원 ID를 기준으로 회원 맞춤 정보를 포함한 정책 상세 내용을 조회합니다."
+            description = "정책 ID와 로그인한 회원(토큰)을 기준으로 회원 맞춤 정보를 포함한 정책 상세 내용을 조회합니다."
     )
-    @GetMapping("/{policyId}/{memberId}")
+    @GetMapping("/{policyId}")
     public ApiResponse<PolicyDetailResponseDTO> getPolicyDetailForMember(
             @PathVariable("policyId") String policyId,
-            @PathVariable("memberId") Long memberId) {
+            @AuthenticationPrincipal Long memberId) {
         return ApiResponse.onSuccess(
                 policyService.getPolicyDetailForMember(policyId, memberId));
     }

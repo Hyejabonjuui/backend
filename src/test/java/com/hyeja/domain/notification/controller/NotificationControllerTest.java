@@ -15,11 +15,15 @@ import com.hyeja.global.exception.ExceptionAdvice;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -35,8 +39,22 @@ class NotificationControllerTest {
     void setUp() {
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new NotificationController(notificationService))
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setControllerAdvice(new ExceptionAdvice())
                 .build();
+        loginAs(1L);
+    }
+
+    // 토큰 대신 "1번 회원으로 로그인한 상태"를 직접 만들어, @AuthenticationPrincipal Long memberId에 1이 들어가게 합니다.
+    // (실제 토큰 검증은 SecurityTest에서 확인합니다.)
+    private static void loginAs(Long memberId) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(memberId, "access-token", List.of()));
+    }
+
+    @AfterEach
+    void logout() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -60,7 +78,6 @@ class NotificationControllerTest {
         when(notificationService.getNotifications(1L, 0, 8)).thenReturn(pageResponse);
 
         mockMvc.perform(get("/api/notification")
-                        .param("memberId", "1")
                         .param("page", "0")
                         .param("size", "8"))
                 .andExpect(status().isOk())
@@ -93,8 +110,7 @@ class NotificationControllerTest {
                 .build();
         when(notificationService.markAsRead(1L, 10L)).thenReturn(response);
 
-        mockMvc.perform(patch("/api/notification/{notificationId}/read", 10L)
-                        .param("memberId", "1"))
+        mockMvc.perform(patch("/api/notification/{notificationId}/read", 10L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.code").value("SUCCESS_001"))
@@ -111,8 +127,7 @@ class NotificationControllerTest {
 
     @Test
     void deletesNotificationForMember() throws Exception {
-        mockMvc.perform(delete("/api/notification/{notificationId}", 10L)
-                        .param("memberId", "1"))
+        mockMvc.perform(delete("/api/notification/{notificationId}", 10L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.code").value("SUCCESS_001"))
@@ -120,19 +135,5 @@ class NotificationControllerTest {
                 .andExpect(jsonPath("$.result").doesNotExist());
 
         verify(notificationService).deleteNotification(1L, 10L);
-    }
-
-    @Test
-    void returnsBadRequestWithoutMemberId() throws Exception {
-        mockMvc.perform(get("/api/notification"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("COMMON_001"));
-    }
-
-    @Test
-    void returnsBadRequestWhenMemberIdIsNotPositive() throws Exception {
-        mockMvc.perform(get("/api/notification").param("memberId", "0"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("COMMON_001"));
     }
 }

@@ -13,14 +13,13 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -73,20 +72,11 @@ public class MemberController {
         return ApiResponse.onSuccess(result);
     }
 
-    // 내 계정 조회 (마이페이지 S-08 계정 탭) — 예: GET /api/members/me?memberId=1
-    // TODO: 인증(JWT) 기반이 생기면 memberId 쿼리 파라미터를 없애고 토큰에서 회원을 식별합니다.
-    //       그 전까지는 memberId만 알면 누구의 계정이든 조회되므로 임시 방식입니다.
+    // 내 계정 조회 (마이페이지 S-08 계정 탭) — 예: GET /api/members/me (헤더 Authorization: Bearer <accessToken>)
+    // memberId는 인증 필터가 토큰에서 꺼낸 회원 ID입니다. 토큰이 없으면 SecurityConfig가 401로 막습니다.
     @GetMapping("/me")
     public ApiResponse<MemberAccountResponseDTO> getMyAccount(
-            @Parameter(
-                    name = "memberId",
-                    description = "조회할 회원 ID",
-                    in = ParameterIn.QUERY,
-                    example = "1",
-                    required = true
-            )
-            @RequestParam(name = "memberId")
-            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
+            @AuthenticationPrincipal Long memberId
     ) {
         MemberAccountResponseDTO result = memberService.getMyAccount(memberId);
         return ApiResponse.onSuccess(result);
@@ -126,9 +116,8 @@ public class MemberController {
         return ApiResponse.onSuccess(memberService.findEmail(nickname, birth));
     }
 
-    // 회원 탈퇴 (마이페이지 S-08 계정 탭) — 예: PATCH /api/members/me/delete?memberId=1
+    // 회원 탈퇴 (마이페이지 S-08 계정 탭) — 예: PATCH /api/members/me/delete
     // 행을 지우지 않고 deleted_at을 찍는 soft delete라 DELETE가 아니라 PATCH입니다 (팀 확정 경로).
-    // TODO: 인증(JWT) 기반이 생기면 memberId 쿼리 파라미터를 없애고 토큰에서 회원을 식별합니다.
     @Operation(
             summary = "회원 탈퇴",
             description = "회원·내 조건은 soft delete(deleted_at 기록), 관심 정책·알림은 삭제합니다. 되돌릴 수 없습니다. "
@@ -140,11 +129,6 @@ public class MemberController {
                     description = "회원 탈퇴 성공 (SUCCESS_001)"
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "400",
-                    description = "memberId 누락 또는 양수가 아님 (COMMON_001)",
-                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
                     description = "없거나 이미 탈퇴한 회원 (MEMBER_001)",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
@@ -152,15 +136,7 @@ public class MemberController {
     })
     @PatchMapping("/me/delete")
     public ApiResponse<Void> withdraw(
-            @Parameter(
-                    name = "memberId",
-                    description = "탈퇴할 회원 ID",
-                    in = ParameterIn.QUERY,
-                    example = "1",
-                    required = true
-            )
-            @RequestParam(name = "memberId")
-            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
+            @AuthenticationPrincipal Long memberId
     ) {
         memberService.withdraw(memberId);
         return ApiResponse.onSuccess(null);
@@ -201,7 +177,6 @@ public class MemberController {
             description = "요청 헤더의 토큰을 무효화합니다. 같은 토큰으로 다시 요청하면 401입니다. "
                     + "Swagger에서는 오른쪽 위 Authorize 버튼에 로그인으로 받은 accessToken을 넣고 호출합니다."
     )
-    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
