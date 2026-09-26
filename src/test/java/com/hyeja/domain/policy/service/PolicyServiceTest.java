@@ -16,6 +16,7 @@ import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO;
 import com.hyeja.domain.policy.entity.Policy;
+import com.hyeja.domain.policy.entity.PolicyRegion;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
 import com.hyeja.domain.policy.enums.PolicyMarriageCondition;
@@ -26,6 +27,8 @@ import com.hyeja.domain.policy.repository.PolicyRepository;
 import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.profile.repository.ProfileRepository;
 import com.hyeja.domain.profile.entity.Profile;
+import com.hyeja.domain.profile.enums.EmploymentStatus;
+import com.hyeja.domain.region.entity.Region;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -422,6 +425,59 @@ class PolicyServiceTest {
         assertThat(response.isFavorite()).isTrue();
         assertThat(response.overallStatus()).isEqualTo(
                 com.hyeja.domain.policy.enums.EligibilityStatus.UNKNOWN);
+    }
+
+    @Test
+    void returnsSingleOriginalPolicyRegionInMemberDetail() {
+        Policy policy = mock(Policy.class);
+        when(policy.getPolicyId()).thenReturn("busan-policy");
+        when(policy.getPolicyName()).thenReturn("부산 청년 정책");
+        when(policy.getCategories()).thenReturn(Set.of(PolicyCategory.OTHER));
+        when(policy.getAgeLimitYn()).thenReturn(false);
+        when(policy.getIncomeConditionCode()).thenReturn(PolicyIncomeCondition.NO_RESTRICTION);
+        when(policy.getEmploymentCodes()).thenReturn(
+                Set.of(PolicyEmploymentCondition.NO_RESTRICTION));
+        when(policy.getHouselessRequirement())
+                .thenReturn(PolicyHouselessRequirement.NOT_REQUIRED);
+
+        Region policyRegion = Region.builder()
+                .regionCode("26000")
+                .sigunguName("부산광역시")
+                .build();
+        PolicyRegion policyRegionLink = PolicyRegion.builder()
+                .policy(policy)
+                .region(policyRegion)
+                .build();
+
+        Region memberRegion = Region.builder()
+                .regionCode("11200")
+                .sigunguName("서울특별시 성동구")
+                .build();
+        Member member = mock(Member.class);
+        when(member.getEmail()).thenReturn("member@example.com");
+        Profile profile = mock(Profile.class);
+        when(profile.getRegion()).thenReturn(memberRegion);
+        when(profile.getEmploymentCode()).thenReturn(EmploymentStatus.UNEMPLOYED);
+        when(profile.getHouselessYn()).thenReturn(true);
+
+        when(policyRepository.findById("busan-policy")).thenReturn(Optional.of(policy));
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(profileRepository.findById("member@example.com")).thenReturn(Optional.of(profile));
+        when(policyRegionRepository.findAllByPolicy_PolicyId("busan-policy"))
+                .thenReturn(List.of(policyRegionLink));
+
+        PolicyDetailResponseDTO response =
+                service.getPolicyDetailForMember("busan-policy", 1L);
+        PolicyDetailResponseDTO.ConditionResultDTO regionCondition = response.conditions().stream()
+                .filter(condition -> condition.type()
+                        == com.hyeja.domain.policy.enums.EligibilityConditionType.REGION)
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(regionCondition.status()).isEqualTo(
+                com.hyeja.domain.policy.enums.EligibilityStatus.DISABLE);
+        assertThat(regionCondition.policyCondition()).isEqualTo("부산광역시");
+        assertThat(regionCondition.memberValue()).isEqualTo("서울특별시 성동구");
     }
 
     private Set<PolicyEmploymentCondition> mapEmploymentConditions(String codes) {

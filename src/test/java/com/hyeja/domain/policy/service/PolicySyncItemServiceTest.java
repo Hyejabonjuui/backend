@@ -57,9 +57,7 @@ class PolicySyncItemServiceTest {
                 .thenReturn(false);
         Region firstRegion = Region.builder()
                 .regionCode("11110").sigunguName("서울특별시 종로구").build();
-        Region secondRegion = Region.builder()
-                .regionCode("11440").sigunguName("서울특별시 마포구").build();
-        when(regionRepository.findAllById(any())).thenReturn(List.of(firstRegion, secondRegion));
+        when(regionRepository.findAllById(any())).thenReturn(List.of(firstRegion));
         AtomicReference<CardNews> savedCardNews = new AtomicReference<>();
         when(cardNewsRepository.save(any(CardNews.class))).thenAnswer(invocation -> {
             CardNews cardNews = invocation.getArgument(0);
@@ -74,10 +72,8 @@ class PolicySyncItemServiceTest {
         verify(policyRegionRepository).saveAll(org.mockito.ArgumentMatchers.argThat(regions -> {
             java.util.List<com.hyeja.domain.policy.entity.PolicyRegion> values = new java.util.ArrayList<>();
             regions.forEach(values::add);
-            return values.size() == 2
-                    && values.stream().map(value -> value.getRegion().getRegionCode())
-                    .collect(java.util.stream.Collectors.toSet())
-                    .equals(java.util.Set.of("11110", "11440"));
+            return values.size() == 1
+                    && values.get(0).getRegion().getRegionCode().equals("11110");
         }));
         assertThat(savedCardNews.get()).isNotNull();
         assertThat(savedCardNews.get().getPolicy().getPolicyId()).isEqualTo("policy-1");
@@ -140,7 +136,7 @@ class PolicySyncItemServiceTest {
     }
 
     @Test
-    void storesManyApiRegionCodesWithoutBuildingRegionConditionText() {
+    void storesOnlyFirstRegionWhenApiValueContainsMultipleCodes() {
         PolicyItem item = new PolicyItem();
         item.setPolicyId("nationwide-policy");
         item.setPolicyName("전국 정책");
@@ -161,7 +157,7 @@ class PolicySyncItemServiceTest {
                 0.5, "확인 필요",
                 PolicyIncomeCondition.UNKNOWN, null, null,
                 0.5, "확인 필요");
-        when(regionRepository.findAllById(any())).thenReturn(regions);
+        when(regionRepository.findAllById(any())).thenReturn(List.of(regions.get(0)));
         when(policyRepository.save(any(Policy.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(cardNewsRepository.existsByPolicy_PolicyIdAndCardNo("nationwide-policy", 1L))
@@ -173,7 +169,8 @@ class PolicySyncItemServiceTest {
             java.util.List<com.hyeja.domain.policy.entity.PolicyRegion> policyRegions =
                     new java.util.ArrayList<>();
             values.forEach(policyRegions::add);
-            return policyRegions.size() == 200;
+            return policyRegions.size() == 1
+                    && policyRegions.get(0).getRegion().getRegionCode().equals("00001");
         }));
     }
 }
