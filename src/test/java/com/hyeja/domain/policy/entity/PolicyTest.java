@@ -1,6 +1,9 @@
 package com.hyeja.domain.policy.entity;
 
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
+import com.hyeja.domain.policy.enums.PolicyMarriageCondition;
+import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
 import com.hyeja.global.config.JpaAuditingConfig;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
@@ -37,9 +40,10 @@ class PolicyTest {
                 .description(longText)
                 .supportContent(longText)
                 .minAge(19).maxAge(34).ageLimitYn(true)
-                .incomeConditionCode("TEST")
+                .incomeConditionCode(PolicyIncomeCondition.COMPARABLE)
                 .incomeMin(0).incomeMax(5000).incomeEtc(longText)
-                .marriageCode("TEST").employmentCodes("TEST")
+                .marriageCode(PolicyMarriageCondition.MARRIED)
+                .employmentCodes(java.util.Set.of(PolicyEmploymentCondition.EMPLOYED))
                 .houselessYn(false).housingType("TEST")
                 .extraQualification(longText)
                 .applyStartDate(LocalDate.of(2026, 1, 1))
@@ -64,12 +68,13 @@ class PolicyTest {
         assertThat(stored.getMinAge()).isEqualTo(19);
         assertThat(stored.getMaxAge()).isEqualTo(34);
         assertThat(stored.getAgeLimitYn()).isTrue();
-        assertThat(stored.getIncomeConditionCode()).isEqualTo("TEST");
+        assertThat(stored.getIncomeConditionCode()).isEqualTo(PolicyIncomeCondition.COMPARABLE);
         assertThat(stored.getIncomeMin()).isZero();
         assertThat(stored.getIncomeMax()).isEqualTo(5000);
         assertThat(stored.getIncomeEtc()).isEqualTo(longText);
-        assertThat(stored.getMarriageCode()).isEqualTo("TEST");
-        assertThat(stored.getEmploymentCodes()).isEqualTo("TEST");
+        assertThat(stored.getMarriageCode()).isEqualTo(PolicyMarriageCondition.MARRIED);
+        assertThat(stored.getEmploymentCodes())
+                .containsExactly(PolicyEmploymentCondition.EMPLOYED);
         assertThat(stored.getHouselessYn()).isFalse();
         assertThat(stored.getHousingType()).isEqualTo("TEST");
         assertThat(stored.getApplyPeriodCode()).isEqualTo("TEST");

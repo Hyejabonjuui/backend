@@ -124,7 +124,7 @@ class PolicyRegionTest {
 
     private Policy persistPolicy(String id) {
         Policy value = Policy.builder().policyId(id).policyName("테스트 정책")
-                .category(PolicyCategory.MONTHLY_RENT).ageLimitYn(false).applyPeriodCode("TEST").build();
+                .category(PolicyCategory.OTHER).ageLimitYn(false).applyPeriodCode("TEST").build();
         entityManager.persist(value);
         return value;
     }

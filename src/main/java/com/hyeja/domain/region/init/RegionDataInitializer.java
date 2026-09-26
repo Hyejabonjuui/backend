@@ -19,7 +19,8 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -61,27 +62,34 @@ public class RegionDataInitializer implements CommandLineRunner {
 
             // 1. 이미 DB에 있는 코드는 건너뜁니다. 시드(dev-data.sql)가 일부 지역을 먼저 넣어도 나머지를 채우고,
             //    서버를 다시 켜도 중복 저장되지 않습니다. (예전에는 count() > 0이면 건너뛰어, 새 DB에서 시드 10건만 남았습니다.)
-            Set<String> existingCodes = regionRepository.findAll().stream()
-                    .map(Region::getRegionCode)
-                    .collect(Collectors.toSet());
+            Map<String, Region> existingRegions = regionRepository.findAll().stream()
+                    .collect(Collectors.toMap(Region::getRegionCode, Function.identity()));
 
             // 2. CSV 값을 그대로 저장합니다. 예: 41111 / "경기도 수원시 장안구"
-            List<Region> newRegions = csvDataList.stream()
-                    .map(dto -> Region.builder()
-                            .regionCode(dto.getRegionCode().trim())
-                            .sigunguName(dto.getSigunguName().trim())
-                            .build())
-                    .filter(region -> !existingCodes.contains(region.getRegionCode()))
+            List<Region> regions = csvDataList.stream()
+                    .map(dto -> {
+                        String regionCode = dto.getRegionCode().trim();
+                        String sigunguName = dto.getSigunguName().trim();
+                        Region existingRegion = existingRegions.get(regionCode);
+                        if (existingRegion != null) {
+                            existingRegion.updateSigunguName(sigunguName);
+                            return existingRegion;
+                        }
+                        return Region.builder()
+                                .regionCode(regionCode)
+                                .sigunguName(sigunguName)
+                                .build();
+                    })
                     .toList();
 
-            if (newRegions.isEmpty()) {
-                log.info("[RegionDataInitializer] Region data already loaded. Nothing to add.");
+            if (regions.isEmpty()) {
+                log.info("[RegionDataInitializer] Region CSV is empty.");
                 return;
             }
 
-            // 3. DB에 일괄 저장
-            regionRepository.saveAll(newRegions);
-            log.info("[RegionDataInitializer] Uploaded {} new regions.", newRegions.size());
+            // 3. 코드가 있으면 이름을 갱신하고, 없으면 새 지역을 추가합니다.
+            regionRepository.saveAll(regions);
+            log.info("[RegionDataInitializer] Synchronized {} regions.", regions.size());
 
         } catch (Exception e) {
             log.error("[RegionDataInitializer] Failed to upload region CSV data", e);

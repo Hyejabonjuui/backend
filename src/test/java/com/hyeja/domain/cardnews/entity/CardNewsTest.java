@@ -1,7 +1,7 @@
 package com.hyeja.domain.cardnews.entity;
 
-import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.entity.Policy;
+import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.global.config.JpaAuditingConfig;
 import jakarta.persistence.EntityManager;
 import org.hibernate.exception.ConstraintViolationException;
@@ -135,7 +135,7 @@ class CardNewsTest {
 
     private Policy persistPolicy(String id) {
         Policy value = Policy.builder().policyId(id).policyName("테스트 정책")
-                .category(PolicyCategory.MONTHLY_RENT).ageLimitYn(false).applyPeriodCode("TEST").build();
+                .category(PolicyCategory.OTHER).ageLimitYn(false).applyPeriodCode("TEST").build();
         entityManager.persist(value);
         return value;
     }

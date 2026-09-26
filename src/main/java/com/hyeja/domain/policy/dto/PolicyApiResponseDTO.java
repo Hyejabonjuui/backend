@@ -1,63 +1,65 @@
 package com.hyeja.domain.policy.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
-import java.util.List;
-
 @Getter
 @Setter
 @ToString
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class PolicyApiResponseDTO {
-
     private int resultCode;
     private String resultMessage;
     private ResultData result;
 
-    @Getter
-    @Setter
-    @ToString
+    @Getter @Setter @ToString
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ResultData {
         private Pagging pagging;
-        
-        @JsonProperty("youthPolicyList")
-        private List<PolicyItem> youthPolicyList;
+        @JsonProperty("youthPolicyList") private List<PolicyItem> youthPolicyList;
     }
 
-    @Getter
-    @Setter
-    @ToString
+    @Getter @Setter @ToString
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Pagging {
         private int totCount;
         private int pageNum;
         private int pageSize;
     }
 
-    @Getter
-    @Setter
-    @ToString
+    @Getter @Setter @ToString
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class PolicyItem {
-        @JsonProperty("plcyNo")
-        private String policyId;          // 정책 ID
-
-        @JsonProperty("plcyNm")
-        private String policyName;        // 정책명
-
-        @JsonProperty("lclsfNm")
-        private String category;          // 정책 대분야 (예: 주거, 일자리 등)
-
-        @JsonProperty("plcyExplnCn")
-        private String description;       // 정책 설명
-
-        @JsonProperty("plcySprtCn")
-        private String supportContent;    // 지원 내용
-
-        @JsonProperty("aplyUrlAddr")
-        private String applyUrl;          // 신청 URL
-
-        @JsonProperty("aplyYmd")
-        private String applyYmd;          // 신청 기간 (예: "20260923 ~ 20260928")
+        @JsonProperty("plcyNo") private String policyId;
+        @JsonProperty("plcyNm") private String policyName;
+        @JsonProperty("lclsfNm") private String category; // ai
+        @JsonProperty("mclsfNm") private String subCategory;
+        @JsonProperty("plcyKywdNm") private String keywords;
+        @JsonProperty("plcyExplnCn") private String policyExplanation;
+        @JsonProperty("plcySprtCn") private String supportContent;
+        @JsonProperty("sprtTrgtMinAge") private String minAge;
+        @JsonProperty("sprtTrgtMaxAge") private String maxAge;
+        @JsonProperty("sprtTrgtAgeLmtYn") private String ageLimitYn;
+        @JsonProperty("earnCndSeCd") private String incomeConditionCode;
+        @JsonProperty("earnMinAmt") private String incomeMin;
+        @JsonProperty("earnMaxAmt") private String incomeMax;
+        @JsonProperty("earnEtcCn") private String incomeEtc;
+        @JsonProperty("mrgSttsCd") private String marriageCode;
+        @JsonProperty("jobCd") private String employmentCodes;
+        @JsonProperty("zipCd") private String regionCodes;
+        @JsonProperty("aplyPrdSeCd") private String applyPeriodCode;
+        @JsonProperty("addAplyQlfcCndCn") private String extraQualification;
+        @JsonProperty("ptcpPrpTrgtCn") private String participantTarget;
+        @JsonProperty("aplyYmd") private String applyYmd;
+        @JsonProperty("plcyAplyMthdCn") private String applyMethod;
+        @JsonProperty("aplyUrlAddr") private String applyUrl;
+        @JsonProperty("refUrlAddr1") private String referenceUrl1;
+        @JsonProperty("refUrlAddr2") private String referenceUrl2;
+        @JsonProperty("inqCnt") private String viewCount;
+        @JsonProperty("plcyAprvSttsCd") private String approvalStatusCode;
     }
 }
