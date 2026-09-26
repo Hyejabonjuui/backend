@@ -89,6 +89,7 @@ class PolicyControllerTest {
                 .andExpect(jsonPath("$.result.policies[0].regions[0].region_code").value("11440"))
                 .andExpect(jsonPath("$.result.policies[0].apply_period_code").value("0057001"))
                 .andExpect(jsonPath("$.result.policies[0].d_day").value(3))
+                .andExpect(jsonPath("$.result.policies[0].dday").doesNotExist())
                 .andExpect(jsonPath("$.result.policies[0].favorite_yn").doesNotExist());
 
         verify(policyService).getGuestHousingPolicies(
@@ -130,6 +131,10 @@ class PolicyControllerTest {
                 .andExpect(jsonPath("$.code").value("COMMON_001"));
 
         mvc.perform(get("/api/policies/housing").param("size", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_001"));
+
+        mvc.perform(get("/api/policies/housing").param("size", "51"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_001"));
     }
@@ -176,6 +181,7 @@ class PolicyControllerTest {
                 .andExpect(jsonPath("$.result.policies[0].regions[0].region_code").value("11440"))
                 .andExpect(jsonPath("$.result.policies[0].apply_period_code").value("0057001"))
                 .andExpect(jsonPath("$.result.policies[0].d_day").value(4))
+                .andExpect(jsonPath("$.result.policies[0].dday").doesNotExist())
                 .andExpect(jsonPath("$.result.policies[0].favorite_yn").value(true));
 
         verify(policyService).getHousingPoliciesForMember(
@@ -207,6 +213,13 @@ class PolicyControllerTest {
     void returnsBadRequestForUnknownSort() throws Exception {
         mvc.perform(get("/api/policies/housing/me")
                         .param("sort", "POPULAR"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_001"));
+    }
+
+    @Test
+    void returnsBadRequestForTooLargeMemberPageSize() throws Exception {
+        mvc.perform(get("/api/policies/housing/me").param("size", "51"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_001"));
     }

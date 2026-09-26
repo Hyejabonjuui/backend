@@ -66,6 +66,11 @@ public final class PolicyResponseDTO {
         @Schema(description = "마감일까지 남은 일수. 상시 모집이면 null", example = "4", nullable = true)
         private Integer dDay;
 
+        @JsonProperty("d_day")
+        public Integer getDDay() {
+            return dDay;
+        }
+
         @JsonProperty("favorite_yn")
         @Schema(description = "현재 회원의 관심 정책 등록 여부", example = "true")
         private boolean favoriteYn;

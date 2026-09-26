@@ -29,6 +29,7 @@ import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.profile.repository.ProfileRepository;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
+import com.hyeja.domain.profile.service.ProfileService;
 import com.hyeja.domain.region.entity.Region;
 import java.time.Clock;
 import java.time.Instant;
@@ -52,6 +53,7 @@ class PolicyServiceTest {
     private final PolicySyncItemService policySyncItemService = mock(PolicySyncItemService.class);
     private final MemberRepository memberRepository = mock(MemberRepository.class);
     private final ProfileRepository profileRepository = mock(ProfileRepository.class);
+    private final ProfileService profileService = mock(ProfileService.class);
     private final PolicyRegionRepository policyRegionRepository = mock(PolicyRegionRepository.class);
     private final PolicyEligibilityEvaluator policyEligibilityEvaluator =
             new PolicyEligibilityEvaluator(new PolicyIncomeEligibilityEvaluator());
@@ -61,8 +63,8 @@ class PolicyServiceTest {
             ZoneId.of("Asia/Seoul"));
     private final PolicyService service = new PolicyService(
             policyRepository, restTemplate, codeConverter, policyAiAnalyzer,
-            policySyncItemService, memberRepository, profileRepository, policyRegionRepository,
-            policyEligibilityEvaluator, favoriteRepository, clock);
+            policySyncItemService, memberRepository, profileRepository, profileService,
+            policyRegionRepository, policyEligibilityEvaluator, favoriteRepository, clock);
 
     @Test
     void mapsYouthPolicyApiFieldsToPolicyEntity() {
@@ -451,7 +453,7 @@ class PolicyServiceTest {
 
     @Test
     void returnsMemberPolicyPageWithRegionsAndFavoriteStatus() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         Member member = Member.builder()
                 .email("member@example.com")
                 .password("encoded-password")
@@ -479,8 +481,7 @@ class PolicyServiceTest {
                 .applyEndDate(today.plusDays(4))
                 .build();
         PageRequest pageRequest = PageRequest.of(0, 8, PolicySort.DEADLINE.toSort());
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
-        when(profileRepository.findById("member@example.com")).thenReturn(Optional.of(profile));
+        when(profileService.getActiveProfile(1L)).thenReturn(profile);
         when(policyRepository.findHousingPoliciesForMember(
                 PolicyCategory.MONTHLY_RENT,
                 true,
@@ -520,6 +521,7 @@ class PolicyServiceTest {
         assertThat(result.getTotalElements()).isEqualTo(9);
         assertThat(result.getTotalPages()).isEqualTo(2);
         assertThat(result.isHasNext()).isTrue();
+        verify(profileService).getActiveProfile(1L);
     }
 
     private Set<PolicyEmploymentCondition> mapEmploymentConditions(String codes) {

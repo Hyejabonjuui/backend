@@ -19,6 +19,7 @@ public interface PolicyRepository extends JpaRepository<Policy, String> {
             where policy.deletedAt is null
               and policy.activeYn = true
               and policy.applyPeriodCode <> '0057003'
+              and (policy.applyStartDate is null or policy.applyStartDate <= :today)
               and (policy.applyEndDate is null or policy.applyEndDate >= :today)
               and (:category is null or policy.category = :category)
             """)
@@ -34,6 +35,7 @@ public interface PolicyRepository extends JpaRepository<Policy, String> {
             where policy.deletedAt is null
               and policy.activeYn = true
               and policy.applyPeriodCode <> '0057003'
+              and (policy.applyStartDate is null or policy.applyStartDate <= :today)
               and (policy.applyEndDate is null or policy.applyEndDate >= :today)
               and (:category is null or policy.category = :category)
               and (
@@ -54,12 +56,14 @@ public interface PolicyRepository extends JpaRepository<Policy, String> {
                       and (
                           policy.employmentCodes is null
                           or trim(cast(policy.employmentCodes as string)) = ''
-                          or cast(policy.employmentCodes as string) like '%NO_RESTRICTION%'
-                          or cast(policy.employmentCodes as string) = :employmentCode
-                          or cast(policy.employmentCodes as string) like concat(:employmentCode, ',%')
-                          or cast(policy.employmentCodes as string) like concat('%,', :employmentCode)
-                          or cast(policy.employmentCodes as string)
-                              like concat('%,', concat(:employmentCode, ',%'))
+                          or locate(
+                              ',NO_RESTRICTION,',
+                              concat(',', concat(cast(policy.employmentCodes as string), ','))
+                          ) > 0
+                          or locate(
+                              concat(',', concat(:employmentCode, ',')),
+                              concat(',', concat(cast(policy.employmentCodes as string), ','))
+                          ) > 0
                       )
                       and (
                           not exists (

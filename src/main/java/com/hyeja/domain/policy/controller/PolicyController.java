@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
@@ -91,7 +92,8 @@ public class PolicyController {
                     example = "8"
             )
             @RequestParam(name = "size", defaultValue = "8")
-            @Positive(message = "페이지 크기는 양수여야 합니다.") int size
+            @Positive(message = "페이지 크기는 양수여야 합니다.")
+            @Max(value = 50, message = "페이지 크기는 50 이하여야 합니다.") int size
     ) {
         return ApiResponse.onSuccess(
                 policyService.getGuestHousingPolicies(category, sort, page, size));
@@ -162,7 +164,8 @@ public class PolicyController {
                     example = "8"
             )
             @RequestParam(name = "size", defaultValue = "8")
-            @Positive(message = "페이지 크기는 양수여야 합니다.") int size
+            @Positive(message = "페이지 크기는 양수여야 합니다.")
+            @Max(value = 50, message = "페이지 크기는 50 이하여야 합니다.") int size
     ) {
         return ApiResponse.onSuccess(policyService.getHousingPoliciesForMember(
                 memberId, category, sort, onlyEligible, page, size));

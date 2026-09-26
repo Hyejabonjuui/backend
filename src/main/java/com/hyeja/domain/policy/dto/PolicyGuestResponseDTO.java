@@ -65,6 +65,11 @@ public final class PolicyGuestResponseDTO {
         @JsonProperty("d_day")
         @Schema(description = "마감일까지 남은 일수. 상시 모집이면 null", example = "4", nullable = true)
         private Integer dDay;
+
+        @JsonProperty("d_day")
+        public Integer getDDay() {
+            return dDay;
+        }
     }
 
     @Getter

@@ -21,6 +21,7 @@ import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.repository.ProfileRepository;
+import com.hyeja.domain.profile.service.ProfileService;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
@@ -58,6 +59,7 @@ public class PolicyService {
     private final PolicySyncItemService policySyncItemService;
     private final MemberRepository memberRepository;
     private final ProfileRepository profileRepository;
+    private final ProfileService profileService;
     private final PolicyRegionRepository policyRegionRepository;
     private final PolicyEligibilityEvaluator policyEligibilityEvaluator;
     private final FavoriteRepository favoriteRepository;
@@ -167,11 +169,8 @@ public class PolicyService {
             int page,
             int size
     ) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
-        Profile profile = profileRepository.findById(member.getEmail())
-                .orElseThrow(() -> new GeneralException(ErrorStatus.PROFILE_NOT_FOUND));
-        LocalDate today = LocalDate.now();
+        Profile profile = profileService.getActiveProfile(memberId);
+        LocalDate today = LocalDate.now(clock);
         Page<Policy> policyPage = policyRepository.findHousingPoliciesForMember(
                 category,
                 onlyEligible,

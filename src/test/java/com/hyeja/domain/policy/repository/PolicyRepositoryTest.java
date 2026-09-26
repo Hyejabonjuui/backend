@@ -51,6 +51,10 @@ class PolicyRepositoryTest {
                 today.plusDays(1), 70, true);
         persistGuestPolicy("closed-code", "종료 코드 정책", PolicyCategory.MONTHLY_RENT,
                 null, 80, true, "0057003");
+        Policy future = persistGuestPolicy(
+                "future", "접수 예정", PolicyCategory.MONTHLY_RENT,
+                today.plusDays(10), 90, true);
+        ReflectionTestUtils.setField(future, "applyStartDate", today.plusDays(1));
         entityManager.flush();
         entityManager.clear();
 
@@ -133,6 +137,9 @@ class PolicyRepositoryTest {
         persistPolicy("wrong-age", "연령 불일치", today.plusDays(1), "EMPLOYED", true, 30, 39);
         persistPolicy("wrong-job", "취업 불일치", today.plusDays(1), "UNEMPLOYED", true, 19, 39);
         persistPolicy("expired", "마감 정책", today.minusDays(1), "EMPLOYED", true, 19, 39);
+        Policy future = persistPolicy(
+                "future", "접수 예정", today.plusDays(10), "EMPLOYED", true, 19, 39);
+        ReflectionTestUtils.setField(future, "applyStartDate", today.plusDays(1));
         entityManager.persist(PolicyRegion.builder().policy(matching).region(mapo).build());
         entityManager.persist(PolicyRegion.builder().policy(wrongRegion).region(gangnam).build());
         entityManager.flush();
@@ -159,6 +166,34 @@ class PolicyRepositoryTest {
                         alwaysOpen.getPolicyId()
                 );
         assertThat(result.getTotalElements()).isEqualTo(5);
+    }
+
+    @Test
+    void matchesEmploymentCodeAsCompleteToken() {
+        LocalDate today = LocalDate.of(2026, 9, 26);
+        persistPolicy("lookalike-job", "유사 취업 코드", today.plusDays(1),
+                "OTHER", false, 19, 39);
+        entityManager.flush();
+        entityManager.createNativeQuery("""
+                        update policy
+                        set employment_codes = 'SELFXEMPLOYED,OTHER'
+                        where policy_id = 'lookalike-job'
+                        """)
+                .executeUpdate();
+        entityManager.clear();
+
+        var result = policyRepository.findHousingPoliciesForMember(
+                PolicyCategory.MONTHLY_RENT,
+                true,
+                today,
+                26,
+                true,
+                "SELF_EMPLOYED",
+                "11440",
+                PageRequest.of(0, 8, PolicySort.DEADLINE.toSort())
+        );
+
+        assertThat(result).isEmpty();
     }
 
     @Test
