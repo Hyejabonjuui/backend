@@ -34,13 +34,16 @@ class BaseEntityTest {
     }
 
     @Test
-    void updatePreservesCreatedAtAndRefreshesUpdatedAt() {
+    void updatePreservesCreatedAtAndRefreshesUpdatedAt() throws InterruptedException{
         AuditTestEntity entity = persistEntity();
         LocalDateTime createdAt = entity.getCreatedAt();
         LocalDateTime updatedAt = entity.getUpdatedAt();
+
+        Thread.sleep(50);
         entity.name = "updated";
         entityManager.flush();
 
+        AuditTestEntity found = entityManager.find(AuditTestEntity.class, entity.id);
         assertThat(entity.getCreatedAt()).isEqualTo(createdAt);
         assertThat(entity.getUpdatedAt()).isAfter(updatedAt);
     }
