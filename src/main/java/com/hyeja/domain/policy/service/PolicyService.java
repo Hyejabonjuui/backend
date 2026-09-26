@@ -33,7 +33,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class PolicyService {
     private static final String HOUSING_CATEGORY = "주거";
     private static final int PAGE_SIZE = 100; // 100
-    private static final int MAX_PAGES = 1; // 20
+    private static final int MAX_PAGES = 20; // 20
 
     private final PolicyRepository policyRepository;
     private final RestTemplate restTemplate;
