@@ -2,6 +2,7 @@ package com.hyeja.domain.member.controller;
 
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
+import com.hyeja.domain.member.dto.MemberLoginResponseDTO;
 import com.hyeja.domain.member.service.MemberService;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.ExceptionAdvice;
@@ -11,6 +12,7 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -236,5 +238,50 @@ class MemberControllerTest {
         mvc.perform(patch("/api/members/me/delete").param("memberId", "1"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("MEMBER_001"));
+    }
+
+    @Test
+    void logsIn() throws Exception {
+        when(memberService.login(any())).thenReturn(MemberLoginResponseDTO.builder()
+                .accessToken("access-token").memberId(1L).nickname("민지").build());
+
+        mvc.perform(post("/api/members/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\": \"hyeja@example.com\", \"password\": \"hyeja1234!\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"))
+                .andExpect(jsonPath("$.result.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.result.memberId").value(1))
+                .andExpect(jsonPath("$.result.nickname").value("민지"));
+    }
+
+    @Test
+    void returnsUnauthorizedWhenLoginFails() throws Exception {
+        when(memberService.login(any())).thenThrow(new GeneralException(ErrorStatus.MEMBER_LOGIN_FAILED));
+
+        mvc.perform(post("/api/members/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\": \"hyeja@example.com\", \"password\": \"wrong1234!\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("MEMBER_005"))
+                .andExpect(jsonPath("$.message").value("이메일 또는 비밀번호가 올바르지 않아요."));
+    }
+
+    @Test
+    void rejectsLoginWithoutPassword() throws Exception {
+        mvc.perform(post("/api/members/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\": \"hyeja@example.com\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_003"))
+                .andExpect(jsonPath("$.result.password").exists());
+        verifyNoInteractions(memberService);
+    }
+
+    // 인증 필터가 넣어 둔 토큰 원문(credentials)을 서비스로 넘깁니다. 토큰 검증 자체는 SecurityTest에서 확인합니다.
+    @Test
+    void logsOutWithTokenFromAuthentication() throws Exception {
+        mvc.perform(post("/api/members/logout")
+                        .principal(new UsernamePasswordAuthenticationToken(1L, "access-token")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"));
+        verify(memberService).logout("access-token");
     }
 }
