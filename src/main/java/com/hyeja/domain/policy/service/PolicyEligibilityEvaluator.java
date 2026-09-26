@@ -28,7 +28,7 @@ public class PolicyEligibilityEvaluator {
             Policy policy, Profile profile, List<PolicyRegion> policyRegions) {
         return List.of(
                 evaluateAge(policy, profile),
-                evaluateRegion(profile, policyRegions),
+                evaluateRegion(policy, profile, policyRegions),
                 evaluateIncome(policy, profile),
                 evaluateEmployment(policy, profile),
                 evaluateHouseless(policy, profile));
@@ -36,9 +36,9 @@ public class PolicyEligibilityEvaluator {
 
     private ConditionResultDTO evaluateAge(Policy policy, Profile profile) {
         String condition = ageCondition(policy);
-        if (Boolean.FALSE.equals(policy.getAgeLimitYn())) {
+        if (hasNoAgeLimit(policy)) {
             return result(EligibilityConditionType.AGE, EligibilityStatus.Y,
-                    "나이 제한 없음", memberAge(profile));
+                    "제한 없음", memberAge(profile));
         }
         if (profile.getBirth() == null) {
             return result(EligibilityConditionType.AGE, EligibilityStatus.U,
@@ -57,17 +57,15 @@ public class PolicyEligibilityEvaluator {
     }
 
     private ConditionResultDTO evaluateRegion(
-            Profile profile, List<PolicyRegion> policyRegions) {
+            Policy policy, Profile profile, List<PolicyRegion> policyRegions) {
         if (policyRegions == null || policyRegions.isEmpty()) {
             return result(EligibilityConditionType.REGION, EligibilityStatus.Y,
                     "전국", profileRegion(profile));
         }
-        String condition = policyRegions.stream()
-                .map(PolicyRegion::getRegion)
-                .map(region -> region.getSigunguName())
-                .distinct()
-                .sorted()
-                .collect(Collectors.joining(", "));
+        String condition = policy.getRegionCondition();
+        if (condition == null || condition.isBlank()) {
+            condition = "확인 필요";
+        }
         if (profile.getRegion() == null) {
             return result(EligibilityConditionType.REGION, EligibilityStatus.U,
                     condition, "미입력");
@@ -129,12 +127,19 @@ public class PolicyEligibilityEvaluator {
     }
 
     private String ageCondition(Policy policy) {
+        if (hasNoAgeLimit(policy)) return "제한 없음";
         if (policy.getMinAge() != null && policy.getMaxAge() != null) {
             return "만 " + policy.getMinAge() + "~" + policy.getMaxAge() + "세";
         }
         if (policy.getMinAge() != null) return "만 " + policy.getMinAge() + "세 이상";
         if (policy.getMaxAge() != null) return "만 " + policy.getMaxAge() + "세 이하";
         return "확인 필요";
+    }
+
+    private boolean hasNoAgeLimit(Policy policy) {
+        if (Boolean.FALSE.equals(policy.getAgeLimitYn())) return true;
+        return policy.getMinAge() != null && policy.getMinAge() <= 0
+                && policy.getMaxAge() != null && policy.getMaxAge() <= 0;
     }
 
     private String memberAge(Profile profile) {

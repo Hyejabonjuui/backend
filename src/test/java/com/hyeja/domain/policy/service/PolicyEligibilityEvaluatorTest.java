@@ -58,9 +58,63 @@ class PolicyEligibilityEvaluatorTest {
     }
 
     @Test
+    void displaysNoRestrictionForPolicyWithoutAgeLimit() {
+        Policy policy = mock(Policy.class);
+        when(policy.getAgeLimitYn()).thenReturn(false);
+        Profile profile = mock(Profile.class);
+        when(profile.getBirth()).thenReturn(LocalDate.now().minusYears(27));
+
+        ConditionResultDTO result = evaluator.evaluate(policy, profile, List.of()).stream()
+                .filter(condition -> condition.type() == EligibilityConditionType.AGE)
+                .findFirst().orElseThrow();
+
+        assertThat(result.status()).isEqualTo(EligibilityStatus.Y);
+        assertThat(result.policyCondition()).isEqualTo("제한 없음");
+    }
+
+    @Test
+    void treatsLegacyZeroAgeRangeAsNoRestriction() {
+        Policy policy = mock(Policy.class);
+        when(policy.getAgeLimitYn()).thenReturn(true);
+        when(policy.getMinAge()).thenReturn(0);
+        when(policy.getMaxAge()).thenReturn(0);
+        Profile profile = mock(Profile.class);
+        when(profile.getBirth()).thenReturn(LocalDate.now().minusYears(27));
+
+        ConditionResultDTO result = evaluator.evaluate(policy, profile, List.of()).stream()
+                .filter(condition -> condition.type() == EligibilityConditionType.AGE)
+                .findFirst().orElseThrow();
+
+        assertThat(result.status()).isEqualTo(EligibilityStatus.Y);
+        assertThat(result.policyCondition()).isEqualTo("제한 없음");
+    }
+
+    @Test
+    void doesNotExposeExpandedRegionListWhenOriginalConditionIsMissing() {
+        Policy policy = mock(Policy.class);
+        Region region = mock(Region.class);
+        when(region.getRegionCode()).thenReturn("11680");
+        com.hyeja.domain.policy.entity.PolicyRegion policyRegion =
+                mock(com.hyeja.domain.policy.entity.PolicyRegion.class);
+        when(policyRegion.getRegion()).thenReturn(region);
+        Profile profile = mock(Profile.class);
+        when(profile.getRegion()).thenReturn(region);
+
+        ConditionResultDTO result = evaluator.evaluate(
+                        policy, profile, List.of(policyRegion)).stream()
+                .filter(condition -> condition.type() == EligibilityConditionType.REGION)
+                .findFirst().orElseThrow();
+
+        assertThat(result.status()).isEqualTo(EligibilityStatus.Y);
+        assertThat(result.policyCondition()).isEqualTo("확인 필요");
+    }
+
+    @Test
     void returnsUnknownWhenPolicyOrMemberInformationIsInsufficient() {
         Policy policy = mock(Policy.class);
         when(policy.getAgeLimitYn()).thenReturn(true);
+        when(policy.getMinAge()).thenReturn(null);
+        when(policy.getMaxAge()).thenReturn(null);
         when(policy.getIncomeConditionCode()).thenReturn(PolicyIncomeCondition.CONDITIONAL);
         when(policy.getHouselessYn()).thenReturn(null);
         Profile profile = mock(Profile.class);
@@ -85,6 +139,7 @@ class PolicyEligibilityEvaluatorTest {
         when(policy.getEmploymentCodes()).thenReturn(
                 Set.of(PolicyEmploymentCondition.NO_RESTRICTION));
         when(policy.getHouselessYn()).thenReturn(false);
+        when(policy.getRegionCondition()).thenReturn("서울특별시 마포구");
 
         Region policyRegion = mock(Region.class);
         when(policyRegion.getRegionCode()).thenReturn("11440");
