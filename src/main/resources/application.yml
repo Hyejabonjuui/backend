@@ -29,6 +29,23 @@ spring:
       chat:
         options:
           model: ${OPEN_AI_MODEL}
+  # 회원가입 인증 코드 메일 발송(Gmail SMTP). 계정·앱 비밀번호는 .env의 MAIL_USERNAME·MAIL_PASSWORD입니다.
+  # MAIL_USERNAME이 비어 있으면 메일 대신 서버 로그에 인증 코드를 출력합니다(로컬 개발용).
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          # 메일 서버가 응답하지 않을 때 요청이 오래 멈추지 않도록 5초 제한을 둡니다.
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
   # 로그아웃한 토큰 목록을 저장합니다. 로컬 기본값은 localhost:6379입니다.
   data:
     redis:
