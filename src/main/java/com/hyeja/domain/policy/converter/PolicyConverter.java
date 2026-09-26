@@ -1,24 +1,26 @@
 package com.hyeja.domain.policy.converter;
 
-import com.hyeja.domain.policy.dto.PolicyGuestResponseDTO.PolicyListDTO;
-import com.hyeja.domain.policy.dto.PolicyGuestResponseDTO.PolicyListItemDTO;
-import com.hyeja.domain.policy.dto.PolicyGuestResponseDTO.PolicyRegionItemDTO;
+import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyListDTO;
+import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyListItemDTO;
+import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyRegionItemDTO;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.region.entity.Region;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 
-public final class PolicyGuestConverter {
+public final class PolicyConverter {
 
-    private PolicyGuestConverter() {
+    private PolicyConverter() {
     }
 
     public static PolicyListDTO toPolicyListDTO(
             Page<Policy> policyPage,
             Map<String, List<Region>> regionsByPolicyId,
+            Set<String> favoritePolicyIds,
             LocalDate today
     ) {
         return PolicyListDTO.builder()
@@ -26,6 +28,7 @@ public final class PolicyGuestConverter {
                         .map(policy -> toPolicyListItemDTO(
                                 policy,
                                 regionsByPolicyId.getOrDefault(policy.getPolicyId(), List.of()),
+                                favoritePolicyIds.contains(policy.getPolicyId()),
                                 today
                         ))
                         .toList())
@@ -40,6 +43,7 @@ public final class PolicyGuestConverter {
     private static PolicyListItemDTO toPolicyListItemDTO(
             Policy policy,
             List<Region> regions,
+            boolean favoriteYn,
             LocalDate today
     ) {
         return PolicyListItemDTO.builder()
@@ -57,8 +61,8 @@ public final class PolicyGuestConverter {
                 .applyEndDate(policy.getApplyEndDate())
                 .applyPeriodCode(policy.getApplyPeriodCode())
                 .dDay(policy.getApplyEndDate() == null
-                        ? null
-                        : Math.toIntExact(ChronoUnit.DAYS.between(today, policy.getApplyEndDate())))
+                        ? null : Math.toIntExact(ChronoUnit.DAYS.between(today, policy.getApplyEndDate())))
+                .favoriteYn(favoriteYn)
                 .build();
     }
 }
