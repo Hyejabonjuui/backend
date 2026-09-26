@@ -195,9 +195,9 @@ class NotificationRepositoryTest {
         Policy policy = Policy.builder()
                 .policyId(policyId)
                 .policyName("테스트 정책")
-                .category(PolicyCategory.MONTHLY_RENT)
+                .categories(java.util.Set.of(PolicyCategory.MONTHLY_RENT))
                 .ageLimitYn(false)
-                .applyPeriodCode("PERIOD")
+                .applyPeriodCode(com.hyeja.domain.policy.enums.PolicyApplyPeriod.SPECIFIC_PERIOD)
                 .applyEndDate(applyEndDate)
                 .build();
         entityManager.persist(policy);

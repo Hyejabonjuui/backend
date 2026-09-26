@@ -9,7 +9,7 @@
 | `Member` | `member_id BIGINT` | email은 `VARCHAR(100) NOT NULL UNIQUE`, nickname은 코드상 UNIQUE 아님 |
 | `Profile` | `email VARCHAR(100)` | 동일한 email로 Member 참조, Region 필수 N:1, 현재 Java 매핑은 `@ManyToOne` |
 | `Region` | `region_code CHAR(5)` | Profile 및 PolicyRegion에서 참조 |
-| `Policy` | 외부 `policy_id` 문자열 | 현재 Java 컬럼 길이 30, 외부 ID를 가공하지 않고 사용 |
+| `Policy` | 외부 `policy_id` 문자열 | 현재 Java 컬럼 길이 30, 외부 ID를 가공하지 않고 사용. `category`에는 하나 이상의 `PolicyCategory`를 쉼표로 저장 |
 | `PolicyRegion` | `(policy_id, region_code)` | `@EmbeddedId`와 `@MapsId`를 사용하는 식별 연결 엔티티 |
 | `Favorite` | `favorite_id BIGINT` | Member·Policy N:1, `(member_id, policy_id)` UNIQUE, 관심 해제는 물리 삭제 의도 |
 | `Notification` | `notification_id BIGINT` | Member·Policy N:1, 마감일 스냅샷 저장, `(member_id, policy_id, deadline_date)` UNIQUE, 생성 시 `readYn=false` |
@@ -20,6 +20,15 @@
 
 마감 알림은 정책의 마감일이 이후 변경되어도 생성 당시 정보를 유지하도록 `deadlineDate`를 저장한다.
 동일 회원·정책·마감일 조합은 한 번만 생성할 수 있다.
+
+정책의 `description`은 동기화 시 OpenAI가 정책 원문을 1~2문장으로 요약한 값이다.
+정책의 무주택 조건은 `REQUIRED`, `NOT_REQUIRED`, `UNKNOWN` enum으로 저장하며 회원
+Profile의 `houselessYn`과 비교한다. 신청기간은 API의 `57001`, `57002`, `57003`을 각각
+`SPECIFIC_PERIOD`, `ALWAYS`, `CLOSED`로 변환한다. 특정기간일 때만 시작일과 종료일을
+저장하고 상시·마감은 두 날짜를 null로 유지한다.
+정책 지원 지역은 정책마다 온통청년 API의 첫 번째 5자리 코드 하나만 `PolicyRegion`에 연결한다. `xx000` 광역 코드는
+상세 시군구로 확장 저장하지 않고, 적합성 판정 시 회원 지역 코드의 앞 두 자리와 비교한다.
+사용하지 않는 `subtype_code`와 파생 표시값이었던 `region_condition` 컬럼은 초기화 SQL로 제거한다.
 
 ## Profile 필드
 

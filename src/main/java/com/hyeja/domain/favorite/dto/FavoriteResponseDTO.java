@@ -4,8 +4,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
+import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -31,13 +33,13 @@ public final class FavoriteResponseDTO {
         @Schema(description = "정책명", example = "청년 월세 지원")
         private String policyName;
 
-        @JsonProperty("category_code")
-        @Schema(description = "정책 분류 코드", example = "MONTHLY_RENT")
-        private PolicyCategory categoryCode;
+        @JsonProperty("category_codes")
+        @Schema(description = "정책 분류 코드 목록", example = "[\"MONTHLY_RENT\", \"PUBLIC_RENT\"]")
+        private Set<PolicyCategory> categoryCodes;
 
-        @JsonProperty("category_name")
-        @Schema(description = "정책 분류 이름", example = "월세")
-        private String categoryName;
+        @JsonProperty("category_names")
+        @Schema(description = "정책 분류 이름 목록", example = "[\"월세\", \"공공임대\"]")
+        private List<String> categoryNames;
 
         @JsonProperty("support_content")
         @Schema(description = "지원 내용", nullable = true)
@@ -49,7 +51,7 @@ public final class FavoriteResponseDTO {
 
         @JsonProperty("apply_period_code")
         @Schema(description = "신청 기간 구분 코드", example = "0057003")
-        private String applyPeriodCode;
+        private PolicyApplyPeriod applyPeriodCode;
 
         @JsonProperty("apply_url")
         @Schema(description = "신청 URL", example = "https://example.com/apply", nullable = true)

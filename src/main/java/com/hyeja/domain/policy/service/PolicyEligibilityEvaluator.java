@@ -7,6 +7,7 @@ import com.hyeja.domain.policy.enums.EligibilityConditionType;
 import com.hyeja.domain.policy.enums.EligibilityStatus;
 import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
 import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
+import com.hyeja.domain.policy.enums.PolicyHouselessRequirement;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import java.text.NumberFormat;
@@ -28,7 +29,7 @@ public class PolicyEligibilityEvaluator {
             Policy policy, Profile profile, List<PolicyRegion> policyRegions) {
         return List.of(
                 evaluateAge(policy, profile),
-                evaluateRegion(policy, profile, policyRegions),
+                evaluateRegion(profile, policyRegions),
                 evaluateIncome(policy, profile),
                 evaluateEmployment(policy, profile),
                 evaluateHouseless(policy, profile));
@@ -37,11 +38,11 @@ public class PolicyEligibilityEvaluator {
     private ConditionResultDTO evaluateAge(Policy policy, Profile profile) {
         String condition = ageCondition(policy);
         if (hasNoAgeLimit(policy)) {
-            return result(EligibilityConditionType.AGE, EligibilityStatus.Y,
+            return result(EligibilityConditionType.AGE, EligibilityStatus.ABLE,
                     "제한 없음", memberAge(profile));
         }
         if (profile.getBirth() == null) {
-            return result(EligibilityConditionType.AGE, EligibilityStatus.U,
+            return result(EligibilityConditionType.AGE, EligibilityStatus.UNKNOWN,
                     condition, "미입력");
         }
 
@@ -49,33 +50,37 @@ public class PolicyEligibilityEvaluator {
         boolean belowMinimum = policy.getMinAge() != null && age < policy.getMinAge();
         boolean aboveMaximum = policy.getMaxAge() != null && age > policy.getMaxAge();
         EligibilityStatus status = belowMinimum || aboveMaximum
-                ? EligibilityStatus.N : EligibilityStatus.Y;
+                ? EligibilityStatus.DISABLE : EligibilityStatus.ABLE;
         if (policy.getMinAge() == null && policy.getMaxAge() == null) {
-            status = EligibilityStatus.U;
+            status = EligibilityStatus.UNKNOWN;
         }
         return result(EligibilityConditionType.AGE, status, condition, "만 " + age + "세");
     }
 
-    private ConditionResultDTO evaluateRegion(
-            Policy policy, Profile profile, List<PolicyRegion> policyRegions) {
+    private ConditionResultDTO evaluateRegion(Profile profile, List<PolicyRegion> policyRegions) {
         if (policyRegions == null || policyRegions.isEmpty()) {
-            return result(EligibilityConditionType.REGION, EligibilityStatus.Y,
+            return result(EligibilityConditionType.REGION, EligibilityStatus.ABLE,
                     "전국", profileRegion(profile));
         }
-        String condition = policy.getRegionCondition();
-        if (condition == null || condition.isBlank()) {
-            condition = "확인 필요";
-        }
+        PolicyRegion policyRegion = policyRegions.get(0);
+        String condition = policyRegion.getRegion().getSigunguName();
         if (profile.getRegion() == null) {
-            return result(EligibilityConditionType.REGION, EligibilityStatus.U,
+            return result(EligibilityConditionType.REGION, EligibilityStatus.UNKNOWN,
                     condition, "미입력");
         }
-        boolean matches = policyRegions.stream().anyMatch(policyRegion ->
-                policyRegion.getRegion().getRegionCode()
-                        .equals(profile.getRegion().getRegionCode()));
+        String memberRegionCode = profile.getRegion().getRegionCode();
+        boolean matches = matchesRegion(
+                policyRegion.getRegion().getRegionCode(), memberRegionCode);
         return result(EligibilityConditionType.REGION,
-                matches ? EligibilityStatus.Y : EligibilityStatus.N,
+                matches ? EligibilityStatus.ABLE : EligibilityStatus.DISABLE,
                 condition, profileRegion(profile));
+    }
+
+    private boolean matchesRegion(String policyRegionCode, String memberRegionCode) {
+        if (policyRegionCode.equals(memberRegionCode)) return true;
+        return policyRegionCode.endsWith("000")
+                && policyRegionCode.substring(0, 2)
+                        .equals(memberRegionCode.substring(0, 2));
     }
 
     private ConditionResultDTO evaluateIncome(Policy policy, Profile profile) {
@@ -89,40 +94,41 @@ public class PolicyEligibilityEvaluator {
     private ConditionResultDTO evaluateEmployment(Policy policy, Profile profile) {
         Set<PolicyEmploymentCondition> conditions = policy.getEmploymentCodes();
         if (conditions == null || conditions.isEmpty()) {
-            return result(EligibilityConditionType.EMPLOYMENT, EligibilityStatus.U,
+            return result(EligibilityConditionType.EMPLOYMENT, EligibilityStatus.UNKNOWN,
                     "정보 없음", employmentValue(profile));
         }
         if (conditions.contains(PolicyEmploymentCondition.NO_RESTRICTION)) {
-            return result(EligibilityConditionType.EMPLOYMENT, EligibilityStatus.Y,
+            return result(EligibilityConditionType.EMPLOYMENT, EligibilityStatus.ABLE,
                     "취업 상태 제한 없음", employmentValue(profile));
         }
         EmploymentStatus memberEmployment = profile.getEmploymentCode();
         if (memberEmployment == null) {
-            return result(EligibilityConditionType.EMPLOYMENT, EligibilityStatus.U,
+            return result(EligibilityConditionType.EMPLOYMENT, EligibilityStatus.UNKNOWN,
                     employmentCondition(conditions), "미입력");
         }
         boolean matches = conditions.stream()
                 .anyMatch(condition -> condition.name().equals(memberEmployment.name()));
         return result(EligibilityConditionType.EMPLOYMENT,
-                matches ? EligibilityStatus.Y : EligibilityStatus.N,
+                matches ? EligibilityStatus.ABLE : EligibilityStatus.DISABLE,
                 employmentCondition(conditions), memberEmployment.getLabel());
     }
 
     private ConditionResultDTO evaluateHouseless(Policy policy, Profile profile) {
-        if (policy.getHouselessYn() == null) {
-            return result(EligibilityConditionType.HOUSELESS, EligibilityStatus.U,
+        PolicyHouselessRequirement requirement = policy.getHouselessRequirement();
+        if (requirement == null || requirement == PolicyHouselessRequirement.UNKNOWN) {
+            return result(EligibilityConditionType.HOUSELESS, EligibilityStatus.UNKNOWN,
                     "확인 필요", houselessValue(profile));
         }
-        if (Boolean.FALSE.equals(policy.getHouselessYn())) {
-            return result(EligibilityConditionType.HOUSELESS, EligibilityStatus.Y,
+        if (requirement == PolicyHouselessRequirement.NOT_REQUIRED) {
+            return result(EligibilityConditionType.HOUSELESS, EligibilityStatus.ABLE,
                     "무주택 제한 없음", houselessValue(profile));
         }
         if (profile.getHouselessYn() == null) {
-            return result(EligibilityConditionType.HOUSELESS, EligibilityStatus.U,
+            return result(EligibilityConditionType.HOUSELESS, EligibilityStatus.UNKNOWN,
                     "무주택자", "미입력");
         }
         return result(EligibilityConditionType.HOUSELESS,
-                profile.getHouselessYn() ? EligibilityStatus.Y : EligibilityStatus.N,
+                profile.getHouselessYn() ? EligibilityStatus.ABLE : EligibilityStatus.DISABLE,
                 "무주택자", houselessValue(profile));
     }
 

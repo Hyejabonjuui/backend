@@ -5,6 +5,8 @@ import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
+import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicyHouselessRequirement;
 import com.openai.client.OpenAIClient;
 import org.junit.jupiter.api.Test;
 
@@ -14,10 +16,13 @@ class OpenAiPolicyAnalyzerTest {
             mock(OpenAIClient.class), new ObjectMapper());
 
     @Test
-    void mapsHouselessRequirementToNullableBoolean() {
-        assertThat(analyzer.toHouselessYn("REQUIRED")).isTrue();
-        assertThat(analyzer.toHouselessYn("NOT_REQUIRED")).isFalse();
-        assertThat(analyzer.toHouselessYn("UNKNOWN")).isNull();
+    void mapsHouselessRequirementToEnum() {
+        assertThat(analyzer.toHouselessRequirement("REQUIRED"))
+                .isEqualTo(PolicyHouselessRequirement.REQUIRED);
+        assertThat(analyzer.toHouselessRequirement("NOT_REQUIRED"))
+                .isEqualTo(PolicyHouselessRequirement.NOT_REQUIRED);
+        assertThat(analyzer.toHouselessRequirement("UNKNOWN"))
+                .isEqualTo(PolicyHouselessRequirement.UNKNOWN);
     }
 
     @Test
@@ -33,5 +38,13 @@ class OpenAiPolicyAnalyzerTest {
         assertThat(analyzer.buildUserPrompt(item))
                 .contains("무주택 세대구성원", "청년 무주택자", "온라인 신청",
                         "0043002", "50000000", "개인 연소득 5천만원 이하");
+    }
+
+    @Test
+    void allowsMultipleCategoriesAndRemovesOtherWhenSpecificCategoryExists() {
+        assertThat(analyzer.normalizeCategories(java.util.List.of(
+                "OTHER", "MONTHLY_RENT", "PUBLIC_RENT")))
+                .containsExactlyInAnyOrder(
+                        PolicyCategory.MONTHLY_RENT, PolicyCategory.PUBLIC_RENT);
     }
 }

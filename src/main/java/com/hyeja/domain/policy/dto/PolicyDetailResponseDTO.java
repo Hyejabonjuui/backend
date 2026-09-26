@@ -4,19 +4,23 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hyeja.domain.policy.enums.EligibilityConditionType;
 import com.hyeja.domain.policy.enums.EligibilityStatus;
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 public record PolicyDetailResponseDTO(
         String policyId,
         String policyName,
-        PolicyCategory category,
-        String categoryLabel,
+        Set<PolicyCategory> categories,
+        List<String> categoryLabels,
         String apiSubCategory,
         String keywords,
         String description,
         String supportContent,
         String extraQualification,
+        PolicyApplyPeriod applyPeriod,
+        String applyPeriodLabel,
         LocalDate applyStartDate,
         LocalDate applyEndDate,
         String applyMethod,

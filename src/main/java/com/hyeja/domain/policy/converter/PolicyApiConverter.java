@@ -3,10 +3,13 @@ package com.hyeja.domain.policy.converter;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
+import com.hyeja.domain.policy.enums.PolicyHouselessRequirement;
 import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -17,15 +20,19 @@ public class PolicyApiConverter {
 
     private final PolicyApiCodeConverter codeConverter;
 
-    public Policy convert(PolicyItem item, PolicyCategory category, Boolean houselessYn,
+    public Policy convert(PolicyItem item, PolicyCategory category,
+            PolicyHouselessRequirement houselessRequirement,
             PolicyIncomeCondition incomeCondition, Integer incomeMin, Integer incomeMax) {
-        return convert(item, category, houselessYn, incomeCondition, incomeMin, incomeMax, null);
+        return convert(item, Set.of(category), null, houselessRequirement,
+                incomeCondition, incomeMin, incomeMax);
     }
 
-    public Policy convert(PolicyItem item, PolicyCategory category, Boolean houselessYn,
-            PolicyIncomeCondition incomeCondition, Integer incomeMin, Integer incomeMax,
-            String regionCondition) {
-        DateRange dates = parseDateRange(item.getApplyYmd());
+    public Policy convert(PolicyItem item, Set<PolicyCategory> categories, String description,
+            PolicyHouselessRequirement houselessRequirement,
+            PolicyIncomeCondition incomeCondition, Integer incomeMin, Integer incomeMax) {
+        PolicyApplyPeriod applyPeriod = codeConverter.convertApplyPeriod(item.getApplyPeriodCode());
+        DateRange dates = applyPeriod == PolicyApplyPeriod.SPECIFIC_PERIOD
+                ? parseDateRange(item.getApplyYmd()) : new DateRange(null, null);
         Integer minAge = parsePositiveInteger(item.getMinAge());
         Integer maxAge = parsePositiveInteger(item.getMaxAge());
         boolean hasAgeLimit = toBoolean(item.getAgeLimitYn(), false)
@@ -33,11 +40,10 @@ public class PolicyApiConverter {
         return Policy.builder()
                 .policyId(trimToNull(item.getPolicyId()))
                 .policyName(defaultIfBlank(item.getPolicyName(), "제목 없음"))
-                .category(category)
+                .categories(categories)
                 .apiSubCategory(trimToNull(item.getSubCategory()))
-                .subtypeCode(null)
                 .keywords(trimToNull(item.getKeywords()))
-                .description(null)
+                .description(trimToNull(description))
                 .supportContent(trimToNull(item.getSupportContent()))
                 .minAge(minAge)
                 .maxAge(maxAge)
@@ -48,10 +54,9 @@ public class PolicyApiConverter {
                 .incomeEtc(trimToNull(item.getIncomeEtc()))
                 .marriageCode(codeConverter.convertMarriage(item.getMarriageCode()))
                 .employmentCodes(codeConverter.convertEmployment(item.getEmploymentCodes()))
-                .houselessYn(houselessYn)
+                .houselessRequirement(houselessRequirement)
                 .housingType(trimToNull(item.getSubCategory()))
-                .regionCondition(regionCondition)
-                .applyPeriodCode(defaultIfBlank(item.getApplyPeriodCode(), "UNKNOWN"))
+                .applyPeriodCode(applyPeriod)
                 .extraQualification(joinNonBlank(
                         item.getExtraQualification(), item.getParticipantTarget()))
                 .applyStartDate(dates.start())

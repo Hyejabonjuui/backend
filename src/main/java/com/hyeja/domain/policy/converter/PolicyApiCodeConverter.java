@@ -1,6 +1,7 @@
 package com.hyeja.domain.policy.converter;
 
 import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
+import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
 import com.hyeja.domain.policy.enums.PolicyMarriageCondition;
 import java.util.Arrays;
 import java.util.Set;
@@ -34,6 +35,19 @@ public class PolicyApiCodeConverter {
                 .map(this::convertSingleEmployment)
                 .filter(value -> value != null)
                 .collect(Collectors.toUnmodifiableSet());
+    }
+
+    public PolicyApplyPeriod convertApplyPeriod(String apiCode) {
+        String code = normalize(apiCode);
+        if (code == null) {
+            throw new IllegalArgumentException("신청기간 분류코드가 없습니다.");
+        }
+        return switch (code) {
+            case "57001" -> PolicyApplyPeriod.SPECIFIC_PERIOD;
+            case "57002" -> PolicyApplyPeriod.ALWAYS;
+            case "57003" -> PolicyApplyPeriod.CLOSED;
+            default -> throw new IllegalArgumentException("알 수 없는 신청기간 분류코드: " + apiCode);
+        };
     }
 
     private PolicyEmploymentCondition convertSingleEmployment(String apiCode) {

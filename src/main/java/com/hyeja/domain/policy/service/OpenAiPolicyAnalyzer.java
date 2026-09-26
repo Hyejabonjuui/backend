@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
+import com.hyeja.domain.policy.enums.PolicyHouselessRequirement;
 import com.openai.client.OpenAIClient;
 import com.openai.core.JsonValue;
 import com.openai.models.responses.EasyInputMessage;
@@ -15,6 +16,8 @@ import com.openai.models.responses.ResponseInputItem;
 import com.openai.models.responses.ResponseTextConfig;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,15 +31,24 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
             당신은 대한민국 청년 주거정책의 정보를 구조화하는 분석기다.
             제공된 정책 내용에 명시된 사실만 사용하고 조건을 추측하지 않는다.
 
+            [정책 요약]
+            description은 사용자가 정책의 핵심 지원 내용과 대상을 빠르게 이해할 수 있도록
+            정책명, 지원 내용, 참여 대상을 근거로 한국어 1~2문장으로 요약한다.
+            원문에 없는 혜택이나 자격조건을 추가하지 않는다.
+            모든 문장은 반드시 격식 있는 존댓말로 작성하고,
+            '~합니다', '~됩니다', '~할 수 있습니다'와 같은 형태로 끝낸다.
+            '~한다', '~이다', '~함', '~지원'과 같은 서술체·명사형 종결은 사용하지 않는다.
+            제목, 불릿, 번호 없이 자연스러운 문장만 반환한다.
+
             [카테고리]
-            category는 반드시 다음 값 중 하나여야 한다.
+            categories는 다음 값 중 하나 이상을 배열로 반환한다.
             - MONTHLY_RENT: 월세, 월 임차료 또는 월세 보증금 지원
             - JEONSE: 전세자금, 전세보증금, 전세대출 또는 전세보증 지원
             - PURCHASE: 주택 구입, 청약, 분양 또는 구입자금 지원
             - PUBLIC_RENT: 공공임대주택, 행복주택, 청년주택, 매입임대 또는 전세임대 입주
             - OTHER: 기숙사, 이사비, 중개비, 상담, 주거환경 개선 또는 명확히 분류되지 않음
-            여러 유형이 포함되면 핵심 지원 목적을 기준으로 하나만 선택한다.
-            근거가 부족하면 OTHER를 선택한다.
+            정책이 여러 유형을 실제로 함께 지원하면 해당 유형을 모두 선택한다.
+            OTHER는 다른 네 유형으로 분류할 근거가 없을 때만 단독으로 선택한다.
 
             [무주택 조건]
             houselessRequirement는 반드시 다음 값 중 하나여야 한다.
@@ -67,9 +79,12 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
     private static final Map<String, Object> RESPONSE_SCHEMA = Map.of(
             "type", "object",
             "properties", Map.ofEntries(
-                    Map.entry("category", Map.of(
-                            "type", "string",
-                            "enum", List.of("MONTHLY_RENT", "JEONSE", "PURCHASE", "PUBLIC_RENT", "OTHER"))),
+                    Map.entry("description", Map.of("type", "string", "minLength", 1)),
+                    Map.entry("categories", Map.of(
+                            "type", "array",
+                            "items", Map.of("type", "string", "enum", List.of(
+                                    "MONTHLY_RENT", "JEONSE", "PURCHASE", "PUBLIC_RENT", "OTHER")),
+                            "minItems", 1)),
                     Map.entry("categoryConfidence", Map.of("type", "number", "minimum", 0, "maximum", 1)),
                     Map.entry("categoryReason", Map.of("type", "string")),
                     Map.entry("houselessRequirement", Map.of(
@@ -85,7 +100,7 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
                     Map.entry("incomeConfidence", Map.of("type", "number", "minimum", 0, "maximum", 1)),
                     Map.entry("incomeReason", Map.of("type", "string"))),
             "required", List.of(
-                    "category", "categoryConfidence", "categoryReason",
+                    "description", "categories", "categoryConfidence", "categoryReason",
                     "houselessRequirement", "houselessConfidence", "houselessReason",
                     "incomeCondition", "incomeMin", "incomeMax",
                     "incomeConfidence", "incomeReason"),
@@ -126,10 +141,11 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
         AiPolicyResponse result = parseResponse(responseText);
         PolicyIncomeCondition incomeCondition = normalizeIncomeCondition(result);
         PolicyAiAnalysis analysis = new PolicyAiAnalysis(
-                PolicyCategory.valueOf(result.category()),
+                result.description().trim(),
+                normalizeCategories(result.categories()),
                 result.categoryConfidence(),
                 result.categoryReason(),
-                toHouselessYn(result.houselessRequirement()),
+                toHouselessRequirement(result.houselessRequirement()),
                 result.houselessConfidence(),
                 result.houselessReason(),
                 incomeCondition,
@@ -138,11 +154,11 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
                 result.incomeConfidence(),
                 result.incomeReason());
 
-        log.info("AI 정책 카테고리 분석 - policyId={}, category={}, confidence={}, reason={}",
-                item.getPolicyId(), analysis.category(),
+        log.info("AI 정책 카테고리 분석 - policyId={}, categories={}, confidence={}, reason={}",
+                item.getPolicyId(), analysis.categories(),
                 analysis.categoryConfidence(), analysis.categoryReason());
-        log.info("AI 정책 무주택 조건 분석 - policyId={}, houselessYn={}, confidence={}, reason={}",
-                item.getPolicyId(), analysis.houselessYn(),
+        log.info("AI 정책 무주택 조건 분석 - policyId={}, requirement={}, confidence={}, reason={}",
+                item.getPolicyId(), analysis.houselessRequirement(),
                 analysis.houselessConfidence(), analysis.houselessReason());
         log.info("AI 정책 소득 조건 분석 - policyId={}, condition={}, min={}, max={}, confidence={}, reason={}",
                 item.getPolicyId(), analysis.incomeCondition(), analysis.incomeMin(),
@@ -198,13 +214,8 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
         }
     }
 
-    Boolean toHouselessYn(String requirement) {
-        return switch (requirement) {
-            case "REQUIRED" -> true;
-            case "NOT_REQUIRED" -> false;
-            case "UNKNOWN" -> null;
-            default -> throw new IllegalArgumentException("알 수 없는 무주택 조건: " + requirement);
-        };
+    PolicyHouselessRequirement toHouselessRequirement(String requirement) {
+        return PolicyHouselessRequirement.valueOf(requirement);
     }
 
     PolicyIncomeCondition normalizeIncomeCondition(AiPolicyResponse result) {
@@ -215,6 +226,19 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
             return PolicyIncomeCondition.UNKNOWN;
         }
         return condition;
+    }
+
+    Set<PolicyCategory> normalizeCategories(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return Set.of(PolicyCategory.OTHER);
+        }
+        Set<PolicyCategory> categories = values.stream()
+                .map(PolicyCategory::valueOf)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        if (categories.size() > 1) {
+            categories.remove(PolicyCategory.OTHER);
+        }
+        return Set.copyOf(categories);
     }
 
     private Integer normalizedIncomeMin(
@@ -234,7 +258,8 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
     }
 
     private record AiPolicyResponse(
-            String category,
+            String description,
+            List<String> categories,
             double categoryConfidence,
             String categoryReason,
             String houselessRequirement,
