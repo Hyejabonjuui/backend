@@ -117,10 +117,10 @@ class FavoriteControllerTest {
 
         mvc.perform(post("/api/favorite/{policyId}", "policy-1")
                         .param("memberId", "1"))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
-                .andExpect(jsonPath("$.code").value("SUCCESS_002"))
-                .andExpect(jsonPath("$.message").value("생성되었습니다."))
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"))
+                .andExpect(jsonPath("$.message").value("성공입니다."))
                 .andExpect(jsonPath("$.result.favorite_id").value(10))
                 .andExpect(jsonPath("$.result.policy_id").value("policy-1"))
                 .andExpect(jsonPath("$.result.policy_name").value("청년 월세 지원"))
@@ -189,6 +189,13 @@ class FavoriteControllerTest {
     @Test
     void deleteReturnsBadRequestWithoutMemberId() throws Exception {
         mvc.perform(delete("/api/favorite/{policyId}", "policy-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_001"));
+    }
+
+    @Test
+    void returnsBadRequestWhenMemberIdIsNotPositive() throws Exception {
+        mvc.perform(get("/api/favorite").param("memberId", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_001"));
     }
