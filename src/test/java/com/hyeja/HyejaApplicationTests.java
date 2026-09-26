@@ -76,8 +76,9 @@ class HyejaApplicationTests {
         assertThat(response.body()).contains("swagger-ui-bundle.js");
     }
 
+    // 회원은 토큰으로 식별하므로 정책 상세 문서에는 policyId만 노출됩니다(memberId는 숨김).
     @Test
-    void policyDetailOpenApiExposesBothPathVariables() throws Exception {
+    void policyDetailOpenApiExposesOnlyPolicyId() throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("http://localhost:" + port + "/v3/api-docs"))
                 .GET().build();
@@ -87,7 +88,7 @@ class HyejaApplicationTests {
 
         assertThat(response.statusCode()).isEqualTo(200);
         List<String> parameterNames = JsonPath.parse(response.body()).read(
-                "$.paths['/api/policies/{policyId}/{memberId}'].get.parameters[*].name");
-        assertThat(parameterNames).containsExactlyInAnyOrder("policyId", "memberId");
+                "$.paths['/api/policies/{policyId}'].get.parameters[*].name");
+        assertThat(parameterNames).containsExactly("policyId");
     }
 }
