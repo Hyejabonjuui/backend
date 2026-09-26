@@ -1,28 +1,41 @@
 package com.hyeja.domain.policy.service;
 
 import com.hyeja.domain.policy.converter.PolicyApiCodeConverter;
+import com.hyeja.domain.policy.converter.PolicyConverter;
 import com.hyeja.domain.favorite.repository.FavoriteRepository;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO.ConditionResultDTO;
+import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyListDTO;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.entity.PolicyRegion;
 import com.hyeja.domain.policy.enums.EligibilityStatus;
+import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicySort;
 import com.hyeja.domain.policy.repository.PolicyRepository;
 import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.repository.ProfileRepository;
+import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
 import java.net.URI;
+import java.time.LocalDate;
+import java.time.Period;
+import java.util.Collections;
 import java.util.List;
 import java.util.Comparator;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -118,6 +131,49 @@ public class PolicyService {
     @Transactional(readOnly = true)
     public List<Policy> getHousingPolicies() {
         return policyRepository.findAllByOrderByApplyEndDateAsc();
+    }
+
+    @Transactional(readOnly = true)
+    public PolicyListDTO getHousingPoliciesForMember(
+            Long memberId,
+            PolicyCategory category,
+            PolicySort sort,
+            boolean onlyEligible,
+            int page,
+            int size
+    ) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
+        Profile profile = profileRepository.findById(member.getEmail())
+                .orElseThrow(() -> new GeneralException(ErrorStatus.PROFILE_NOT_FOUND));
+        LocalDate today = LocalDate.now();
+        Page<Policy> policyPage = policyRepository.findHousingPoliciesForMember(
+                category,
+                onlyEligible,
+                today,
+                Period.between(profile.getBirth(), today).getYears(),
+                profile.getHouselessYn(),
+                profile.getEmploymentCode().name(),
+                profile.getRegion().getRegionCode(),
+                PageRequest.of(page, size, sort.toSort())
+        );
+
+        List<String> policyIds = policyPage.getContent().stream()
+                .map(Policy::getPolicyId)
+                .toList();
+        Map<String, List<Region>> regionsByPolicyId = policyIds.isEmpty()
+                ? Collections.emptyMap()
+                : policyRegionRepository.findAllActiveByPolicyIds(policyIds).stream()
+                        .collect(Collectors.groupingBy(
+                                policyRegion -> policyRegion.getPolicy().getPolicyId(),
+                                Collectors.mapping(PolicyRegion::getRegion, Collectors.toList())
+                        ));
+        Set<String> favoritePolicyIds = policyIds.isEmpty()
+                ? Collections.emptySet()
+                : favoriteRepository.findActivePolicyIds(memberId, policyIds);
+
+        return PolicyConverter.toPolicyListDTO(
+                policyPage, regionsByPolicyId, favoritePolicyIds, today);
     }
 
     @Transactional(readOnly = true)

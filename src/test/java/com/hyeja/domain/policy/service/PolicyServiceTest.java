@@ -15,6 +15,7 @@ import com.hyeja.domain.policy.converter.PolicyApiConverter;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO;
+import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyListDTO;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.entity.PolicyRegion;
 import com.hyeja.domain.policy.enums.PolicyCategory;
@@ -23,6 +24,7 @@ import com.hyeja.domain.policy.enums.PolicyMarriageCondition;
 import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
 import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
 import com.hyeja.domain.policy.enums.PolicyHouselessRequirement;
+import com.hyeja.domain.policy.enums.PolicySort;
 import com.hyeja.domain.policy.repository.PolicyRepository;
 import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.profile.repository.ProfileRepository;
@@ -34,6 +36,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
@@ -478,6 +482,79 @@ class PolicyServiceTest {
                 com.hyeja.domain.policy.enums.EligibilityStatus.DISABLE);
         assertThat(regionCondition.policyCondition()).isEqualTo("부산광역시");
         assertThat(regionCondition.memberValue()).isEqualTo("서울특별시 성동구");
+    }
+
+    @Test
+    void returnsMemberPolicyPageWithRegionsAndFavoriteStatus() {
+        LocalDate today = LocalDate.now();
+        Member member = Member.builder()
+                .email("member@example.com")
+                .password("encoded-password")
+                .nickname("회원")
+                .build();
+        Region region = Region.builder()
+                .regionCode("11440")
+                .sigunguName("서울특별시 마포구")
+                .build();
+        Profile profile = Profile.builder()
+                .member(member)
+                .region(region)
+                .birth(today.minusYears(26))
+                .employmentCode(EmploymentStatus.EMPLOYED)
+                .houselessYn(true)
+                .build();
+        Policy policy = Policy.builder()
+                .policyId("POLICY-1")
+                .policyName("청년 월세 지원")
+                .category(PolicyCategory.MONTHLY_RENT)
+                .ageLimitYn(true)
+                .minAge(19)
+                .maxAge(39)
+                .applyPeriodCode("PERIOD")
+                .applyEndDate(today.plusDays(4))
+                .build();
+        PageRequest pageRequest = PageRequest.of(0, 8, PolicySort.DEADLINE.toSort());
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(profileRepository.findById("member@example.com")).thenReturn(Optional.of(profile));
+        when(policyRepository.findHousingPoliciesForMember(
+                PolicyCategory.MONTHLY_RENT,
+                true,
+                today,
+                26,
+                true,
+                "EMPLOYED",
+                "11440",
+                pageRequest
+        )).thenReturn(new PageImpl<>(List.of(policy), pageRequest, 9));
+        when(policyRegionRepository.findAllActiveByPolicyIds(List.of("POLICY-1")))
+                .thenReturn(List.of(PolicyRegion.builder().policy(policy).region(region).build()));
+        when(favoriteRepository.findActivePolicyIds(1L, List.of("POLICY-1")))
+                .thenReturn(Set.of("POLICY-1"));
+
+        PolicyListDTO result = service.getHousingPoliciesForMember(
+                1L,
+                PolicyCategory.MONTHLY_RENT,
+                PolicySort.DEADLINE,
+                true,
+                0,
+                8
+        );
+
+        assertThat(result.getPolicies()).singleElement().satisfies(item -> {
+            assertThat(item.getPolicyId()).isEqualTo("POLICY-1");
+            assertThat(item.getCategoryName()).isEqualTo("월세");
+            assertThat(item.getRegions()).singleElement().satisfies(itemRegion -> {
+                assertThat(itemRegion.getRegionCode()).isEqualTo("11440");
+                assertThat(itemRegion.getRegionName()).isEqualTo("서울특별시 마포구");
+            });
+            assertThat(item.isNationwide()).isFalse();
+            assertThat(item.getApplyPeriodCode()).isEqualTo("PERIOD");
+            assertThat(item.getDDay()).isEqualTo(4);
+            assertThat(item.isFavoriteYn()).isTrue();
+        });
+        assertThat(result.getTotalElements()).isEqualTo(9);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        assertThat(result.isHasNext()).isTrue();
     }
 
     private Set<PolicyEmploymentCondition> mapEmploymentConditions(String codes) {

@@ -2,15 +2,21 @@ package com.hyeja.domain.member.controller;
 
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
+import com.hyeja.domain.member.dto.MemberLoginResponseDTO;
 import com.hyeja.domain.member.service.MemberService;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.ExceptionAdvice;
 import com.hyeja.global.exception.GeneralException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -36,7 +42,21 @@ class MemberControllerTest {
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.standaloneSetup(new MemberController(memberService))
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setControllerAdvice(new ExceptionAdvice()).build();
+        loginAs(1L);
+    }
+
+    // 토큰 대신 "1번 회원으로 로그인한 상태"를 직접 만들어, @AuthenticationPrincipal Long memberId에 1이 들어가게 합니다.
+    // (실제 토큰 검증은 SecurityTest에서 확인합니다.)
+    private static void loginAs(Long memberId) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(memberId, "access-token", List.of()));
+    }
+
+    @AfterEach
+    void logout() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -48,7 +68,7 @@ class MemberControllerTest {
                 .createdAt(LocalDateTime.of(2026, 9, 22, 14, 3, 11))
                 .build());
 
-        mvc.perform(get("/api/members/me").param("memberId", "1"))
+        mvc.perform(get("/api/members/me"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.result.memberId").value(1))
@@ -59,20 +79,14 @@ class MemberControllerTest {
 
     @Test
     void returnsNotFoundWhenMemberDoesNotExist() throws Exception {
+        loginAs(99L);
         when(memberService.getMyAccount(99L)).thenThrow(new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
 
-        mvc.perform(get("/api/members/me").param("memberId", "99"))
+        mvc.perform(get("/api/members/me"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.isSuccess").value(false))
                 .andExpect(jsonPath("$.code").value("MEMBER_001"))
                 .andExpect(jsonPath("$.result").value(nullValue()));
-    }
-
-    @Test
-    void returnsBadRequestWithoutMemberId() throws Exception {
-        mvc.perform(get("/api/members/me"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("COMMON_001"));
     }
 
     // 계정 정보 + 내 조건. 조건의 선택 항목(혼인·소득·학력)은 null로 비워서 보냅니다.
@@ -111,13 +125,6 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$.result.email").value("hyeja@example.com"))
                 // 비밀번호는 응답에 담지 않습니다.
                 .andExpect(jsonPath("$.result.password").doesNotExist());
-    }
-
-    @Test
-    void returnsBadRequestWhenMemberIdIsNotPositive() throws Exception {
-        mvc.perform(get("/api/members/me").param("memberId", "0"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("COMMON_001"));
     }
 
     // 계정 필드와 profile 안쪽 필드가 함께 검증됩니다. profile 안쪽 오류는 "profile.필드명"으로 내려갑니다.
@@ -222,7 +229,7 @@ class MemberControllerTest {
 
     @Test
     void withdraws() throws Exception {
-        mvc.perform(patch("/api/members/me/delete").param("memberId", "1"))
+        mvc.perform(patch("/api/members/me/delete"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS_001"))
                 .andExpect(jsonPath("$.result").value(nullValue()));
@@ -233,8 +240,53 @@ class MemberControllerTest {
     void returnsNotFoundWhenWithdrawingDeletedMember() throws Exception {
         doThrow(new GeneralException(ErrorStatus.MEMBER_NOT_FOUND)).when(memberService).withdraw(1L);
 
-        mvc.perform(patch("/api/members/me/delete").param("memberId", "1"))
+        mvc.perform(patch("/api/members/me/delete"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("MEMBER_001"));
+    }
+
+    @Test
+    void logsIn() throws Exception {
+        when(memberService.login(any())).thenReturn(MemberLoginResponseDTO.builder()
+                .accessToken("access-token").memberId(1L).nickname("민지").build());
+
+        mvc.perform(post("/api/members/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\": \"hyeja@example.com\", \"password\": \"hyeja1234!\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"))
+                .andExpect(jsonPath("$.result.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.result.memberId").value(1))
+                .andExpect(jsonPath("$.result.nickname").value("민지"));
+    }
+
+    @Test
+    void returnsUnauthorizedWhenLoginFails() throws Exception {
+        when(memberService.login(any())).thenThrow(new GeneralException(ErrorStatus.MEMBER_LOGIN_FAILED));
+
+        mvc.perform(post("/api/members/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\": \"hyeja@example.com\", \"password\": \"wrong1234!\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("MEMBER_005"))
+                .andExpect(jsonPath("$.message").value("이메일 또는 비밀번호가 올바르지 않아요."));
+    }
+
+    @Test
+    void rejectsLoginWithoutPassword() throws Exception {
+        mvc.perform(post("/api/members/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\": \"hyeja@example.com\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_003"))
+                .andExpect(jsonPath("$.result.password").exists());
+        verifyNoInteractions(memberService);
+    }
+
+    // 인증 필터가 넣어 둔 토큰 원문(credentials)을 서비스로 넘깁니다. 토큰 검증 자체는 SecurityTest에서 확인합니다.
+    @Test
+    void logsOutWithTokenFromAuthentication() throws Exception {
+        mvc.perform(post("/api/members/logout")
+                        .principal(new UsernamePasswordAuthenticationToken(1L, "access-token")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"));
+        verify(memberService).logout("access-token");
     }
 }
