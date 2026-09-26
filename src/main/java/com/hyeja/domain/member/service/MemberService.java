@@ -43,18 +43,22 @@ public class MemberService {
     // 로그인 토큰 발급, 로그아웃 토큰 무효화에 씁니다.
     private final JwtProvider jwtProvider;
     private final TokenBlacklist tokenBlacklist;
+    // 회원가입 전 이메일 인증 여부를 확인합니다.
+    private final EmailVerificationService emailVerificationService;
 
     /**
      * 계정 정보와 내 조건을 한 트랜잭션에서 함께 저장합니다. 조건 없는 회원이 생기지 않도록,
      * 중간에 하나라도 실패하면 회원·조건 모두 저장되지 않습니다(롤백).
      * 이메일 중복이면 MEMBER_EMAIL_DUPLICATED(409), 닉네임 중복이면 MEMBER_NICKNAME_DUPLICATED(409),
      * 지역 코드가 REGION에 없으면 REGION_NOT_FOUND(404)를 던집니다. 탈퇴 회원의 이메일·닉네임도 중복으로 봅니다.
+     * 이메일 인증(발송 → 확인)을 마치지 않았거나 인증 후 30분이 지났으면 VERIFY_REQUIRED(400)입니다.
      */
     @Transactional
     public MemberAccountResponseDTO signup(MemberSignupRequestDTO request) {
         if (memberRepository.existsByEmail(request.getEmail())) {
             throw new GeneralException(ErrorStatus.MEMBER_EMAIL_DUPLICATED);
         }
+        emailVerificationService.checkVerified(request.getEmail());
         if (memberRepository.existsByNickname(request.getNickname())) {
             throw new GeneralException(ErrorStatus.MEMBER_NICKNAME_DUPLICATED);
         }
@@ -66,6 +70,8 @@ public class MemberService {
         Member member = memberRepository.save(
                 MemberConverter.toMember(request, passwordEncoder.encode(request.getPassword())));
         profileRepository.save(ProfileConverter.toProfile(member, region, request.getProfile()));
+        // 같은 인증으로 두 번 가입하지 못하게 인증 완료 표시를 지웁니다.
+        emailVerificationService.clearVerified(request.getEmail());
 
         return MemberConverter.toMemberAccountResponseDTO(member);
     }
