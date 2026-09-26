@@ -26,6 +26,8 @@ public enum ErrorStatus implements BaseErrorCode {
     MEMBER_NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "MEMBER_003", "이미 사용 중인 닉네임입니다."),
     // 이메일 찾기 실패: 닉네임·생년월일 중 무엇이 틀렸는지 구분하지 않습니다(가입된 닉네임 노출 방지).
     MEMBER_EMAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_004", "가입된 정보가 없어요."),
+    // 로그인 실패: 이메일·비밀번호 중 무엇이 틀렸는지, 탈퇴 회원인지 구분하지 않습니다(가입된 이메일 노출 방지).
+    MEMBER_LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "MEMBER_005", "이메일 또는 비밀번호가 올바르지 않아요."),
 
     // 알림
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_001", "존재하지 않는 알림입니다."),

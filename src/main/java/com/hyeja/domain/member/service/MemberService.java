@@ -4,6 +4,8 @@ import com.hyeja.domain.favorite.repository.FavoriteRepository;
 import com.hyeja.domain.member.converter.MemberConverter;
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
+import com.hyeja.domain.member.dto.MemberLoginRequestDTO;
+import com.hyeja.domain.member.dto.MemberLoginResponseDTO;
 import com.hyeja.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.member.repository.MemberRepository;
@@ -15,6 +17,10 @@ import com.hyeja.domain.region.entity.Region;
 import com.hyeja.domain.region.repository.RegionRepository;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
+import com.hyeja.global.security.JwtProvider;
+import com.hyeja.global.security.TokenBlacklist;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,6 +40,9 @@ public class MemberService {
     // 회원 탈퇴 때 딸린 관심 정책·알림을 함께 지웁니다.
     private final FavoriteRepository favoriteRepository;
     private final NotificationRepository notificationRepository;
+    // 로그인 토큰 발급, 로그아웃 토큰 무효화에 씁니다.
+    private final JwtProvider jwtProvider;
+    private final TokenBlacklist tokenBlacklist;
 
     /**
      * 계정 정보와 내 조건을 한 트랜잭션에서 함께 저장합니다. 조건 없는 회원이 생기지 않도록,
@@ -116,5 +125,28 @@ public class MemberService {
         profileRepository.findById(member.getEmail()).ifPresent(Profile::softDelete);
         // 트랜잭션이 끝날 때 바뀐 deleted_at이 UPDATE로 저장됩니다 (save 호출 불필요).
         member.softDelete();
+    }
+
+    /**
+     * 이메일·비밀번호가 맞으면 로그인 토큰(30분 유효)을 발급합니다.
+     * 이메일이 없든, 탈퇴했든, 비밀번호가 틀렸든 같은 MEMBER_LOGIN_FAILED(401)를 던져
+     * 어떤 이메일이 가입돼 있는지 알 수 없게 합니다.
+     */
+    public MemberLoginResponseDTO login(MemberLoginRequestDTO request) {
+        Member member = memberRepository.findByEmail(request.getEmail())
+                .filter(m -> !m.isDeleted())
+                // 저장된 값은 암호화돼 있어 직접 비교하지 않고 BCrypt의 matches로 비교합니다.
+                .filter(m -> passwordEncoder.matches(request.getPassword(), m.getPassword()))
+                .orElseThrow(() -> new GeneralException(ErrorStatus.MEMBER_LOGIN_FAILED));
+        return MemberConverter.toLoginResponseDTO(member, jwtProvider.createAccessToken(member));
+    }
+
+    /**
+     * 로그아웃. 토큰을 원래 만료 시각까지 블랙리스트(Redis)에 올려, 같은 토큰으로 다시 요청하면 401이 나게 합니다.
+     * 토큰 검증은 인증 필터에서 이미 끝났으므로 여기서는 만료 시각만 읽습니다.
+     */
+    public void logout(String token) {
+        Instant expiration = jwtProvider.parse(token).getExpiration().toInstant();
+        tokenBlacklist.add(token, Duration.between(Instant.now(), expiration));
     }
 }
