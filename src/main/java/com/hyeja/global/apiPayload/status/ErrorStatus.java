@@ -32,7 +32,14 @@ public enum ErrorStatus implements BaseErrorCode {
     PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "PROFILE_001", "등록된 조건이 없습니다."),
 
     // 지역
-    REGION_NOT_FOUND(HttpStatus.NOT_FOUND, "REGION_001", "존재하지 않는 지역입니다.");
+    REGION_NOT_FOUND(HttpStatus.NOT_FOUND, "REGION_001", "존재하지 않는 지역입니다."),
+
+    // 정책
+    POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "POLICY_001", "존재하지 않는 정책입니다."),
+
+    // 관심 정책
+    FAVORITE_ALREADY_EXISTS(HttpStatus.CONFLICT, "FAVORITE_001", "이미 등록된 관심 정책입니다."),
+    FAVORITE_NOT_FOUND(HttpStatus.NOT_FOUND, "FAVORITE_002", "등록되지 않은 관심 정책입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
