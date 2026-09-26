@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    # Testcontainers의 ServiceConnection이 실제 접속 정보를 덮어씁니다.
+    url: jdbc:mariadb://localhost:3306/hyeja_e2e
+    username: e2e
+    password: e2e
+    driver-class-name: org.mariadb.jdbc.Driver
+  sql:
+    init:
+      mode: never
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  ai:
+    openai:
+      api-key: e2e-unused
+      chat:
+        options:
+          model: e2e-unused
+
+jwt:
+  secret: hyeja-e2e-only-jwt-secret-key-0123456789
+
+youth:
+  api:
+    key: e2e-unused
+    url: http://127.0.0.1:1/not-used
+
+logging:
+  level:
+    root: warn
