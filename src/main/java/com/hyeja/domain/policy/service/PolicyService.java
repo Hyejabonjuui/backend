@@ -25,6 +25,7 @@ import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
 import java.net.URI;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.Collections;
@@ -60,6 +61,7 @@ public class PolicyService {
     private final PolicyRegionRepository policyRegionRepository;
     private final PolicyEligibilityEvaluator policyEligibilityEvaluator;
     private final FavoriteRepository favoriteRepository;
+    private final Clock clock;
 
     @Value("${youth.api.key}")
     private String apiKey;
@@ -136,7 +138,7 @@ public class PolicyService {
             int page,
             int size
     ) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         Page<Policy> policyPage = policyRepository.findGuestHousingPolicies(
                 category,
                 today,

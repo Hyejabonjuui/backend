@@ -30,7 +30,10 @@ import com.hyeja.domain.profile.repository.ProfileRepository;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import com.hyeja.domain.region.entity.Region;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -53,10 +56,13 @@ class PolicyServiceTest {
     private final PolicyEligibilityEvaluator policyEligibilityEvaluator =
             new PolicyEligibilityEvaluator(new PolicyIncomeEligibilityEvaluator());
     private final FavoriteRepository favoriteRepository = mock(FavoriteRepository.class);
+    private final Clock clock = Clock.fixed(
+            Instant.parse("2026-09-27T00:00:00Z"),
+            ZoneId.of("Asia/Seoul"));
     private final PolicyService service = new PolicyService(
             policyRepository, restTemplate, codeConverter, policyAiAnalyzer,
             policySyncItemService, memberRepository, profileRepository, policyRegionRepository,
-            policyEligibilityEvaluator, favoriteRepository);
+            policyEligibilityEvaluator, favoriteRepository, clock);
 
     @Test
     void mapsYouthPolicyApiFieldsToPolicyEntity() {
@@ -349,7 +355,7 @@ class PolicyServiceTest {
 
     @Test
     void returnsGuestPolicyPageWithRegionsAndDeadlineInformation() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         Region region = Region.builder()
                 .regionCode("11440")
                 .sigunguName("서울특별시 마포구")
