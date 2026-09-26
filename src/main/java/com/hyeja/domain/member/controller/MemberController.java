@@ -1,6 +1,7 @@
 package com.hyeja.domain.member.controller;
 
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
+import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
 import com.hyeja.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.domain.member.service.MemberService;
 import com.hyeja.global.apiPayload.ApiResponse;
@@ -13,7 +14,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -82,5 +85,39 @@ public class MemberController {
     ) {
         MemberAccountResponseDTO result = memberService.getMyAccount(memberId);
         return ApiResponse.onSuccess(result);
+    }
+
+    // 이메일 찾기 (로그인 모달의 '이메일 찾기') — 예: GET /api/members/find-email?nickname=민지&birth=2000-03-15
+    // 비로그인 상태에서 호출합니다. 찾지 못하면 이유를 구분하지 않고 MEMBER_004 하나로 응답합니다.
+    @Operation(
+            summary = "이메일 찾기",
+            description = "닉네임과 생년월일이 일치하는 회원의 이메일을 가려서(@ 앞 3글자만 표시) 가입일과 함께 반환합니다. "
+                    + "닉네임이 없거나 생년월일이 다르거나 탈퇴한 회원이면 모두 MEMBER_004로 응답합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "이메일 찾기 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "닉네임·생년월일 누락 또는 날짜 형식 오류 (COMMON_001)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "가입된 정보 없음 (MEMBER_004)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            )
+    })
+    @GetMapping("/find-email")
+    public ApiResponse<MemberFindEmailResponseDTO> findEmail(
+            @Parameter(name = "nickname", description = "닉네임", in = ParameterIn.QUERY, example = "민지", required = true)
+            @RequestParam(name = "nickname") String nickname,
+            @Parameter(name = "birth", description = "생년월일 (yyyy-MM-dd)", in = ParameterIn.QUERY,
+                    example = "2000-03-15", required = true)
+            @RequestParam(name = "birth") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate birth
+    ) {
+        return ApiResponse.onSuccess(memberService.findEmail(nickname, birth));
     }
 }
