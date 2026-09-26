@@ -71,6 +71,8 @@ class FavoriteRepositoryTest {
 
         assertThat(favoriteRepository.existsByMemberMemberIdAndPolicyPolicyId(
                 member.getMemberId(), policy.getPolicyId())).isTrue();
+        assertThat(favoriteRepository.findByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(
+                member.getMemberId(), policy.getPolicyId())).contains(favorite);
 
         Long deletedId = favorite.getFavoriteId();
         favoriteRepository.delete(favorite);
@@ -78,6 +80,8 @@ class FavoriteRepositoryTest {
 
         assertThat(favoriteRepository.existsByMemberMemberIdAndPolicyPolicyId(
                 member.getMemberId(), policy.getPolicyId())).isFalse();
+        assertThat(favoriteRepository.findByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(
+                member.getMemberId(), policy.getPolicyId())).isEmpty();
 
         Favorite registeredAgain = favoriteRepository.saveAndFlush(
                 Favorite.builder().member(member).policy(policy).build()

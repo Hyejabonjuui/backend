@@ -1,9 +1,11 @@
 package com.hyeja.domain.favorite.controller;
 
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -156,6 +158,37 @@ class FavoriteControllerTest {
     @Test
     void createReturnsBadRequestWithoutMemberId() throws Exception {
         mvc.perform(post("/api/favorite/{policyId}", "policy-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_001"));
+    }
+
+    @Test
+    void deletesFavoritePolicy() throws Exception {
+        mvc.perform(delete("/api/favorite/{policyId}", "policy-1")
+                        .param("memberId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true))
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"))
+                .andExpect(jsonPath("$.result").value(nullValue()));
+
+        verify(favoriteService).deleteFavorite(1L, "policy-1");
+    }
+
+    @Test
+    void deleteReturnsNotFoundWhenFavoriteDoesNotExist() throws Exception {
+        doThrow(new GeneralException(ErrorStatus.FAVORITE_NOT_FOUND))
+                .when(favoriteService).deleteFavorite(1L, "policy-1");
+
+        mvc.perform(delete("/api/favorite/{policyId}", "policy-1")
+                        .param("memberId", "1"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("FAVORITE_002"))
+                .andExpect(jsonPath("$.result").value(nullValue()));
+    }
+
+    @Test
+    void deleteReturnsBadRequestWithoutMemberId() throws Exception {
+        mvc.perform(delete("/api/favorite/{policyId}", "policy-1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_001"));
     }

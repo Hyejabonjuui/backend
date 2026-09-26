@@ -34,6 +34,7 @@
 | `GET` | `/api/members/me` | query `memberId: Long` | JWT 전 임시 회원 식별 방식 |
 | `GET` | `/api/favorite` | query `memberId: Long`, `page=0`, `size=8` | 회원의 관심 정책을 최근 등록순으로 페이지 조회 |
 | `POST` | `/api/favorite/{policyId}` | path `policyId: String`, query `memberId: Long` | 관심 정책 등록, 중복 등록 불가 |
+| `DELETE` | `/api/favorite/{policyId}` | path `policyId: String`, query `memberId: Long` | 회원의 관심 정책 영구 삭제 |
 | `GET` | `/api/notification/{memberId}` | path `memberId`, query `page=0`, `size=8` | 삭제되지 않은 알림 최신순 페이지 조회 |
 | `DELETE` | `/api/notification/{notificationId}` | path `notificationId`, query `memberId` | 본인 소유의 삭제되지 않은 알림 영구 삭제 |
 | `PATCH` | `/api/notification/{notificationId}/read` | path `notificationId`, query `memberId` | 본인 소유의 삭제되지 않은 알림 읽음 처리 |
@@ -51,7 +52,6 @@ Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한
 - 지역 목록
 - 정책: 검색·추천·상세·페이지 목록·카드 상세
 - 회원용 카드뉴스
-- 관심 정책 해제
 
 구현 전에 Method와 URL을 다시 확인한다. 명세에는 `/api` 누락, memberId 위치 불일치, `notificatonId` 오타 등 현재 코드와 다른 표기가 남아 있다.
 
