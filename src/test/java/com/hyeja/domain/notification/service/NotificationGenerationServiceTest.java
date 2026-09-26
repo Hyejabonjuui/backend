@@ -1,6 +1,7 @@
 package com.hyeja.domain.notification.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -10,10 +11,13 @@ import static org.mockito.Mockito.when;
 import com.hyeja.domain.favorite.entity.Favorite;
 import com.hyeja.domain.favorite.repository.FavoriteRepository;
 import com.hyeja.domain.member.entity.Member;
+import com.hyeja.domain.member.service.MemberService;
 import com.hyeja.domain.notification.entity.Notification;
 import com.hyeja.domain.notification.repository.NotificationRepository;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.global.apiPayload.status.ErrorStatus;
+import com.hyeja.global.exception.GeneralException;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -29,6 +33,9 @@ class NotificationGenerationServiceTest {
 
     private static final LocalDate BASE_DATE = LocalDate.of(2026, 9, 26);
     private static final LocalDate DEADLINE_DATE = LocalDate.of(2026, 10, 3);
+
+    @Mock
+    private MemberService memberService;
 
     @Mock
     private FavoriteRepository favoriteRepository;
@@ -108,6 +115,54 @@ class NotificationGenerationServiceTest {
 
         assertThat(result).isZero();
         verifyNoInteractions(notificationRepository);
+    }
+
+    @Test
+    void createsDeadlineNotificationsOnlyForRequestedMember() {
+        Member requestedMember = member(1L, "requested@example.com");
+        Policy firstPolicy = policy("policy-1");
+        Policy secondPolicy = policy("policy-2");
+        List<Favorite> targets = List.of(
+                favorite(requestedMember, firstPolicy),
+                favorite(requestedMember, secondPolicy)
+        );
+        Notification existing = Notification.builder()
+                .member(requestedMember)
+                .policy(firstPolicy)
+                .deadlineDate(DEADLINE_DATE)
+                .build();
+        when(memberService.getActiveMember(1L)).thenReturn(requestedMember);
+        when(favoriteRepository.findNotificationTargetsByMemberIdAndDeadlineDate(
+                1L, DEADLINE_DATE)).thenReturn(targets);
+        when(notificationRepository.findAllByMemberIdAndDeadlineDateWithPolicy(
+                1L, DEADLINE_DATE)).thenReturn(List.of(existing));
+
+        int result = notificationGenerationService
+                .createDeadlineNotificationsForMember(BASE_DATE, 1L);
+
+        assertThat(result).isEqualTo(1);
+        ArgumentCaptor<List<Notification>> captor = ArgumentCaptor.captor();
+        verify(notificationRepository).saveAll(captor.capture());
+        assertThat(captor.getValue()).singleElement().satisfies(notification -> {
+            assertThat(notification.getMember().getMemberId()).isEqualTo(1L);
+            assertThat(notification.getPolicy().getPolicyId()).isEqualTo("policy-2");
+            assertThat(notification.getDeadlineDate()).isEqualTo(DEADLINE_DATE);
+            assertThat(notification.getReadYn()).isFalse();
+        });
+    }
+
+    @Test
+    void throwsMemberNotFoundWhenGeneratingForMissingMember() {
+        when(memberService.getActiveMember(99L))
+                .thenThrow(new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
+
+        assertThatThrownBy(() -> notificationGenerationService
+                .createDeadlineNotificationsForMember(BASE_DATE, 99L))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(ErrorStatus.MEMBER_NOT_FOUND);
+
+        verifyNoInteractions(favoriteRepository, notificationRepository);
     }
 
     private Member member(Long memberId, String email) {

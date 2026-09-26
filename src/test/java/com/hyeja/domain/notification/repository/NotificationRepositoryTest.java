@@ -91,6 +91,32 @@ class NotificationRepositoryTest {
     }
 
     @Test
+    void findsExistingNotificationsOnlyForRequestedMemberAndDeadline() {
+        LocalDate deadlineDate = LocalDate.of(2026, 10, 1);
+        Member requestedMember = persistMember("requested-deadline@example.com", "요청 회원");
+        Member otherMember = persistMember("other-deadline@example.com", "다른 회원");
+        Policy policy = persistPolicy("member-deadline-policy", deadlineDate);
+        entityManager.persist(Notification.builder()
+                .member(requestedMember).policy(policy).deadlineDate(deadlineDate).build());
+        entityManager.persist(Notification.builder()
+                .member(otherMember).policy(policy).deadlineDate(deadlineDate).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        var result = notificationRepository.findAllByMemberIdAndDeadlineDateWithPolicy(
+                requestedMember.getMemberId(),
+                deadlineDate
+        );
+
+        assertThat(result).singleElement().satisfies(notification -> {
+            assertThat(notification.getMember().getMemberId())
+                    .isEqualTo(requestedMember.getMemberId());
+            assertThat(notification.getPolicy().getPolicyId())
+                    .isEqualTo("member-deadline-policy");
+        });
+    }
+
+    @Test
     void findsOnlyActiveNotificationOwnedByRequestedMember() {
         Member requestedMember = persistMember("member@example.com", "회원");
         Member otherMember = persistMember("other@example.com", "다른 회원");

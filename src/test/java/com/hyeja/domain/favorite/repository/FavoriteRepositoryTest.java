@@ -111,6 +111,30 @@ class FavoriteRepositoryTest {
     }
 
     @Test
+    void findsNotificationTargetsOnlyForRequestedMember() {
+        LocalDate deadlineDate = LocalDate.of(2026, 10, 3);
+        Member requestedMember = persistMember("requested-notification@example.com");
+        Member otherMember = persistMember("other-notification@example.com");
+        Policy policy = persistPolicy("member-target-policy", "회원별 마감 정책", deadlineDate);
+        entityManager.persist(Favorite.builder()
+                .member(requestedMember).policy(policy).build());
+        entityManager.persist(Favorite.builder()
+                .member(otherMember).policy(policy).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        var result = favoriteRepository.findNotificationTargetsByMemberIdAndDeadlineDate(
+                requestedMember.getMemberId(),
+                deadlineDate
+        );
+
+        assertThat(result).singleElement().satisfies(favorite -> {
+            assertThat(favorite.getMember().getMemberId()).isEqualTo(requestedMember.getMemberId());
+            assertThat(favorite.getPolicy().getPolicyId()).isEqualTo("member-target-policy");
+        });
+    }
+
+    @Test
     void searchesPolicyNameOrSupportContentAndKeepsInactivePolicies() {
         Member member = persistMember("search@example.com");
         Member otherMember = persistMember("search-other@example.com");
