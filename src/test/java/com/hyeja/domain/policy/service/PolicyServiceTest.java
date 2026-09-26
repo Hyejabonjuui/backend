@@ -506,18 +506,18 @@ class PolicyServiceTest {
         Policy policy = Policy.builder()
                 .policyId("POLICY-1")
                 .policyName("청년 월세 지원")
-                .category(PolicyCategory.MONTHLY_RENT)
+                .categories(Set.of(PolicyCategory.MONTHLY_RENT))
                 .ageLimitYn(true)
                 .minAge(19)
                 .maxAge(39)
-                .applyPeriodCode("PERIOD")
+                .applyPeriodCode(PolicyApplyPeriod.SPECIFIC_PERIOD)
                 .applyEndDate(today.plusDays(4))
                 .build();
         PageRequest pageRequest = PageRequest.of(0, 8, PolicySort.DEADLINE.toSort());
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
         when(profileRepository.findById("member@example.com")).thenReturn(Optional.of(profile));
         when(policyRepository.findHousingPoliciesForMember(
-                PolicyCategory.MONTHLY_RENT,
+                PolicyCategory.MONTHLY_RENT.name(),
                 true,
                 today,
                 26,
@@ -542,13 +542,13 @@ class PolicyServiceTest {
 
         assertThat(result.getPolicies()).singleElement().satisfies(item -> {
             assertThat(item.getPolicyId()).isEqualTo("POLICY-1");
-            assertThat(item.getCategoryName()).isEqualTo("월세");
+            assertThat(item.getCategoryNames()).containsExactly("월세");
             assertThat(item.getRegions()).singleElement().satisfies(itemRegion -> {
                 assertThat(itemRegion.getRegionCode()).isEqualTo("11440");
                 assertThat(itemRegion.getRegionName()).isEqualTo("서울특별시 마포구");
             });
             assertThat(item.isNationwide()).isFalse();
-            assertThat(item.getApplyPeriodCode()).isEqualTo("PERIOD");
+            assertThat(item.getApplyPeriodCode()).isEqualTo(PolicyApplyPeriod.SPECIFIC_PERIOD);
             assertThat(item.getDDay()).isEqualTo(4);
             assertThat(item.isFavoriteYn()).isTrue();
         });

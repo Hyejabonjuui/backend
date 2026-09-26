@@ -148,7 +148,7 @@ public class PolicyService {
                 .orElseThrow(() -> new GeneralException(ErrorStatus.PROFILE_NOT_FOUND));
         LocalDate today = LocalDate.now();
         Page<Policy> policyPage = policyRepository.findHousingPoliciesForMember(
-                category,
+                category == null ? null : category.name(),
                 onlyEligible,
                 today,
                 Period.between(profile.getBirth(), today).getYears(),
