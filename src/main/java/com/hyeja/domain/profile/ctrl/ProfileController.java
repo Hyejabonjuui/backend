@@ -5,12 +5,13 @@ import com.hyeja.domain.profile.service.ProfileService;
 import com.hyeja.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -50,11 +51,18 @@ public class ProfileController {
             )
     })
     @GetMapping("/me/profile")
-    public ResponseEntity<ApiResponse<ProfileResponseDTO>> getMyProfile(
-            @Parameter(description = "조회할 회원 ID", example = "1", required = true) // 추후 memberId는 없앨 예정
-            @RequestParam Long memberId
+    public ApiResponse<ProfileResponseDTO> getMyProfile(
+            @Parameter(
+                    name = "memberId",
+                    description = "조회할 회원 ID",
+                    in = ParameterIn.QUERY,
+                    example = "1",
+                    required = true
+            ) // 추후 memberId는 없앨 예정
+            @RequestParam(name = "memberId")
+            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
     ) {
         ProfileResponseDTO result = profileService.getMyProfile(memberId);
-        return ResponseEntity.ok(ApiResponse.onSuccess(result));
+        return ApiResponse.onSuccess(result);
     }
 }

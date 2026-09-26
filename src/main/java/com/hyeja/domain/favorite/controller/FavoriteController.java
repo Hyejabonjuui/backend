@@ -4,7 +4,6 @@ import com.hyeja.domain.favorite.dto.FavoriteResponseDTO.FavoriteItemDTO;
 import com.hyeja.domain.favorite.dto.FavoriteResponseDTO.FavoriteListDTO;
 import com.hyeja.domain.favorite.service.FavoriteService;
 import com.hyeja.global.apiPayload.ApiResponse;
-import com.hyeja.global.apiPayload.status.SuccessStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -16,8 +15,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,7 +24,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "관심 정책", description = "회원 관심 정책 API")
-@Validated
 @RestController
 @RequestMapping("/api/favorite")
 @RequiredArgsConstructor
@@ -57,7 +53,7 @@ public class FavoriteController {
             )
     })
     @GetMapping
-    public ResponseEntity<ApiResponse<FavoriteListDTO>> getMyFavorites(
+    public ApiResponse<FavoriteListDTO> getMyFavorites(
             @Parameter(
                     name = "memberId",
                     description = "조회할 회원 ID",
@@ -65,7 +61,8 @@ public class FavoriteController {
                     example = "1",
                     required = true
             )
-            @RequestParam(name = "memberId") Long memberId,
+            @RequestParam(name = "memberId")
+            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId,
             @Parameter(
                     name = "page",
                     description = "페이지 번호(0부터 시작)",
@@ -84,7 +81,7 @@ public class FavoriteController {
             @Positive(message = "페이지 크기는 양수여야 합니다.") int size
     ) {
         FavoriteListDTO result = favoriteService.getMyFavorites(memberId, page, size);
-        return ResponseEntity.ok(ApiResponse.onSuccess(result));
+        return ApiResponse.onSuccess(result);
     }
 
     @Operation(
@@ -94,8 +91,8 @@ public class FavoriteController {
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "201",
-                    description = "관심 정책 등록 성공"
+                    responseCode = "200",
+                    description = "관심 정책 등록 성공 (SUCCESS_001)"
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
@@ -114,7 +111,7 @@ public class FavoriteController {
             )
     })
     @PostMapping("/{policyId}")
-    public ResponseEntity<ApiResponse<FavoriteItemDTO>> createFavorite(
+    public ApiResponse<FavoriteItemDTO> createFavorite(
             @Parameter(
                     name = "policyId",
                     description = "등록할 정책 ID",
@@ -130,11 +127,11 @@ public class FavoriteController {
                     example = "1",
                     required = true
             )
-            @RequestParam(name = "memberId") Long memberId
+            @RequestParam(name = "memberId")
+            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
     ) {
         FavoriteItemDTO result = favoriteService.createFavorite(memberId, policyId);
-        return ResponseEntity.status(SuccessStatus.CREATED.getHttpStatus())
-                .body(ApiResponse.of(SuccessStatus.CREATED, result));
+        return ApiResponse.onSuccess(result);
     }
 
     @Operation(
