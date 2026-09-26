@@ -90,6 +90,15 @@ public class Profile extends BaseEntity {
             EducationLevel educationCode, HousingType housingType) {
         this.member = Objects.requireNonNull(member, "회원은 필수입니다.");
         this.email = Objects.requireNonNull(member.getEmail(), "회원 이메일은 필수입니다.");
+        // 조건 8개는 수정과 같은 방식으로 채웁니다.
+        update(region, birth, employmentCode, houselessYn, marriageCode, incomeRangeCode, educationCode, housingType);
+    }
+
+    // 내 조건 수정: 수정 폼 전체를 다시 저장하므로 모든 조건을 통째로 교체합니다.
+    // 선택 항목(혼인·소득·학력·주거 형태)에 null이 오면 기존 값이 지워집니다. 회원(이메일)은 바꾸지 않습니다.
+    public void update(Region region, LocalDate birth, EmploymentStatus employmentCode, Boolean houselessYn,
+            MaritalStatus marriageCode, IncomeRange incomeRangeCode, EducationLevel educationCode,
+            HousingType housingType) {
         this.region = Objects.requireNonNull(region, "거주 지역은 필수입니다.");
         this.birth = birth;
         this.employmentCode = employmentCode;

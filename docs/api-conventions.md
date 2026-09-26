@@ -10,7 +10,7 @@
 
 ## 공통 응답
 
-헬스체크를 제외한 현재 API는 다음 형태의 `ApiResponse<T>`를 사용한다.
+모든 API 성공 응답은 HTTP `200 OK`, `SUCCESS_001`과 함께 다음 형태의 `ApiResponse<T>`를 사용한다.
 
 ```json
 {
@@ -25,17 +25,18 @@
 
 ## 실제 구현된 엔드포인트
 
-2026-09-25 현재 Controller 기준이다.
+2026-09-26 현재 Controller 기준이다.
 
 | Method | Path | 입력 | 비고 |
 | --- | --- | --- | --- |
-| `GET` | `/api/health` | 없음 | `{ "status": "UP" }`, 공통 래퍼 미사용 |
+| `GET` | `/api/health` | 없음 | 공통 래퍼의 `result.status`로 `UP` 반환 |
 | `GET` | `/api/policies/card-news/guest` | 없음 | 대표 카드 중 최대 4건 |
 | `GET` | `/api/members/me` | query `memberId: Long` | JWT 전 임시 회원 식별 방식 |
-| `GET` | `/api/favorite` | query `memberId: Long`, `page=0`, `size=8` | 회원의 관심 정책을 최근 등록순으로 페이지 조회 |
+| `GET` | `/api/favorite` | query `memberId: Long`, `keyword?: String`, `page=0`, `size=8` | 회원의 관심 정책을 최근 등록순으로 페이지 조회, 정책명·지원 내용 검색 |
 | `POST` | `/api/favorite/{policyId}` | path `policyId: String`, query `memberId: Long` | 관심 정책 등록, 중복 등록 불가 |
 | `DELETE` | `/api/favorite/{policyId}` | path `policyId: String`, query `memberId: Long` | 회원의 관심 정책 영구 삭제 |
-| `GET` | `/api/notification/{memberId}` | path `memberId`, query `page=0`, `size=8` | 삭제되지 않은 알림 최신순 페이지 조회 |
+| `GET` | `/api/notification` | query `memberId`, `page=0`, `size=8` | 삭제되지 않은 알림 최신순 페이지 조회 |
+| `POST` | `/api/notification/admin/generate` | query `memberId: Long` | 개발·테스트용, 해당 회원의 D-7 관심 정책 알림만 생성 |
 | `DELETE` | `/api/notification/{notificationId}` | path `notificationId`, query `memberId` | 본인 소유의 삭제되지 않은 알림 영구 삭제 |
 | `PATCH` | `/api/notification/{notificationId}/read` | path `notificationId`, query `memberId` | 본인 소유의 삭제되지 않은 알림 읽음 처리 |
 | `POST` | `/api/policies/sync` | 없음 | 외부 정책 수동 동기화 |
@@ -58,7 +59,7 @@ Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한
 ## 인증 전환기 규칙
 
 - 토큰 기반 인증은 아직 구현하지 않는다.
-- 현재 개발 단계에서는 기존 코드처럼 `memberId`를 path variable이나 query string으로 받을 수 있다.
+- 현재 개발 단계에서는 `memberId`를 query string으로 받는다.
 - 최종적으로 헤더에서 인증 사용자를 구하는 방향이지만, 현재 없는 Authorization 처리나 Redis 토큰 블랙리스트를 가정해서 구현하지 않는다.
 - 인증을 도입할 때 회원 식별 파라미터 제거 여부와 모든 회원 API 계약을 함께 갱신한다.
 
@@ -68,6 +69,7 @@ Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한
 - JSON 필드명은 기존 DTO의 Jackson 설정을 확인한다. snake_case와 camelCase를 임의로 일괄 변경하지 않는다.
 - 외부 정책 ID는 숫자로 변환하지 않고 문자열로 유지한다.
 - CardNews `title`은 배열이 아니라 nullable 문자열이다.
+- 알림 응답의 `apply_end_date`는 알림 생성 시 저장한 정책 마감일 스냅샷이다.
 - enum은 표시 문구가 아니라 코드의 enum 상수와 converter 규칙을 사용한다.
 
 ## API 추가·수정 체크리스트

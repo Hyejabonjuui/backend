@@ -13,6 +13,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import java.time.LocalDate;
 import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -21,7 +23,12 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "notification")
+@Table(name = "notification", uniqueConstraints = {
+        @UniqueConstraint(
+                name = "uk_notification_member_policy_deadline",
+                columnNames = {"member_id", "policy_id", "deadline_date"}
+        )
+})
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Notification extends BaseEntity {
 
@@ -43,10 +50,14 @@ public class Notification extends BaseEntity {
     @Column(name = "read_yn", nullable = false)
     private Boolean readYn;
 
+    @Column(name = "deadline_date", nullable = false, updatable = false)
+    private LocalDate deadlineDate;
+
     @Builder
-    public Notification(Member member, Policy policy) {
+    public Notification(Member member, Policy policy, LocalDate deadlineDate) {
         this.member = Objects.requireNonNull(member, "회원은 필수입니다.");
         this.policy = Objects.requireNonNull(policy, "정책은 필수입니다.");
+        this.deadlineDate = Objects.requireNonNull(deadlineDate, "알림 대상 마감일은 필수입니다.");
         this.readYn = false;
     }
 

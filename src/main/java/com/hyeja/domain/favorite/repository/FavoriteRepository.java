@@ -1,6 +1,8 @@
 package com.hyeja.domain.favorite.repository;
 
 import com.hyeja.domain.favorite.entity.Favorite;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,6 +44,71 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
     )
     Page<Favorite> findAllActiveByMemberId(
             @Param("memberId") Long memberId,
+            Pageable pageable
+    );
+
+    @Query("""
+            select favorite
+            from Favorite favorite
+            join fetch favorite.member member
+            join fetch favorite.policy policy
+            where favorite.deletedAt is null
+              and member.deletedAt is null
+              and policy.deletedAt is null
+              and policy.activeYn = true
+              and policy.applyEndDate = :deadlineDate
+            order by favorite.favoriteId asc
+            """)
+    List<Favorite> findNotificationTargetsByDeadlineDate(
+            @Param("deadlineDate") LocalDate deadlineDate
+    );
+
+    @Query("""
+            select favorite
+            from Favorite favorite
+            join fetch favorite.member member
+            join fetch favorite.policy policy
+            where member.memberId = :memberId
+              and favorite.deletedAt is null
+              and member.deletedAt is null
+              and policy.deletedAt is null
+              and policy.activeYn = true
+              and policy.applyEndDate = :deadlineDate
+            order by favorite.favoriteId asc
+            """)
+    List<Favorite> findNotificationTargetsByMemberIdAndDeadlineDate(
+            @Param("memberId") Long memberId,
+            @Param("deadlineDate") LocalDate deadlineDate
+    );
+
+    @Query(
+            value = """
+                    select favorite
+                    from Favorite favorite
+                    join fetch favorite.policy policy
+                    where favorite.member.memberId = :memberId
+                      and favorite.deletedAt is null
+                      and (
+                          lower(policy.policyName) like lower(concat('%', :keyword, '%')) escape '!'
+                          or lower(policy.supportContent) like lower(concat('%', :keyword, '%')) escape '!'
+                      )
+                    order by favorite.createdAt desc, favorite.favoriteId desc
+                    """,
+            countQuery = """
+                    select count(favorite)
+                    from Favorite favorite
+                    join favorite.policy policy
+                    where favorite.member.memberId = :memberId
+                      and favorite.deletedAt is null
+                      and (
+                          lower(policy.policyName) like lower(concat('%', :keyword, '%')) escape '!'
+                          or lower(policy.supportContent) like lower(concat('%', :keyword, '%')) escape '!'
+                      )
+                    """
+    )
+    Page<Favorite> searchAllActiveByMemberIdAndKeyword(
+            @Param("memberId") Long memberId,
+            @Param("keyword") String keyword,
             Pageable pageable
     );
 }
