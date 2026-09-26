@@ -26,7 +26,7 @@
 Profile의 `houselessYn`과 비교한다. 신청기간은 API의 `57001`, `57002`, `57003`을 각각
 `SPECIFIC_PERIOD`, `ALWAYS`, `CLOSED`로 변환한다. 특정기간일 때만 시작일과 종료일을
 저장하고 상시·마감은 두 날짜를 null로 유지한다.
-정책 지원 지역은 `PolicyRegion`에 온통청년 API의 5자리 코드를 그대로 연결한다. `xx000` 광역 코드는
+정책 지원 지역은 정책마다 온통청년 API의 첫 번째 5자리 코드 하나만 `PolicyRegion`에 연결한다. `xx000` 광역 코드는
 상세 시군구로 확장 저장하지 않고, 적합성 판정 시 회원 지역 코드의 앞 두 자리와 비교한다.
 사용하지 않는 `subtype_code`와 파생 표시값이었던 `region_condition` 컬럼은 초기화 SQL로 제거한다.
 

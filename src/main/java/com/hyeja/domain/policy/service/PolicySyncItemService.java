@@ -109,8 +109,12 @@ public class PolicySyncItemService {
             return regionCodes;
         }
         Matcher matcher = REGION_CODE_PATTERN.matcher(rawRegionCodes);
-        while (matcher.find()) {
+        if (matcher.find()) {
             regionCodes.add(matcher.group());
+            if (matcher.find()) {
+                log.warn("정책 지역 코드가 여러 개입니다. 첫 번째 코드만 저장합니다. rawCodes={}",
+                        rawRegionCodes);
+            }
         }
         return regionCodes;
     }

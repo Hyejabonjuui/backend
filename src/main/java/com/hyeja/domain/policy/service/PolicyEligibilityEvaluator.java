@@ -62,23 +62,15 @@ public class PolicyEligibilityEvaluator {
             return result(EligibilityConditionType.REGION, EligibilityStatus.ABLE,
                     "전국", profileRegion(profile));
         }
-        String condition = policyRegions.size() >= 200
-                ? "전국"
-                : policyRegions.stream()
-                        .map(PolicyRegion::getRegion)
-                        .map(region -> region.getSigunguName())
-                        .distinct()
-                        .sorted()
-                        .collect(Collectors.joining(", "));
+        PolicyRegion policyRegion = policyRegions.get(0);
+        String condition = policyRegion.getRegion().getSigunguName();
         if (profile.getRegion() == null) {
             return result(EligibilityConditionType.REGION, EligibilityStatus.UNKNOWN,
                     condition, "미입력");
         }
         String memberRegionCode = profile.getRegion().getRegionCode();
-        boolean matches = policyRegions.stream()
-                .map(PolicyRegion::getRegion)
-                .map(region -> region.getRegionCode())
-                .anyMatch(policyRegionCode -> matchesRegion(policyRegionCode, memberRegionCode));
+        boolean matches = matchesRegion(
+                policyRegion.getRegion().getRegionCode(), memberRegionCode);
         return result(EligibilityConditionType.REGION,
                 matches ? EligibilityStatus.ABLE : EligibilityStatus.DISABLE,
                 condition, profileRegion(profile));
