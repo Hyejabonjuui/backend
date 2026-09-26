@@ -14,6 +14,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
 
+    // 회원 탈퇴 시 그 회원의 관심 정책을 모두 지웁니다 (hard delete).
+    void deleteByMemberMemberId(Long memberId);
+
     boolean existsByMemberMemberIdAndPolicyPolicyId(Long memberId, String policyId);
 
     Optional<Favorite> findByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(

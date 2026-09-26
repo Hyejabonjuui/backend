@@ -14,6 +14,9 @@ import org.springframework.stereotype.Repository;
 @Repository 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
+    // 회원 탈퇴 시 그 회원의 알림을 모두 지웁니다 (hard delete).
+    void deleteByMemberMemberId(Long memberId);
+
     Optional<Notification> findByNotificationIdAndMemberMemberIdAndDeletedAtIsNull(
             Long notificationId,
             Long memberId

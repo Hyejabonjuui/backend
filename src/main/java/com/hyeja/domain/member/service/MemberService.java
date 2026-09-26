@@ -1,12 +1,15 @@
 package com.hyeja.domain.member.service;
 
+import com.hyeja.domain.favorite.repository.FavoriteRepository;
 import com.hyeja.domain.member.converter.MemberConverter;
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
 import com.hyeja.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.member.repository.MemberRepository;
+import com.hyeja.domain.notification.repository.NotificationRepository;
 import com.hyeja.domain.profile.converter.ProfileConverter;
+import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.repository.ProfileRepository;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.domain.region.repository.RegionRepository;
@@ -28,6 +31,9 @@ public class MemberService {
     private final ProfileRepository profileRepository;
     private final RegionRepository regionRepository;
     private final PasswordEncoder passwordEncoder;
+    // 회원 탈퇴 때 딸린 관심 정책·알림을 함께 지웁니다.
+    private final FavoriteRepository favoriteRepository;
+    private final NotificationRepository notificationRepository;
 
     /**
      * 계정 정보와 내 조건을 한 트랜잭션에서 함께 저장합니다. 조건 없는 회원이 생기지 않도록,
@@ -92,5 +98,23 @@ public class MemberService {
         return memberRepository.findById(memberId)
                 .filter(m -> !m.isDeleted())
                 .orElseThrow(() -> new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
+    }
+
+    /**
+     * 회원 탈퇴. 한 트랜잭션에서 처리해 중간에 실패하면 모두 되돌립니다.
+     * 회원·내 조건은 행을 남기고 deleted_at만 찍고(soft delete), 관심 정책·알림은 행을 지웁니다(hard delete).
+     * MEMBER가 실제로 지워지지 않아 DB의 ON DELETE CASCADE가 동작하지 않으므로 여기서 직접 지웁니다.
+     * 지우지 않으면 탈퇴한 회원의 관심 정책에 D-7 알림이 계속 만들어집니다.
+     * 회원이 없거나 이미 탈퇴했으면 MEMBER_NOT_FOUND(404)를 던집니다.
+     * 탈퇴한 이메일·닉네임은 행이 남아 있어 재가입할 수 없습니다(의도된 동작).
+     */
+    @Transactional
+    public void withdraw(Long memberId) {
+        Member member = getActiveMember(memberId);
+        notificationRepository.deleteByMemberMemberId(memberId);
+        favoriteRepository.deleteByMemberMemberId(memberId);
+        profileRepository.findById(member.getEmail()).ifPresent(Profile::softDelete);
+        // 트랜잭션이 끝날 때 바뀐 deleted_at이 UPDATE로 저장됩니다 (save 호출 불필요).
+        member.softDelete();
     }
 }
