@@ -58,10 +58,10 @@ Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한
 
 ## 인증 전환기 규칙
 
-- 토큰 기반 인증은 아직 구현하지 않는다.
-- 현재 개발 단계에서는 `memberId`를 query string으로 받는다.
-- 최종적으로 헤더에서 인증 사용자를 구하는 방향이지만, 현재 없는 Authorization 처리나 Redis 토큰 블랙리스트를 가정해서 구현하지 않는다.
-- 인증을 도입할 때 회원 식별 파라미터 제거 여부와 모든 회원 API 계약을 함께 갱신한다.
+- 로그인(`POST /api/members/login`)이 JWT accessToken(30분)을 발급하고, 로그아웃(`POST /api/members/logout`)이 토큰을 Redis 블랙리스트에 올린다.
+- 요청 헤더 `Authorization: Bearer <accessToken>`이 유효하면 인증 필터가 회원 ID를 `Authentication`의 principal(Long)로 채운다.
+- 전환기에는 로그아웃만 인증을 요구하고, 나머지 API는 모두 허용한다. 기존 API는 계속 `memberId`를 query string으로 받는다.
+- 다음 단계에서 회원 식별 파라미터를 토큰으로 바꾸고 로그인이 필요한 API를 인증 필수로 막는다. 이때 모든 회원 API 계약을 함께 갱신한다.
 
 ## 필드와 직렬화
 

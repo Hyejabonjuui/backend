@@ -21,6 +21,7 @@ API 개발과 프론트 시연을 위한 가상 데이터입니다. 실제 지�
    DB_PASSWORD=각자의_DB_비밀번호
    DB_SEED_MODE=always
    SERVER_PORT=8080
+   JWT_SECRET=32자_이상의_아무_문자열
    ```
 
    `DB_USERNAME`과 `DB_PASSWORD`는 본인의 MariaDB 계정 정보로 바꿉니다.

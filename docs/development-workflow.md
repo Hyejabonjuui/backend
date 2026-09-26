@@ -72,6 +72,8 @@ git status --short
 ```
 
 CI는 PR과 수동 실행에서 `./gradlew test --no-daemon`을 수행한다.
+환경변수는 저장소 Settings → Secrets and variables → Actions에 등록한 Secrets(`YOUTH_API_KEY`, `OPEN_AI_KEY`, `OPEN_AI_MODEL`, `JWT_SECRET`)에서 읽는다(`.github/workflows/ci.yml`).
+`JWT_SECRET`은 `application-test.yml`의 테스트용 값보다 우선하므로, 32자보다 짧거나 비어 있으면 CI 테스트가 실패한다.
 
 ## PR
 
