@@ -60,7 +60,8 @@ class NotificationControllerTest {
                 .build();
         when(notificationService.getNotifications(1L, 0, 8)).thenReturn(pageResponse);
 
-        mockMvc.perform(get("/api/notification/{memberId}", 1L)
+        mockMvc.perform(get("/api/notification")
+                        .param("memberId", "1")
                         .param("page", "0")
                         .param("size", "8"))
                 .andExpect(status().isOk())
@@ -120,5 +121,19 @@ class NotificationControllerTest {
                 .andExpect(jsonPath("$.result").doesNotExist());
 
         verify(notificationService).deleteNotification(1L, 10L);
+    }
+
+    @Test
+    void returnsBadRequestWithoutMemberId() throws Exception {
+        mockMvc.perform(get("/api/notification"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_001"));
+    }
+
+    @Test
+    void returnsBadRequestWhenMemberIdIsNotPositive() throws Exception {
+        mockMvc.perform(get("/api/notification").param("memberId", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_001"));
     }
 }

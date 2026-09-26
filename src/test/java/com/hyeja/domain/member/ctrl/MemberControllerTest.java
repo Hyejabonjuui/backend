@@ -90,7 +90,7 @@ class MemberControllerTest {
             """;
 
     @Test
-    void signsUpWithCreated() throws Exception {
+    void signsUpWithSuccess() throws Exception {
         when(memberService.signup(any())).thenReturn(MemberAccountResponseDTO.builder()
                 .memberId(1L)
                 .email("hyeja@example.com")
@@ -99,13 +99,20 @@ class MemberControllerTest {
                 .build());
 
         mvc.perform(signupRequest(SIGNUP_BODY))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
-                .andExpect(jsonPath("$.code").value("SUCCESS_002"))
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"))
                 .andExpect(jsonPath("$.result.memberId").value(1))
                 .andExpect(jsonPath("$.result.email").value("hyeja@example.com"))
                 // 비밀번호는 응답에 담지 않습니다.
                 .andExpect(jsonPath("$.result.password").doesNotExist());
+    }
+
+    @Test
+    void returnsBadRequestWhenMemberIdIsNotPositive() throws Exception {
+        mvc.perform(get("/api/members/me").param("memberId", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_001"));
     }
 
     // 계정 필드와 profile 안쪽 필드가 함께 검증됩니다. profile 안쪽 오류는 "profile.필드명"으로 내려갑니다.

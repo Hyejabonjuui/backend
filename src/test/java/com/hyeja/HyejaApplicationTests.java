@@ -34,7 +34,10 @@ class HyejaApplicationTests {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.headers().firstValue("Content-Type").orElse(""))
                 .startsWith("application/json");
-        assertThat(response.body()).isEqualTo("{\"status\":\"UP\"}");
+        var body = JsonPath.parse(response.body());
+        assertThat(body.read("$.isSuccess", Boolean.class)).isTrue();
+        assertThat(body.read("$.code", String.class)).isEqualTo("SUCCESS_001");
+        assertThat(body.read("$.result.status", String.class)).isEqualTo("UP");
     }
 
     @Test

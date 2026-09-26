@@ -79,4 +79,11 @@ class ProfileControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_001"));
     }
+
+    @Test
+    void returnsBadRequestWhenMemberIdIsNotPositive() throws Exception {
+        mvc.perform(get("/api/members/me/profile").param("memberId", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_001"));
+    }
 }
