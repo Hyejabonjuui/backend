@@ -2,6 +2,7 @@ package com.hyeja.domain.member.service;
 
 import com.hyeja.domain.member.converter.MemberConverter;
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
+import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
 import com.hyeja.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.member.repository.MemberRepository;
@@ -11,6 +12,7 @@ import com.hyeja.domain.region.entity.Region;
 import com.hyeja.domain.region.repository.RegionRepository;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -51,6 +53,21 @@ public class MemberService {
         profileRepository.save(ProfileConverter.toProfile(member, region, request.getProfile()));
 
         return MemberConverter.toMemberAccountResponseDTO(member);
+    }
+
+    /**
+     * 닉네임과 생년월일로 가입한 이메일을 찾아 가려서 돌려줍니다. 비로그인 상태에서 호출합니다.
+     * 탈퇴하지 않은 회원이면서 삭제되지 않은 조건의 생년월일이 일치해야 합니다.
+     * 닉네임이 없든 생년월일이 다르든 같은 MEMBER_EMAIL_NOT_FOUND(404)를 던져, 어느 쪽이 틀렸는지 알 수 없게 합니다.
+     */
+    public MemberFindEmailResponseDTO findEmail(String nickname, LocalDate birth) {
+        Member member = memberRepository.findByNickname(nickname)
+                .filter(m -> !m.isDeleted())
+                .filter(m -> profileRepository.findById(m.getEmail())
+                        .filter(p -> !p.isDeleted() && p.getBirth().equals(birth))
+                        .isPresent())
+                .orElseThrow(() -> new GeneralException(ErrorStatus.MEMBER_EMAIL_NOT_FOUND));
+        return MemberConverter.toFindEmailResponseDTO(member);
     }
 
     /**
