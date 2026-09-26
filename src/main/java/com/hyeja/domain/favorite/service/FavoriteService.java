@@ -78,6 +78,12 @@ public class FavoriteService {
     }
 
     private String normalizeKeyword(String keyword) {
-        return keyword == null || keyword.isBlank() ? null : keyword.trim();
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        return keyword.trim()
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
     }
 }

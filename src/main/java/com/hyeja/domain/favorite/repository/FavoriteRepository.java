@@ -48,8 +48,8 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
                     where favorite.member.memberId = :memberId
                       and favorite.deletedAt is null
                       and (
-                          lower(policy.policyName) like lower(concat('%', :keyword, '%'))
-                          or lower(policy.supportContent) like lower(concat('%', :keyword, '%'))
+                          lower(policy.policyName) like lower(concat('%', :keyword, '%')) escape '!'
+                          or lower(policy.supportContent) like lower(concat('%', :keyword, '%')) escape '!'
                       )
                     order by favorite.createdAt desc, favorite.favoriteId desc
                     """,
@@ -60,8 +60,8 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
                     where favorite.member.memberId = :memberId
                       and favorite.deletedAt is null
                       and (
-                          lower(policy.policyName) like lower(concat('%', :keyword, '%'))
-                          or lower(policy.supportContent) like lower(concat('%', :keyword, '%'))
+                          lower(policy.policyName) like lower(concat('%', :keyword, '%')) escape '!'
+                          or lower(policy.supportContent) like lower(concat('%', :keyword, '%')) escape '!'
                       )
                     """
     )

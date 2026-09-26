@@ -110,6 +110,19 @@ class FavoriteServiceTest {
     }
 
     @Test
+    void escapesLikeWildcardsAndEscapeCharacterInKeyword() {
+        when(memberService.getActiveMember(1L)).thenReturn(member());
+        when(favoriteRepository.searchAllActiveByMemberIdAndKeyword(
+                1L, "50!%!_할인!!", PageRequest.of(0, 8)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 8), 0));
+
+        favoriteService.getMyFavorites(1L, "  50%_할인!  ", 0, 8);
+
+        verify(favoriteRepository).searchAllActiveByMemberIdAndKeyword(
+                1L, "50!%!_할인!!", PageRequest.of(0, 8));
+    }
+
+    @Test
     void treatsBlankKeywordAsUnfilteredList() {
         when(memberService.getActiveMember(1L)).thenReturn(member());
         when(favoriteRepository.findAllActiveByMemberId(1L, PageRequest.of(0, 8)))

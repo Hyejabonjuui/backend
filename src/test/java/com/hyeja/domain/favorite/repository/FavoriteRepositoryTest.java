@@ -108,6 +108,36 @@ class FavoriteRepositoryTest {
     }
 
     @Test
+    void treatsLikeWildcardsAsLiteralCharactersInSearchAndCountQueries() {
+        Member member = persistMember("wildcard@example.com");
+        Policy percentPolicy = persistPolicy(
+                "percent-policy", "50% 할인 정책", "일반 지원");
+        Policy underscorePolicy = persistPolicy(
+                "underscore-policy", "일반 정책", "code_value 지원");
+        Policy noMatchPolicy = persistPolicy(
+                "no-match-policy", "50퍼센트 할인", "codeXvalue 지원");
+        entityManager.persist(Favorite.builder().member(member).policy(percentPolicy).build());
+        entityManager.persist(Favorite.builder().member(member).policy(underscorePolicy).build());
+        entityManager.persist(Favorite.builder().member(member).policy(noMatchPolicy).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        var percentMatches = favoriteRepository.searchAllActiveByMemberIdAndKeyword(
+                member.getMemberId(), "!%", PageRequest.of(0, 1));
+        var underscoreMatches = favoriteRepository.searchAllActiveByMemberIdAndKeyword(
+                member.getMemberId(), "!_", PageRequest.of(0, 1));
+
+        assertThat(percentMatches.getContent())
+                .extracting(favorite -> favorite.getPolicy().getPolicyId())
+                .containsExactly("percent-policy");
+        assertThat(percentMatches.getTotalElements()).isEqualTo(1);
+        assertThat(underscoreMatches.getContent())
+                .extracting(favorite -> favorite.getPolicy().getPolicyId())
+                .containsExactly("underscore-policy");
+        assertThat(underscoreMatches.getTotalElements()).isEqualTo(1);
+    }
+
+    @Test
     void detectsFavoriteAndAllowsRegistrationAfterHardDelete() {
         Member member = persistMember("register@example.com");
         Policy policy = persistPolicy("register-policy", "등록할 정책");
