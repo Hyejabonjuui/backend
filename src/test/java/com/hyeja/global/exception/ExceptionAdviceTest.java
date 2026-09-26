@@ -2,7 +2,6 @@ package com.hyeja.global.exception;
 
 import com.hyeja.global.apiPayload.ApiResponse;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
-import com.hyeja.global.apiPayload.status.SuccessStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -10,7 +9,6 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,11 +43,11 @@ class ExceptionAdviceTest {
     }
 
     @Test
-    void createdHasMatchingHttpStatus() throws Exception {
+    void postSuccessHasCommonEnvelope() throws Exception {
         mvc.perform(post("/test/created"))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
-                .andExpect(jsonPath("$.code").value("SUCCESS_002"));
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"));
     }
 
     @Test
@@ -125,9 +123,8 @@ class ExceptionAdviceTest {
         }
 
         @PostMapping("/test/created")
-        public ResponseEntity<ApiResponse<Map<String, Integer>>> created() {
-            return ResponseEntity.status(SuccessStatus.CREATED.getHttpStatus())
-                    .body(ApiResponse.of(SuccessStatus.CREATED, Map.of("id", 1)));
+        public ApiResponse<Map<String, Integer>> created() {
+            return ApiResponse.onSuccess(Map.of("id", 1));
         }
 
         @GetMapping("/test/business")

@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,7 +23,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "알림", description = "회원 알림 API")
-@Validated
 @RestController
 @RequestMapping("/api/notification")
 @RequiredArgsConstructor
@@ -53,10 +51,17 @@ public class NotificationController {
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             )
     })
-    @GetMapping("/{memberId}")
+    @GetMapping("")
     public ApiResponse<NotificationListDTO> getNotifications(
-            @Parameter(description = "조회할 회원 ID", example = "1", required = true) // 추후 memberId는 없앨 예정
-            @PathVariable("memberId") @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId,
+            @Parameter(
+                    name = "memberId",
+                    description = "조회할 회원 ID",
+                    in = ParameterIn.QUERY,
+                    example = "1",
+                    required = true
+            ) // 추후 memberId는 없앨 예정
+            @RequestParam(name = "memberId")
+            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId,
             @Parameter(name = "page", description = "페이지 번호(0부터 시작)", in = ParameterIn.QUERY, example = "0")
             @RequestParam(name = "page", defaultValue = "0")
             @PositiveOrZero(message = "페이지 번호는 0 이상이어야 합니다.") int page,
@@ -101,7 +106,7 @@ public class NotificationController {
                     example = "1",
                     required = true
             ) // 추후 인증 도입 시 제거 예정
-            @RequestParam("memberId")
+            @RequestParam(name = "memberId")
             @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
     ) {
         NotificationItemDTO result = notificationService.markAsRead(memberId, notificationId);
@@ -140,7 +145,7 @@ public class NotificationController {
                     example = "1",
                     required = true
             ) // 추후 인증 도입 시 제거 예정
-            @RequestParam("memberId")
+            @RequestParam(name = "memberId")
             @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
     ) {
         notificationService.deleteNotification(memberId, notificationId);

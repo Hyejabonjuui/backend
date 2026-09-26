@@ -1,4 +1,4 @@
-package com.hyeja.domain.profile.ctrl;
+package com.hyeja.domain.profile.controller;
 
 import com.hyeja.domain.profile.dto.ProfileRequestDTO;
 import com.hyeja.domain.profile.dto.ProfileResponseDTO;
@@ -6,13 +6,14 @@ import com.hyeja.domain.profile.service.ProfileService;
 import com.hyeja.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -54,12 +55,19 @@ public class ProfileController {
             )
     })
     @GetMapping("/me/profile")
-    public ResponseEntity<ApiResponse<ProfileResponseDTO>> getMyProfile(
-            @Parameter(description = "조회할 회원 ID", example = "1", required = true) // 추후 memberId는 없앨 예정
-            @RequestParam Long memberId
+    public ApiResponse<ProfileResponseDTO> getMyProfile(
+            @Parameter(
+                    name = "memberId",
+                    description = "조회할 회원 ID",
+                    in = ParameterIn.QUERY,
+                    example = "1",
+                    required = true
+            ) // 추후 memberId는 없앨 예정
+            @RequestParam(name = "memberId")
+            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
     ) {
         ProfileResponseDTO result = profileService.getMyProfile(memberId);
-        return ResponseEntity.ok(ApiResponse.onSuccess(result));
+        return ApiResponse.onSuccess(result);
     }
 
     // 내 조건 수정 (마이페이지 S-08 내 조건 탭) — 예: PATCH /api/members/me/profile?memberId=1
@@ -86,12 +94,19 @@ public class ProfileController {
             )
     })
     @PatchMapping("/me/profile")
-    public ResponseEntity<ApiResponse<ProfileResponseDTO>> updateMyProfile(
-            @Parameter(description = "수정할 회원 ID", example = "1", required = true) // 추후 memberId는 없앨 예정
-            @RequestParam Long memberId,
+    public ApiResponse<ProfileResponseDTO> updateMyProfile(
+            @Parameter(
+                    name = "memberId",
+                    description = "수정할 회원 ID",
+                    in = ParameterIn.QUERY,
+                    example = "1",
+                    required = true
+            ) // 추후 memberId는 없앨 예정
+            @RequestParam(name = "memberId")
+            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId,
             @Valid @RequestBody ProfileRequestDTO request
     ) {
         ProfileResponseDTO result = profileService.updateMyProfile(memberId, request);
-        return ResponseEntity.ok(ApiResponse.onSuccess(result));
+        return ApiResponse.onSuccess(result);
     }
 }

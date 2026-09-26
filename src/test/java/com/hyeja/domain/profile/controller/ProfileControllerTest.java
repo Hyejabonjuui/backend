@@ -1,4 +1,4 @@
-package com.hyeja.domain.profile.ctrl;
+package com.hyeja.domain.profile.controller;
 
 import com.hyeja.domain.profile.dto.ProfileResponseDTO;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
@@ -82,6 +82,13 @@ class ProfileControllerTest {
     @Test
     void returnsBadRequestWithoutMemberId() throws Exception {
         mvc.perform(get("/api/members/me/profile"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_001"));
+    }
+
+    @Test
+    void returnsBadRequestWhenMemberIdIsNotPositive() throws Exception {
+        mvc.perform(get("/api/members/me/profile").param("memberId", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_001"));
     }

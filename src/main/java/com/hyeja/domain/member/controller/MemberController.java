@@ -1,19 +1,19 @@
-package com.hyeja.domain.member.ctrl;
+package com.hyeja.domain.member.controller;
 
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.domain.member.service.MemberService;
 import com.hyeja.global.apiPayload.ApiResponse;
-import com.hyeja.global.apiPayload.status.SuccessStatus;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,8 +38,8 @@ public class MemberController {
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "201",
-                    description = "회원가입 성공 (SUCCESS_002)"
+                    responseCode = "200",
+                    description = "회원가입 성공 (SUCCESS_001)"
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
@@ -58,19 +58,29 @@ public class MemberController {
             )
     })
     @PostMapping("")
-    public ResponseEntity<ApiResponse<MemberAccountResponseDTO>> signup(
+    public ApiResponse<MemberAccountResponseDTO> signup(
             @Valid @RequestBody MemberSignupRequestDTO request
     ) {
         MemberAccountResponseDTO result = memberService.signup(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(SuccessStatus.CREATED, result));
+        return ApiResponse.onSuccess(result);
     }
 
     // 내 계정 조회 (마이페이지 S-08 계정 탭) — 예: GET /api/members/me?memberId=1
     // TODO: 인증(JWT) 기반이 생기면 memberId 쿼리 파라미터를 없애고 토큰에서 회원을 식별합니다.
     //       그 전까지는 memberId만 알면 누구의 계정이든 조회되므로 임시 방식입니다.
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<MemberAccountResponseDTO>> getMyAccount(@RequestParam Long memberId) {
+    public ApiResponse<MemberAccountResponseDTO> getMyAccount(
+            @Parameter(
+                    name = "memberId",
+                    description = "조회할 회원 ID",
+                    in = ParameterIn.QUERY,
+                    example = "1",
+                    required = true
+            )
+            @RequestParam(name = "memberId")
+            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
+    ) {
         MemberAccountResponseDTO result = memberService.getMyAccount(memberId);
-        return ResponseEntity.ok(ApiResponse.onSuccess(result));
+        return ApiResponse.onSuccess(result);
     }
 }
