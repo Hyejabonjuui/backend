@@ -16,7 +16,7 @@ public final class NotificationConverter {
                 .memberId(notification.getMember().getMemberId())
                 .policyId(notification.getPolicy().getPolicyId())
                 .readYn(notification.getReadYn())
-                .applyEndDate(notification.getPolicy().getApplyEndDate())
+                .applyEndDate(notification.getDeadlineDate())
                 .createdAt(notification.getCreatedAt())
                 .build();
     }
