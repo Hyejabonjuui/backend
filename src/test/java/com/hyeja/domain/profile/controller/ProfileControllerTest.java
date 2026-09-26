@@ -9,9 +9,14 @@ import com.hyeja.global.exception.ExceptionAdvice;
 import com.hyeja.global.exception.GeneralException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -35,7 +40,21 @@ class ProfileControllerTest {
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.standaloneSetup(new ProfileController(profileService))
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setControllerAdvice(new ExceptionAdvice()).build();
+        loginAs(1L);
+    }
+
+    // 토큰 대신 "1번 회원으로 로그인한 상태"를 직접 만들어, @AuthenticationPrincipal Long memberId에 1이 들어가게 합니다.
+    // (실제 토큰 검증은 SecurityTest에서 확인합니다.)
+    private static void loginAs(Long memberId) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(memberId, "access-token", List.of()));
+    }
+
+    @AfterEach
+    void logout() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -53,7 +72,7 @@ class ProfileControllerTest {
                 .updatedAt(LocalDateTime.of(2026, 9, 22, 14, 10, 2))
                 .build());
 
-        mvc.perform(get("/api/members/me/profile").param("memberId", "1"))
+        mvc.perform(get("/api/members/me/profile"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.result.birth").value("2000-03-15"))
@@ -72,25 +91,11 @@ class ProfileControllerTest {
     void returnsNotFoundWhenProfileIsNotRegistered() throws Exception {
         when(profileService.getMyProfile(1L)).thenThrow(new GeneralException(ErrorStatus.PROFILE_NOT_FOUND));
 
-        mvc.perform(get("/api/members/me/profile").param("memberId", "1"))
+        mvc.perform(get("/api/members/me/profile"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.isSuccess").value(false))
                 .andExpect(jsonPath("$.code").value("PROFILE_001"))
                 .andExpect(jsonPath("$.result").value(nullValue()));
-    }
-
-    @Test
-    void returnsBadRequestWithoutMemberId() throws Exception {
-        mvc.perform(get("/api/members/me/profile"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("COMMON_001"));
-    }
-
-    @Test
-    void returnsBadRequestWhenMemberIdIsNotPositive() throws Exception {
-        mvc.perform(get("/api/members/me/profile").param("memberId", "0"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("COMMON_001"));
     }
 
     // 수정 요청은 조건 8개를 전부 보냅니다(회원가입의 profile과 같은 필드, 중첩 없이 바로). 혼인·소득·학력은 null로 비움.
@@ -152,7 +157,7 @@ class ProfileControllerTest {
     }
 
     private RequestBuilder updateRequest(String body) {
-        return patch("/api/members/me/profile").param("memberId", "1")
+        return patch("/api/members/me/profile")
                 .contentType(MediaType.APPLICATION_JSON).content(body);
     }
 }
