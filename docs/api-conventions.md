@@ -32,7 +32,7 @@
 | `GET` | `/api/health` | 없음 | 공통 래퍼의 `result.status`로 `UP` 반환 |
 | `GET` | `/api/policies/card-news/guest` | 없음 | 대표 카드 중 최대 4건 |
 | `GET` | `/api/members/me` | query `memberId: Long` | JWT 전 임시 회원 식별 방식 |
-| `GET` | `/api/favorite` | query `memberId: Long`, `page=0`, `size=8` | 회원의 관심 정책을 최근 등록순으로 페이지 조회 |
+| `GET` | `/api/favorite` | query `memberId: Long`, `keyword?: String`, `page=0`, `size=8` | 회원의 관심 정책을 최근 등록순으로 페이지 조회, 정책명·지원 내용 검색 |
 | `POST` | `/api/favorite/{policyId}` | path `policyId: String`, query `memberId: Long` | 관심 정책 등록, 중복 등록 불가 |
 | `DELETE` | `/api/favorite/{policyId}` | path `policyId: String`, query `memberId: Long` | 회원의 관심 정책 영구 삭제 |
 | `GET` | `/api/notification` | query `memberId`, `page=0`, `size=8` | 삭제되지 않은 알림 최신순 페이지 조회 |
