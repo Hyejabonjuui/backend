@@ -39,7 +39,11 @@ public class SecurityConfig {
                 // 기본은 로그인 필수입니다. 로그인 없이 쓰는 API만 아래에 허용합니다.
                 // 새 API를 만들면 자동으로 로그인 필수가 되므로, 비로그인용이면 여기에 추가해 주세요.
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/members", "/api/members/login").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/members",
+                                "/api/members/login",
+                                "/api/members/email-verifications",
+                                "/api/members/email-verifications/confirmation").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/members/find-email",
                                 "/api/regions",
