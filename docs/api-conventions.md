@@ -36,6 +36,7 @@
 | `POST` | `/api/favorite/{policyId}` | path `policyId: String`, query `memberId: Long` | 관심 정책 등록, 중복 등록 불가 |
 | `DELETE` | `/api/favorite/{policyId}` | path `policyId: String`, query `memberId: Long` | 회원의 관심 정책 영구 삭제 |
 | `GET` | `/api/notification` | query `memberId`, `page=0`, `size=8` | 삭제되지 않은 알림 최신순 페이지 조회 |
+| `POST` | `/api/notification/admin/generate` | query `memberId: Long` | 개발·테스트용, 해당 회원의 D-7 관심 정책 알림만 생성 |
 | `DELETE` | `/api/notification/{notificationId}` | path `notificationId`, query `memberId` | 본인 소유의 삭제되지 않은 알림 영구 삭제 |
 | `PATCH` | `/api/notification/{notificationId}/read` | path `notificationId`, query `memberId` | 본인 소유의 삭제되지 않은 알림 읽음 처리 |
 | `POST` | `/api/policies/sync` | 없음 | 외부 정책 수동 동기화 |
