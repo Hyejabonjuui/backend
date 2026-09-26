@@ -5,8 +5,8 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum PolicyCategory {
 
+public enum PolicyCategory {
     MONTHLY_RENT("월세"),
     JEONSE("전세"),
     PURCHASE("청약·구입"),

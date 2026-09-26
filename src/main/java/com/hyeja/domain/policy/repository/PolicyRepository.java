@@ -9,6 +9,6 @@ import java.util.List;
 @Repository
 public interface PolicyRepository extends JpaRepository<Policy, String> {
 
-    // 내부 분류와 관계없이 적재된 주거 정책 전체를 마감일 오름차순으로 조회합니다.
+    // "주거" 카테고리 정책을 마감일 오름차순으로 조회
     List<Policy> findAllByOrderByApplyEndDateAsc();
 }
