@@ -55,11 +55,11 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 프론트(React 개발 서버)에서 오는 요청을 허용합니다.
+    // 프론트(React Vite 개발 서버, 5173 포트)에서 오는 요청을 허용합니다.
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
+        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);

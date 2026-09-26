@@ -74,6 +74,22 @@ class SecurityTest {
         assertThat(response.statusCode()).isEqualTo(200);
     }
 
+    // 브라우저는 다른 주소(프론트 5173)로 요청하기 전에 OPTIONS로 허용 여부를 먼저 묻습니다(preflight).
+    @Test
+    void allowsCorsPreflightFromFrontendDevServer() throws Exception {
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/members/login"))
+                        .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "Authorization, Content-Type")
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().firstValue("Access-Control-Allow-Origin")).hasValue("http://localhost:5173");
+    }
+
     private HttpResponse<String> logout(String authorization) throws Exception {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/members/logout"))
                 .POST(HttpRequest.BodyPublishers.noBody());
