@@ -15,3 +15,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+
+# 테스트 전용 서명 키입니다. 실제 서버는 .env의 JWT_SECRET을 사용합니다.
+jwt:
+  secret: hyeja-test-only-jwt-secret-key-0123456789

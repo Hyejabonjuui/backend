@@ -5,8 +5,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-// 비밀번호 암호화(BCrypt) 빈입니다. 회원가입에서 암호화하고, 이후 로그인에서도 같은 빈으로 비교합니다.
-// spring-security-crypto만 쓰므로 Spring Security 필터(로그인 화면·인증 차단)는 켜지지 않습니다.
+// 비밀번호 암호화(BCrypt) 빈입니다. 회원가입에서 암호화하고, 로그인에서 같은 빈으로 비교합니다.
+// SecurityConfig에서 PasswordEncoder 빈을 또 만들면 충돌하니 여기 하나만 둡니다.
 @Configuration
 public class PasswordEncoderConfig {
 
