@@ -2,10 +2,12 @@ package com.hyeja.domain.favorite.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.hyeja.domain.favorite.dto.FavoriteResponseDTO.FavoriteItemDTO;
 import com.hyeja.domain.favorite.dto.FavoriteResponseDTO.FavoriteListDTO;
 import com.hyeja.domain.favorite.entity.Favorite;
 import com.hyeja.domain.favorite.repository.FavoriteRepository;
@@ -13,16 +15,19 @@ import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.member.service.MemberService;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.repository.PolicyRepository;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -35,6 +40,9 @@ class FavoriteServiceTest {
 
     @Mock
     private FavoriteRepository favoriteRepository;
+
+    @Mock
+    private PolicyRepository policyRepository;
 
     @InjectMocks
     private FavoriteService favoriteService;
@@ -93,6 +101,86 @@ class FavoriteServiceTest {
         verifyNoInteractions(favoriteRepository);
     }
 
+    @Test
+    void createsAndReturnsFavoritePolicy() {
+        Member member = member();
+        Policy policy = policy();
+        Favorite saved = favorite(10L, member, policy);
+        when(memberService.getActiveMember(1L)).thenReturn(member);
+        when(policyRepository.findById("policy-1")).thenReturn(Optional.of(policy));
+        when(favoriteRepository.existsByMemberMemberIdAndPolicyPolicyId(1L, "policy-1"))
+                .thenReturn(false);
+        when(favoriteRepository.saveAndFlush(any(Favorite.class))).thenReturn(saved);
+
+        FavoriteItemDTO result = favoriteService.createFavorite(1L, "policy-1");
+
+        assertThat(result.getFavoriteId()).isEqualTo(10L);
+        assertThat(result.getPolicyId()).isEqualTo("policy-1");
+        assertThat(result.getPolicyName()).isEqualTo("청년 월세 지원");
+        assertThat(result.getCategoryCode()).isEqualTo(PolicyCategory.MONTHLY_RENT);
+        assertThat(result.getCategoryName()).isEqualTo("월세");
+        assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 9, 24, 10, 30));
+        verify(favoriteRepository).saveAndFlush(any(Favorite.class));
+    }
+
+    @Test
+    void createThrowsMemberNotFoundBeforePolicyLookup() {
+        when(memberService.getActiveMember(99L))
+                .thenThrow(new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
+
+        assertCreateError(99L, "policy-1", ErrorStatus.MEMBER_NOT_FOUND);
+        verifyNoInteractions(policyRepository, favoriteRepository);
+    }
+
+    @Test
+    void createThrowsPolicyNotFoundWhenPolicyDoesNotExist() {
+        when(memberService.getActiveMember(1L)).thenReturn(member());
+        when(policyRepository.findById("missing-policy")).thenReturn(Optional.empty());
+
+        assertCreateError(1L, "missing-policy", ErrorStatus.POLICY_NOT_FOUND);
+        verifyNoInteractions(favoriteRepository);
+    }
+
+    @Test
+    void createThrowsPolicyNotFoundWhenPolicyIsInactive() {
+        Policy inactivePolicy = policy();
+        ReflectionTestUtils.setField(inactivePolicy, "activeYn", false);
+        when(memberService.getActiveMember(1L)).thenReturn(member());
+        when(policyRepository.findById("policy-1")).thenReturn(Optional.of(inactivePolicy));
+
+        assertCreateError(1L, "policy-1", ErrorStatus.POLICY_NOT_FOUND);
+        verifyNoInteractions(favoriteRepository);
+    }
+
+    @Test
+    void createThrowsConflictWhenFavoriteAlreadyExists() {
+        when(memberService.getActiveMember(1L)).thenReturn(member());
+        when(policyRepository.findById("policy-1")).thenReturn(Optional.of(policy()));
+        when(favoriteRepository.existsByMemberMemberIdAndPolicyPolicyId(1L, "policy-1"))
+                .thenReturn(true);
+
+        assertCreateError(1L, "policy-1", ErrorStatus.FAVORITE_ALREADY_EXISTS);
+    }
+
+    @Test
+    void createConvertsDatabaseUniqueViolationToConflict() {
+        when(memberService.getActiveMember(1L)).thenReturn(member());
+        when(policyRepository.findById("policy-1")).thenReturn(Optional.of(policy()));
+        when(favoriteRepository.existsByMemberMemberIdAndPolicyPolicyId(1L, "policy-1"))
+                .thenReturn(false);
+        when(favoriteRepository.saveAndFlush(any(Favorite.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate favorite"));
+
+        assertCreateError(1L, "policy-1", ErrorStatus.FAVORITE_ALREADY_EXISTS);
+    }
+
+    private void assertCreateError(Long memberId, String policyId, ErrorStatus expected) {
+        assertThatThrownBy(() -> favoriteService.createFavorite(memberId, policyId))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(expected);
+    }
+
     private Member member() {
         return Member.builder()
                 .email("member@example.com")
@@ -102,7 +190,11 @@ class FavoriteServiceTest {
     }
 
     private Favorite favorite(Long favoriteId, Member member) {
-        Policy policy = Policy.builder()
+        return favorite(favoriteId, member, policy());
+    }
+
+    private Policy policy() {
+        return Policy.builder()
                 .policyId("policy-1")
                 .policyName("청년 월세 지원")
                 .category(PolicyCategory.MONTHLY_RENT)
@@ -112,6 +204,9 @@ class FavoriteServiceTest {
                 .applyEndDate(LocalDate.of(2026, 9, 30))
                 .applyUrl("https://example.com/apply")
                 .build();
+    }
+
+    private Favorite favorite(Long favoriteId, Member member, Policy policy) {
         Favorite favorite = Favorite.builder()
                 .member(member)
                 .policy(policy)
