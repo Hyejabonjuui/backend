@@ -41,6 +41,13 @@
 | `PATCH` | `/api/notification/{notificationId}/read` | path `notificationId`, query `memberId` | 본인 소유의 삭제되지 않은 알림 읽음 처리 |
 | `POST` | `/api/policies/sync` | 없음 | 외부 정책 수동 동기화 |
 | `GET` | `/api/policies/housing` | 없음 | 현재는 저장된 Policy 전체 조회 |
+| `GET` | `/api/policies/{policyId}/{memberId}` | path `policyId: String`, `memberId: Long` | 회원별 정책 상세와 다섯 가지 적합성 판정 |
+
+정책 상세 응답의 `overallStatus`와 각 `conditions[].status`는 적합 `ABLE`, 부적합
+`DISABLE`, 추가 확인 필요 `UNKNOWN` 중 하나를 사용한다.
+신청기간은 `applyPeriod`(`SPECIFIC_PERIOD`, `ALWAYS`, `CLOSED`)와 한글 표시값
+`applyPeriodLabel`을 반환한다. `SPECIFIC_PERIOD`만 `applyStartDate`와 `applyEndDate`를
+사용하며 `ALWAYS`, `CLOSED`에서는 두 날짜가 null이다.
 
 Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한다.
 
@@ -71,6 +78,7 @@ Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한
 - CardNews `title`은 배열이 아니라 nullable 문자열이다.
 - 알림 응답의 `apply_end_date`는 알림 생성 시 저장한 정책 마감일 스냅샷이다.
 - enum은 표시 문구가 아니라 코드의 enum 상수와 converter 규칙을 사용한다.
+- 정책의 `categories`/`categoryLabels`와 관심 정책의 `category_codes`/`category_names`는 배열이다.
 
 ## API 추가·수정 체크리스트
 

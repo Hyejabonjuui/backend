@@ -10,7 +10,7 @@ API와 DB에 사용할 값은 대문자 enum 이름이며, `getLabel()`은 화�
 | PROFILE.income_range_code | IncomeRange | VARCHAR(10) | 허용 |
 | PROFILE.education_code | EducationLevel | VARCHAR(30) | 허용 |
 | PROFILE.housing_type | HousingType | VARCHAR(20) | 허용 |
-| POLICY.category | PolicyCategory | VARCHAR(20) | 불가 |
+| POLICY.category | Set&lt;PolicyCategory&gt; | VARCHAR(100) | 불가 |
 
 프로필 enum은 `com.hyeja.domain.profile.enums`, 정책 enum은 `com.hyeja.domain.policy.enums`에 둡니다.
 기본적으로 `@Enumerated(EnumType.STRING)`으로 이름을 저장하고 `@JdbcTypeCode(SqlTypes.VARCHAR)`로
@@ -143,7 +143,9 @@ GROUP BY education_code;
 SELECT category, COUNT(*) AS row_count
 FROM policy
 WHERE category IS NULL
-   OR BINARY category NOT IN ('MONTHLY_RENT', 'JEONSE', 'PURCHASE', 'PUBLIC_RENT', 'OTHER')
+   OR category = ''
+   OR BINARY category NOT REGEXP
+      '^(JEONSE|MONTHLY_RENT|OTHER|PUBLIC_RENT|PURCHASE)(,(JEONSE|MONTHLY_RENT|OTHER|PUBLIC_RENT|PURCHASE))*$'
 GROUP BY category;
 ```
 
@@ -157,6 +159,7 @@ SET marriage_code = 'SINGLE'
 WHERE BINARY marriage_code = 'UNMARRIED';
 ```
 
+정책 분류는 하나 이상의 enum 이름을 쉼표로 연결해 저장합니다. 예: `MONTHLY_RENT,PUBLIC_RENT`.
 정책 대분류 `주거`와 이전 소득 구간 코드는 호환 스크립트가 자동 변환합니다.
 그 밖의 `TEST`처럼 의미를 알 수 없는 값은 해당 회원의 선택이나 정책 내용을 확인하여
 정확한 코드로 수정한 뒤 위 확인 쿼리를 다시 실행합니다.
@@ -172,8 +175,8 @@ WHERE BINARY marriage_code = 'UNMARRIED';
 ## 외부 정책 API 분류
 
 온통청년 API의 `lclsfNm` 값 `주거`는 혜자의 월세·전세·청약·구입·공공임대보다 큰 분류입니다.
-현재 응답 DTO에는 세부 분류 정보가 없으므로 동기화한 정책은 `PolicyCategory.OTHER`로 저장합니다.
-세부 분류 필드를 추가로 연동할 때 해당 값을 기준으로 `PolicyCategory` 변환 규칙을 추가합니다.
+동기화 시 정책명·주거 유형·키워드·지원 내용을 OpenAI가 분석해 하나 이상의 `PolicyCategory`를 선택합니다.
+여러 지원 유형이 명시되면 복수 값을 저장하며, 구체적인 유형과 `OTHER`가 함께 반환되면 `OTHER`는 제거합니다.
 외부 API DTO의 원본 분류 필드는 문자열로 유지합니다.
 
 ## 검증

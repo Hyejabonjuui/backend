@@ -100,7 +100,7 @@ CARD_NEWS의 `title`은 ERD에 맞춰 길이 255의 선택 항목으로 추가�
 | PROFILE.education_code | EducationLevel 9개 선택지 전체와 NULL |
 | PROFILE.housing_type | PARENTS, MONTHLY_RENT, JEONSE, OWNED |
 | POLICY.housing_type | 문자열 유지. 시드에는 MONTHLY_RENT, JEONSE 또는 NULL 사용 |
-| POLICY.category | MONTHLY_RENT, JEONSE, PURCHASE, PUBLIC_RENT, OTHER |
+| POLICY.category | 하나 이상의 MONTHLY_RENT, JEONSE, PURCHASE, PUBLIC_RENT, OTHER를 쉼표로 저장 |
 | POLICY.apply_period_code | PERIOD |
 | POLICY.employment_codes 등 미확정 외부 API 코드 | NULL |
 
