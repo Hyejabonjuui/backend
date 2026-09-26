@@ -3,7 +3,6 @@ package com.hyeja.domain.policy.repository;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import java.time.LocalDate;
-import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,8 +13,21 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PolicyRepository extends JpaRepository<Policy, String> {
 
-    // "주거" 카테고리 정책을 마감일 오름차순으로 조회
-    List<Policy> findAllByOrderByApplyEndDateAsc();
+    @Query("""
+            select policy
+            from Policy policy
+            where policy.deletedAt is null
+              and policy.activeYn = true
+              and policy.applyPeriodCode <> '0057003'
+              and (policy.applyStartDate is null or policy.applyStartDate <= :today)
+              and (policy.applyEndDate is null or policy.applyEndDate >= :today)
+              and (:category is null or policy.category = :category)
+            """)
+    Page<Policy> findGuestHousingPolicies(
+            @Param("category") PolicyCategory category,
+            @Param("today") LocalDate today,
+            Pageable pageable
+    );
 
     @Query("""
             select policy
@@ -23,6 +35,7 @@ public interface PolicyRepository extends JpaRepository<Policy, String> {
             where policy.deletedAt is null
               and policy.activeYn = true
               and policy.applyPeriodCode <> '0057003'
+              and (policy.applyStartDate is null or policy.applyStartDate <= :today)
               and (policy.applyEndDate is null or policy.applyEndDate >= :today)
               and (:category is null or policy.category = :category)
               and (
@@ -43,12 +56,14 @@ public interface PolicyRepository extends JpaRepository<Policy, String> {
                       and (
                           policy.employmentCodes is null
                           or trim(cast(policy.employmentCodes as string)) = ''
-                          or cast(policy.employmentCodes as string) like '%NO_RESTRICTION%'
-                          or cast(policy.employmentCodes as string) = :employmentCode
-                          or cast(policy.employmentCodes as string) like concat(:employmentCode, ',%')
-                          or cast(policy.employmentCodes as string) like concat('%,', :employmentCode)
-                          or cast(policy.employmentCodes as string)
-                              like concat('%,', concat(:employmentCode, ',%'))
+                          or locate(
+                              ',NO_RESTRICTION,',
+                              concat(',', concat(cast(policy.employmentCodes as string), ','))
+                          ) > 0
+                          or locate(
+                              concat(',', concat(:employmentCode, ',')),
+                              concat(',', concat(cast(policy.employmentCodes as string), ','))
+                          ) > 0
                       )
                       and (
                           not exists (

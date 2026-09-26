@@ -31,6 +31,87 @@ class PolicyRepositoryTest {
     private EntityManager entityManager;
 
     @Test
+    void filtersAndPaginatesGuestPoliciesWithAlwaysOpenPoliciesLast() {
+        LocalDate today = LocalDate.of(2026, 9, 27);
+        persistGuestPolicy("soon", "마감 임박", PolicyCategory.MONTHLY_RENT,
+                today.plusDays(1), 10, true);
+        persistGuestPolicy("later", "마감 여유", PolicyCategory.MONTHLY_RENT,
+                today.plusDays(5), 20, true);
+        persistGuestPolicy("always", "상시 모집", PolicyCategory.MONTHLY_RENT,
+                null, 30, true);
+        persistGuestPolicy("expired", "마감됨", PolicyCategory.MONTHLY_RENT,
+                today.minusDays(1), 40, true);
+        persistGuestPolicy("inactive", "비활성", PolicyCategory.MONTHLY_RENT,
+                today.plusDays(2), 50, false);
+        Policy deleted = persistGuestPolicy(
+                "deleted", "삭제됨", PolicyCategory.MONTHLY_RENT,
+                today.plusDays(3), 60, true);
+        deleted.softDelete();
+        persistGuestPolicy("other-category", "전세 정책", PolicyCategory.JEONSE,
+                today.plusDays(1), 70, true);
+        persistGuestPolicy("closed-code", "종료 코드 정책", PolicyCategory.MONTHLY_RENT,
+                null, 80, true, "0057003");
+        Policy future = persistGuestPolicy(
+                "future", "접수 예정", PolicyCategory.MONTHLY_RENT,
+                today.plusDays(10), 90, true);
+        ReflectionTestUtils.setField(future, "applyStartDate", today.plusDays(1));
+        entityManager.flush();
+        entityManager.clear();
+
+        var firstPage = policyRepository.findGuestHousingPolicies(
+                PolicyCategory.MONTHLY_RENT,
+                today,
+                PageRequest.of(0, 2, PolicySort.DEADLINE.toSort())
+        );
+        var secondPage = policyRepository.findGuestHousingPolicies(
+                PolicyCategory.MONTHLY_RENT,
+                today,
+                PageRequest.of(1, 2, PolicySort.DEADLINE.toSort())
+        );
+
+        assertThat(firstPage.getContent())
+                .extracting(Policy::getPolicyId)
+                .containsExactly("soon", "later");
+        assertThat(firstPage.getTotalElements()).isEqualTo(3);
+        assertThat(firstPage.getTotalPages()).isEqualTo(2);
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(secondPage.getContent())
+                .extracting(Policy::getPolicyId)
+                .containsExactly("always");
+    }
+
+    @Test
+    void appliesGuestViewCountAndNameSortsWithStablePolicyIdOrder() {
+        LocalDate today = LocalDate.of(2026, 9, 27);
+        persistGuestPolicy("alpha", "Alpha", PolicyCategory.MONTHLY_RENT,
+                today.plusDays(2), 20, true);
+        persistGuestPolicy("beta", "Beta", PolicyCategory.JEONSE,
+                today.plusDays(2), 10, true);
+        persistGuestPolicy("gamma", "Gamma", PolicyCategory.OTHER,
+                today.plusDays(2), 20, true);
+        entityManager.flush();
+        entityManager.clear();
+
+        var byViewCount = policyRepository.findGuestHousingPolicies(
+                null,
+                today,
+                PageRequest.of(0, 8, PolicySort.VIEW_COUNT.toSort())
+        );
+        var byName = policyRepository.findGuestHousingPolicies(
+                null,
+                today,
+                PageRequest.of(0, 8, PolicySort.NAME.toSort())
+        );
+
+        assertThat(byViewCount.getContent())
+                .extracting(Policy::getPolicyId)
+                .containsExactly("alpha", "gamma", "beta");
+        assertThat(byName.getContent())
+                .extracting(Policy::getPolicyId)
+                .containsExactly("alpha", "beta", "gamma");
+    }
+
+    @Test
     void filtersOngoingPoliciesByRequiredMemberConditions() {
         LocalDate today = LocalDate.of(2026, 9, 26);
         Region mapo = persistRegion("11440", "서울특별시 마포구");
@@ -56,6 +137,9 @@ class PolicyRepositoryTest {
         persistPolicy("wrong-age", "연령 불일치", today.plusDays(1), "EMPLOYED", true, 30, 39);
         persistPolicy("wrong-job", "취업 불일치", today.plusDays(1), "UNEMPLOYED", true, 19, 39);
         persistPolicy("expired", "마감 정책", today.minusDays(1), "EMPLOYED", true, 19, 39);
+        Policy future = persistPolicy(
+                "future", "접수 예정", today.plusDays(10), "EMPLOYED", true, 19, 39);
+        ReflectionTestUtils.setField(future, "applyStartDate", today.plusDays(1));
         entityManager.persist(PolicyRegion.builder().policy(matching).region(mapo).build());
         entityManager.persist(PolicyRegion.builder().policy(wrongRegion).region(gangnam).build());
         entityManager.flush();
@@ -82,6 +166,34 @@ class PolicyRepositoryTest {
                         alwaysOpen.getPolicyId()
                 );
         assertThat(result.getTotalElements()).isEqualTo(5);
+    }
+
+    @Test
+    void matchesEmploymentCodeAsCompleteToken() {
+        LocalDate today = LocalDate.of(2026, 9, 26);
+        persistPolicy("lookalike-job", "유사 취업 코드", today.plusDays(1),
+                "OTHER", false, 19, 39);
+        entityManager.flush();
+        entityManager.createNativeQuery("""
+                        update policy
+                        set employment_codes = 'SELFXEMPLOYED,OTHER'
+                        where policy_id = 'lookalike-job'
+                        """)
+                .executeUpdate();
+        entityManager.clear();
+
+        var result = policyRepository.findHousingPoliciesForMember(
+                PolicyCategory.MONTHLY_RENT,
+                true,
+                today,
+                26,
+                true,
+                "SELF_EMPLOYED",
+                "11440",
+                PageRequest.of(0, 8, PolicySort.DEADLINE.toSort())
+        );
+
+        assertThat(result).isEmpty();
     }
 
     @Test
@@ -115,6 +227,48 @@ class PolicyRepositoryTest {
         Region region = Region.builder().regionCode(regionCode).sigunguName(name).build();
         entityManager.persist(region);
         return region;
+    }
+
+    private Policy persistGuestPolicy(
+            String policyId,
+            String policyName,
+            PolicyCategory category,
+            LocalDate applyEndDate,
+            int viewCount,
+            boolean active
+    ) {
+        return persistGuestPolicy(
+                policyId,
+                policyName,
+                category,
+                applyEndDate,
+                viewCount,
+                active,
+                applyEndDate == null ? "ALWAYS" : "PERIOD"
+        );
+    }
+
+    private Policy persistGuestPolicy(
+            String policyId,
+            String policyName,
+            PolicyCategory category,
+            LocalDate applyEndDate,
+            int viewCount,
+            boolean active,
+            String applyPeriodCode
+    ) {
+        Policy policy = Policy.builder()
+                .policyId(policyId)
+                .policyName(policyName)
+                .category(category)
+                .ageLimitYn(false)
+                .applyPeriodCode(applyPeriodCode)
+                .applyEndDate(applyEndDate)
+                .viewCount(viewCount)
+                .activeYn(active)
+                .build();
+        entityManager.persist(policy);
+        return policy;
     }
 
     private Policy persistPolicy(

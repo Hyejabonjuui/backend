@@ -8,14 +8,14 @@ import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 
-public final class PolicyResponseDTO {
+public final class PolicyGuestResponseDTO {
 
-    private PolicyResponseDTO() {
+    private PolicyGuestResponseDTO() {
     }
 
     @Getter
     @Builder
-    @Schema(name = "PolicyRegionItemDTO", description = "정책 대상 지역")
+    @Schema(name = "PolicyGuestRegionItemDTO", description = "비로그인 정책 대상 지역")
     public static class PolicyRegionItemDTO {
 
         @JsonProperty("region_code")
@@ -29,7 +29,7 @@ public final class PolicyResponseDTO {
 
     @Getter
     @Builder
-    @Schema(name = "PolicyListItemDTO", description = "로그인 회원용 주거 정책 목록 항목")
+    @Schema(name = "PolicyGuestListItemDTO", description = "비로그인 주거 정책 목록 항목")
     public static class PolicyListItemDTO {
 
         @JsonProperty("policy_id")
@@ -70,15 +70,11 @@ public final class PolicyResponseDTO {
         public Integer getDDay() {
             return dDay;
         }
-
-        @JsonProperty("favorite_yn")
-        @Schema(description = "현재 회원의 관심 정책 등록 여부", example = "true")
-        private boolean favoriteYn;
     }
 
     @Getter
     @Builder
-    @Schema(name = "PolicyListDTO", description = "로그인 회원용 주거 정책 페이지 응답")
+    @Schema(name = "PolicyGuestListDTO", description = "비로그인 주거 정책 페이지 응답")
     public static class PolicyListDTO {
 
         @Schema(description = "현재 페이지의 정책 목록")

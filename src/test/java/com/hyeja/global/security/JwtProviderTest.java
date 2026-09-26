@@ -13,7 +13,7 @@ class JwtProviderTest {
 
     private final JwtProvider jwtProvider = new JwtProvider("hyeja-test-only-jwt-secret-key-0123456789");
 
-    // 토큰에는 회원 ID와 권한이 들어가고, 30분 뒤 만료됩니다.
+    // 토큰에는 회원 ID와 권한이 들어가고, 300분 뒤 만료됩니다.
     @Test
     void createdTokenContainsMemberIdAndRole() {
         Claims claims = jwtProvider.parse(jwtProvider.createAccessToken(member(1L)));
@@ -21,7 +21,7 @@ class JwtProviderTest {
         assertThat(claims.getSubject()).isEqualTo("1");
         assertThat(claims.get("role", String.class)).isEqualTo("USER");
         assertThat(claims.getExpiration().getTime() - claims.getIssuedAt().getTime())
-                .isEqualTo(30 * 60 * 1000L);
+                .isEqualTo(300 * 60 * 1000L);
     }
 
     // 다른 키로 서명한 토큰(위조)은 거부합니다.

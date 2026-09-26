@@ -119,6 +119,6 @@ docker compose up -d   # 로컬 Redis(hyeja-redis) 실행. 토큰을 보내는 �
 
 - 인증·인가는 아직 없다.
 - `/api/policies/sync`도 현재 인증 없이 노출된다.
-- `/api/policies/housing`은 이름과 달리 저장된 Policy 전체를 반환하며 별도 category, active, deleted 필터가 없다.
+- `/api/policies/housing`은 비로그인 주거 정책 목록을 카테고리·정렬 조건으로 페이지 조회한다.
 - 카드뉴스 조회도 active와 soft-delete를 자동 필터링하지 않는다.
 - MariaDB, 실제 외부 API, 인증 흐름을 검증하는 통합 테스트는 아직 없다.
