@@ -13,6 +13,7 @@ import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,10 +66,18 @@ public class FavoriteService {
         favoriteRepository.delete(favorite);
     }
 
-    public FavoriteListDTO getMyFavorites(Long memberId, int page, int size) {
+    public FavoriteListDTO getMyFavorites(Long memberId, String keyword, int page, int size) {
         memberService.getActiveMember(memberId);
-        return FavoriteConverter.toFavoriteListDTO(
-                favoriteRepository.findAllActiveByMemberId(memberId, PageRequest.of(page, size))
-        );
+        PageRequest pageRequest = PageRequest.of(page, size);
+        String normalizedKeyword = normalizeKeyword(keyword);
+        Page<Favorite> favorites = normalizedKeyword == null
+                ? favoriteRepository.findAllActiveByMemberId(memberId, pageRequest)
+                : favoriteRepository.searchAllActiveByMemberIdAndKeyword(
+                        memberId, normalizedKeyword, pageRequest);
+        return FavoriteConverter.toFavoriteListDTO(favorites);
+    }
+
+    private String normalizeKeyword(String keyword) {
+        return keyword == null || keyword.isBlank() ? null : keyword.trim();
     }
 }

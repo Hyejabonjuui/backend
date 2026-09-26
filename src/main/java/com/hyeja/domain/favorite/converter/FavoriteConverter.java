@@ -19,6 +19,7 @@ public final class FavoriteConverter {
                 .categoryName(favorite.getPolicy().getCategory().getLabel())
                 .supportContent(favorite.getPolicy().getSupportContent())
                 .applyEndDate(favorite.getPolicy().getApplyEndDate())
+                .applyPeriodCode(favorite.getPolicy().getApplyPeriodCode())
                 .applyUrl(favorite.getPolicy().getApplyUrl())
                 .createdAt(favorite.getCreatedAt())
                 .build();
