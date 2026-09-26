@@ -19,6 +19,7 @@ import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
 import java.net.URI;
 import java.util.List;
+import java.util.Comparator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -135,13 +136,19 @@ public class PolicyService {
         return new PolicyDetailResponseDTO(
                 policy.getPolicyId(),
                 policy.getPolicyName(),
-                policy.getCategory(),
-                policy.getCategory().getLabel(),
+                policy.getCategories(),
+                policy.getCategories().stream()
+                        .sorted(Comparator.comparing(Enum::name))
+                        .map(com.hyeja.domain.policy.enums.PolicyCategory::getLabel)
+                        .toList(),
                 policy.getApiSubCategory(),
                 policy.getKeywords(),
                 policy.getDescription(),
                 policy.getSupportContent(),
                 policy.getExtraQualification(),
+                policy.getApplyPeriodCode(),
+                policy.getApplyPeriodCode() == null
+                        ? null : policy.getApplyPeriodCode().getLabel(),
                 policy.getApplyStartDate(),
                 policy.getApplyEndDate(),
                 policy.getApplyMethod(),
@@ -155,12 +162,14 @@ public class PolicyService {
     }
 
     private EligibilityStatus overallStatus(List<ConditionResultDTO> conditions) {
-        if (conditions.stream().anyMatch(condition -> condition.status() == EligibilityStatus.N)) {
-            return EligibilityStatus.N;
+        if (conditions.stream().anyMatch(
+                condition -> condition.status() == EligibilityStatus.DISABLE)) {
+            return EligibilityStatus.DISABLE;
         }
-        if (conditions.stream().anyMatch(condition -> condition.status() == EligibilityStatus.U)) {
-            return EligibilityStatus.U;
+        if (conditions.stream().anyMatch(
+                condition -> condition.status() == EligibilityStatus.UNKNOWN)) {
+            return EligibilityStatus.UNKNOWN;
         }
-        return EligibilityStatus.Y;
+        return EligibilityStatus.ABLE;
     }
 }

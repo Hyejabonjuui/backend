@@ -11,7 +11,6 @@ import com.hyeja.domain.policy.repository.PolicyRepository;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.domain.region.repository.RegionRepository;
 import java.util.LinkedHashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,8 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class PolicySyncItemService {
     private static final int CARD_BODY_MAX_LENGTH = 500;
-    private static final int REGION_CONDITION_MAX_LENGTH = 1000;
-    private static final int NATIONWIDE_REGION_CODE_THRESHOLD = 200;
     private static final Pattern REGION_CODE_PATTERN = Pattern.compile("(?<!\\d)\\d{5}(?!\\d)");
 
     private final PolicyRepository policyRepository;
@@ -40,21 +37,18 @@ public class PolicySyncItemService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void save(PolicyItem item, PolicyAiAnalysis analysis) {
-        ResolvedRegions resolvedRegions = resolvePolicyRegions(
-                item.getPolicyId(), item.getRegionCodes());
+        List<Region> regions = resolvePolicyRegions(item.getPolicyId(), item.getRegionCodes());
         Policy policy = policyRepository.save(policyApiConverter.convert(
-                item, analysis.category(), analysis.houselessYn(),
-                analysis.incomeCondition(), analysis.incomeMin(), analysis.incomeMax(),
-                resolvedRegions.condition()));
-        replacePolicyRegions(policy, resolvedRegions.regions());
+                item, analysis.categories(), analysis.description(), analysis.houselessRequirement(),
+                analysis.incomeCondition(), analysis.incomeMin(), analysis.incomeMax()));
+        replacePolicyRegions(policy, regions);
         createTestCardNewsIfAbsent(policy);
     }
 
-    private ResolvedRegions resolvePolicyRegions(String policyId, String rawRegionCodes) {
+    private List<Region> resolvePolicyRegions(String policyId, String rawRegionCodes) {
         Set<String> regionCodes = parseRegionCodes(rawRegionCodes);
-        return regionCodes.isEmpty()
-                ? new ResolvedRegions(List.of(), "전국")
-                : resolveRegions(policyId, regionCodes);
+        regionCodes.remove("00000");
+        return regionCodes.isEmpty() ? List.of() : resolveRegions(policyId, regionCodes);
     }
 
     private void replacePolicyRegions(Policy policy, List<Region> regions) {
@@ -64,67 +58,40 @@ public class PolicySyncItemService {
                 .toList());
     }
 
-    private ResolvedRegions resolveRegions(String policyId, Set<String> regionCodes) {
-        Map<String, Region> resolvedRegions = new LinkedHashMap<>();
-        Set<String> conditionNames = new LinkedHashSet<>();
-        Set<String> exactCodes = regionCodes.stream()
-                .filter(code -> !isSidoCode(code))
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-
-        if (!exactCodes.isEmpty()) {
-            regionRepository.findAllById(exactCodes).forEach(region ->
-                    resolvedRegions.put(region.getRegionCode(), region));
-        }
-
-        Set<String> unresolvedCodes = new LinkedHashSet<>(exactCodes);
+    private List<Region> resolveRegions(String policyId, Set<String> regionCodes) {
+        Map<String, Region> resolvedRegions = regionRepository.findAllById(regionCodes).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        Region::getRegionCode, region -> region,
+                        (left, right) -> left, java.util.LinkedHashMap::new));
+        Set<String> unresolvedCodes = new LinkedHashSet<>(regionCodes);
         unresolvedCodes.removeAll(resolvedRegions.keySet());
 
-        regionCodes.stream().filter(this::isSidoCode).forEach(sidoCode -> {
-            List<Region> childRegions = regionRepository.findAllByRegionCodeStartingWith(
-                    sidoCode.substring(0, 2));
-            if (childRegions.isEmpty()) {
-                unresolvedCodes.add(sidoCode);
-                return;
-            }
-            conditionNames.add(sidoName(childRegions.get(0).getSigunguName()));
-            childRegions.forEach(region ->
-                    resolvedRegions.put(region.getRegionCode(), region));
-        });
+        Set<String> unresolvedBroadCodes = unresolvedCodes.stream()
+                .filter(this::isSidoCode)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        for (String sidoCode : unresolvedBroadCodes) {
+            Region representative = regionRepository
+                    .findAllByRegionCodeStartingWith(sidoCode.substring(0, 2)).stream()
+                    .filter(region -> !isSidoCode(region.getRegionCode()))
+                    .findFirst()
+                    .orElse(null);
+            if (representative == null) continue;
 
-        regionCodes.stream().filter(code -> !isSidoCode(code)).forEach(code -> {
-            Region region = resolvedRegions.get(code);
-            if (region != null) {
-                conditionNames.add(region.getSigunguName());
-            }
-        });
+            Region broadRegion = Region.builder()
+                    .regionCode(sidoCode)
+                    .sigunguName(sidoName(representative.getSigunguName()))
+                    .build();
+            regionRepository.save(broadRegion);
+            resolvedRegions.put(sidoCode, broadRegion);
+            unresolvedCodes.remove(sidoCode);
+        }
 
         if (!unresolvedCodes.isEmpty()) {
             log.warn("정책 지역 코드를 region 테이블에서 찾지 못했습니다. policyId={}, codes={}",
                     policyId, unresolvedCodes);
             throw new IllegalArgumentException("정책 지역 코드를 찾을 수 없습니다: " + unresolvedCodes);
         }
-        return new ResolvedRegions(
-                List.copyOf(resolvedRegions.values()),
-                buildRegionCondition(regionCodes, conditionNames, resolvedRegions.values()));
-    }
-
-    private String buildRegionCondition(Set<String> regionCodes, Set<String> conditionNames,
-            java.util.Collection<Region> resolvedRegions) {
-        if (regionCodes.size() >= NATIONWIDE_REGION_CODE_THRESHOLD) {
-            return "전국";
-        }
-
-        String condition = String.join(", ", conditionNames);
-        if (condition.length() <= REGION_CONDITION_MAX_LENGTH) {
-            return condition;
-        }
-
-        return resolvedRegions.stream()
-                .map(Region::getSigunguName)
-                .map(this::sidoName)
-                .distinct()
-                .map(name -> name + " 일부 지역")
-                .collect(java.util.stream.Collectors.joining(", "));
+        return List.copyOf(resolvedRegions.values());
     }
 
     private boolean isSidoCode(String regionCode) {
@@ -134,9 +101,6 @@ public class PolicySyncItemService {
     private String sidoName(String sigunguName) {
         int separatorIndex = sigunguName.indexOf(' ');
         return separatorIndex < 0 ? sigunguName : sigunguName.substring(0, separatorIndex);
-    }
-
-    private record ResolvedRegions(List<Region> regions, String condition) {
     }
 
     private Set<String> parseRegionCodes(String rawRegionCodes) {
