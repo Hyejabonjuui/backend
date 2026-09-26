@@ -1,10 +1,12 @@
 package com.hyeja.domain.member.service;
 
+import com.hyeja.domain.favorite.repository.FavoriteRepository;
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
 import com.hyeja.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.member.repository.MemberRepository;
+import com.hyeja.domain.notification.repository.NotificationRepository;
 import com.hyeja.domain.profile.dto.ProfileRequestDTO;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
@@ -28,6 +30,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,6 +49,12 @@ class MemberServiceTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private FavoriteRepository favoriteRepository;
+
+    @Mock
+    private NotificationRepository notificationRepository;
 
     @InjectMocks
     private MemberService memberService;
@@ -219,6 +228,36 @@ class MemberServiceTest {
                 .isInstanceOf(GeneralException.class)
                 .extracting("code")
                 .isEqualTo(ErrorStatus.MEMBER_EMAIL_NOT_FOUND);
+    }
+
+    @Test
+    void withdrawSoftDeletesMemberAndProfileAndDeletesFavoritesAndNotifications() {
+        Member member = member(1L, LocalDateTime.now());
+        Profile profile = profile(member, LocalDate.of(2000, 3, 15));
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(profileRepository.findById("hyeja@example.com")).thenReturn(Optional.of(profile));
+
+        memberService.withdraw(1L);
+
+        assertThat(member.isDeleted()).isTrue();
+        assertThat(profile.isDeleted()).isTrue();
+        verify(favoriteRepository).deleteByMemberMemberId(1L);
+        verify(notificationRepository).deleteByMemberMemberId(1L);
+    }
+
+    // 이미 탈퇴한 회원은 404이고, 관심 정책·알림도 건드리지 않습니다.
+    @Test
+    void withdrawThrowsMemberNotFoundWhenAlreadyDeleted() {
+        Member deleted = member(1L, LocalDateTime.now());
+        deleted.softDelete();
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(deleted));
+
+        assertThatThrownBy(() -> memberService.withdraw(1L))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(ErrorStatus.MEMBER_NOT_FOUND);
+        verify(favoriteRepository, never()).deleteByMemberMemberId(anyLong());
+        verify(notificationRepository, never()).deleteByMemberMemberId(anyLong());
     }
 
     private Profile profile(Member member, LocalDate birth) {

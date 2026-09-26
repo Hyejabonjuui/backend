@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -119,5 +120,45 @@ public class MemberController {
             @RequestParam(name = "birth") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate birth
     ) {
         return ApiResponse.onSuccess(memberService.findEmail(nickname, birth));
+    }
+
+    // 회원 탈퇴 (마이페이지 S-08 계정 탭) — 예: PATCH /api/members/me/delete?memberId=1
+    // 행을 지우지 않고 deleted_at을 찍는 soft delete라 DELETE가 아니라 PATCH입니다 (팀 확정 경로).
+    // TODO: 인증(JWT) 기반이 생기면 memberId 쿼리 파라미터를 없애고 토큰에서 회원을 식별합니다.
+    @Operation(
+            summary = "회원 탈퇴",
+            description = "회원·내 조건은 soft delete(deleted_at 기록), 관심 정책·알림은 삭제합니다. 되돌릴 수 없습니다. "
+                    + "탈퇴한 이메일·닉네임으로는 다시 가입할 수 없습니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "회원 탈퇴 성공 (SUCCESS_001)"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "memberId 누락 또는 양수가 아님 (COMMON_001)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "없거나 이미 탈퇴한 회원 (MEMBER_001)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            )
+    })
+    @PatchMapping("/me/delete")
+    public ApiResponse<Void> withdraw(
+            @Parameter(
+                    name = "memberId",
+                    description = "탈퇴할 회원 ID",
+                    in = ParameterIn.QUERY,
+                    example = "1",
+                    required = true
+            )
+            @RequestParam(name = "memberId")
+            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId
+    ) {
+        memberService.withdraw(memberId);
+        return ApiResponse.onSuccess(null);
     }
 }
