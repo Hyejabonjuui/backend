@@ -2,10 +2,19 @@ package com.hyeja.domain.policy.service;
 
 import com.hyeja.domain.cardnews.entity.CardNews;
 import com.hyeja.domain.cardnews.repository.CardNewsRepository;
+import com.hyeja.domain.favorite.repository.FavoriteRepository;
+import com.hyeja.domain.policy.converter.PolicyConverter;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO;
+import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyListDTO;
 import com.hyeja.domain.policy.entity.Policy;
+import com.hyeja.domain.policy.entity.PolicyRegion;
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicySort;
+import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.policy.repository.PolicyRepository;
+import com.hyeja.domain.profile.entity.Profile;
+import com.hyeja.domain.profile.service.ProfileService;
+import com.hyeja.domain.region.entity.Region;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,8 +25,15 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.time.LocalDate;
+import java.time.Period;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 @Slf4j
 @Service
@@ -28,6 +44,9 @@ public class PolicyService {
     private final PolicyRepository policyRepository;
     private final CardNewsRepository cardNewsRepository;
     private final RestTemplate restTemplate;
+    private final ProfileService profileService;
+    private final PolicyRegionRepository policyRegionRepository;
+    private final FavoriteRepository favoriteRepository;
 
     @Value("${youth.api.key}")
     private String apiKey;
@@ -140,5 +159,44 @@ public class PolicyService {
 
     public List<Policy> getHousingPolicies() {
         return policyRepository.findAllByOrderByApplyEndDateAsc();
+    }
+
+    public PolicyListDTO getHousingPoliciesForMember(
+            Long memberId,
+            PolicyCategory category,
+            PolicySort sort,
+            boolean onlyEligible,
+            int page,
+            int size
+    ) {
+        Profile profile = profileService.getActiveProfile(memberId);
+        LocalDate today = LocalDate.now();
+        Page<Policy> policyPage = policyRepository.findHousingPoliciesForMember(
+                category,
+                onlyEligible,
+                today,
+                Period.between(profile.getBirth(), today).getYears(),
+                profile.getHouselessYn(),
+                profile.getEmploymentCode().name(),
+                profile.getRegion().getRegionCode(),
+                PageRequest.of(page, size, sort.toSort())
+        );
+
+        List<String> policyIds = policyPage.getContent().stream()
+                .map(Policy::getPolicyId)
+                .toList();
+        Map<String, List<Region>> regionsByPolicyId = policyIds.isEmpty()
+                ? Collections.emptyMap()
+                : policyRegionRepository.findAllActiveByPolicyIds(policyIds).stream()
+                        .collect(Collectors.groupingBy(
+                                policyRegion -> policyRegion.getPolicy().getPolicyId(),
+                                Collectors.mapping(PolicyRegion::getRegion, Collectors.toList())
+                        ));
+        Set<String> favoritePolicyIds = policyIds.isEmpty()
+                ? Collections.emptySet()
+                : favoriteRepository.findActivePolicyIds(memberId, policyIds);
+
+        return PolicyConverter.toPolicyListDTO(
+                policyPage, regionsByPolicyId, favoritePolicyIds, today);
     }
 }

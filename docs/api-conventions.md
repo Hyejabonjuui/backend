@@ -41,6 +41,7 @@
 | `PATCH` | `/api/notification/{notificationId}/read` | path `notificationId`, query `memberId` | 본인 소유의 삭제되지 않은 알림 읽음 처리 |
 | `POST` | `/api/policies/sync` | 없음 | 외부 정책 수동 동기화 |
 | `GET` | `/api/policies/housing` | 없음 | 현재는 저장된 Policy 전체 조회 |
+| `GET` | `/api/policies/housing/me` | query `memberId: Long`, `category?: PolicyCategory`, `sort=DEADLINE`, `onlyEligible=false`, `page=0`, `size=8` | 로그인 회원용 진행 중 정책 페이지 조회, 지역·나이·취업·무주택 맞춤 필터와 관심 여부 포함 |
 
 Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한다.
 

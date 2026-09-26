@@ -2,8 +2,10 @@ package com.hyeja.domain.favorite.repository;
 
 import com.hyeja.domain.favorite.entity.Favorite;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,6 +21,18 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
     Optional<Favorite> findByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(
             Long memberId,
             String policyId
+    );
+
+    @Query("""
+            select favorite.policy.policyId
+            from Favorite favorite
+            where favorite.member.memberId = :memberId
+              and favorite.policy.policyId in :policyIds
+              and favorite.deletedAt is null
+            """)
+    Set<String> findActivePolicyIds(
+            @Param("memberId") Long memberId,
+            @Param("policyIds") Collection<String> policyIds
     );
 
     @Query(

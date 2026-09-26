@@ -54,8 +54,8 @@ public class ProfileService {
         return ProfileConverter.toProfileResponseDTO(profile);
     }
 
-    // 탈퇴하지 않은 회원의, 삭제되지 않은 조건을 조회합니다. 조회·수정이 함께 씁니다.
-    private Profile getActiveProfile(Long memberId) {
+    // 탈퇴하지 않은 회원의, 삭제되지 않은 조건을 조회합니다. 조건 조회·수정과 정책 필터가 함께 씁니다.
+    public Profile getActiveProfile(Long memberId) {
         Member member = memberService.getActiveMember(memberId);
 
         // 프로필 PK는 회원 이메일입니다. 삭제 기록(deleted_at)이 있는 프로필도 미등록으로 봅니다.
