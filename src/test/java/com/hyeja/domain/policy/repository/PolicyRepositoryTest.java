@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.entity.PolicyRegion;
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
 import com.hyeja.domain.policy.enums.PolicySort;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.config.JpaAuditingConfig;
@@ -121,7 +122,9 @@ class PolicyRepositoryTest {
                 .ageLimitYn(true)
                 .minAge(minAge)
                 .maxAge(maxAge)
-                .employmentCodes(employmentCodes)
+                .employmentCodes(employmentCodes == null
+                        ? null : java.util.Set.of(
+                                PolicyEmploymentCondition.valueOf(employmentCodes)))
                 .houselessYn(houselessYn)
                 .applyPeriodCode("PERIOD")
                 .applyEndDate(endDate)

@@ -17,7 +17,11 @@ import com.hyeja.global.exception.ExceptionAdvice;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -28,9 +32,17 @@ class PolicyControllerTest {
 
     @BeforeEach
     void setUp() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(1L, null, List.of()));
         mvc = MockMvcBuilders.standaloneSetup(new PolicyController(policyService))
                 .setControllerAdvice(new ExceptionAdvice())
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -61,7 +73,6 @@ class PolicyControllerTest {
                         .build());
 
         mvc.perform(get("/api/policies/housing/me")
-                        .param("memberId", "1")
                         .param("category", "MONTHLY_RENT")
                         .param("sort", "VIEW_COUNT")
                         .param("onlyEligible", "true"))
@@ -93,7 +104,7 @@ class PolicyControllerTest {
                         .hasNext(false)
                         .build());
 
-        mvc.perform(get("/api/policies/housing/me").param("memberId", "1"))
+        mvc.perform(get("/api/policies/housing/me"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.policies").isEmpty());
 
@@ -102,16 +113,8 @@ class PolicyControllerTest {
     }
 
     @Test
-    void returnsBadRequestWithoutMemberId() throws Exception {
-        mvc.perform(get("/api/policies/housing/me"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("COMMON_001"));
-    }
-
-    @Test
     void returnsBadRequestForUnknownSort() throws Exception {
         mvc.perform(get("/api/policies/housing/me")
-                        .param("memberId", "1")
                         .param("sort", "POPULAR"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_001"));

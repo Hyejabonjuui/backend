@@ -29,4 +29,8 @@ public class Region extends BaseEntity {
         this.regionCode = regionCode;
         this.sigunguName = sigunguName;
     }
+
+    public void updateSigunguName(String sigunguName) {
+        this.sigunguName = sigunguName;
+    }
 }

@@ -1,0 +1,10 @@
+# 로컬 개발용 Redis (로그아웃한 토큰 저장). 프로젝트 폴더에서 `docker compose up -d`로 켜고 `docker compose down`으로 끕니다.
+# 토큰은 최대 30분만 보관하므로 디스크 저장(볼륨)은 두지 않습니다.
+# 6379 포트를 쓰는 다른 Redis 컨테이너(수업용 등)가 켜져 있으면 먼저 꺼 주셔야합니당!
+services:
+  redis:
+    image: redis:7.2
+    container_name: hyeja-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped

@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PolicyRepository extends JpaRepository<Policy, String> {
 
-    // 내부 분류와 관계없이 적재된 주거 정책 전체를 마감일 오름차순으로 조회합니다.
+    // "주거" 카테고리 정책을 마감일 오름차순으로 조회
     List<Policy> findAllByOrderByApplyEndDateAsc();
 
     @Query("""
@@ -37,11 +37,12 @@ public interface PolicyRepository extends JpaRepository<Policy, String> {
                       and (policy.houselessYn is null or policy.houselessYn = :houselessYn)
                       and (
                           policy.employmentCodes is null
-                          or trim(policy.employmentCodes) = ''
-                          or policy.employmentCodes = :employmentCode
-                          or policy.employmentCodes like concat(:employmentCode, ',%')
-                          or policy.employmentCodes like concat('%,', :employmentCode)
-                          or policy.employmentCodes like concat('%,', concat(:employmentCode, ',%'))
+                          or trim(cast(policy.employmentCodes as string)) = ''
+                          or cast(policy.employmentCodes as string) = :employmentCode
+                          or cast(policy.employmentCodes as string) like concat(:employmentCode, ',%')
+                          or cast(policy.employmentCodes as string) like concat('%,', :employmentCode)
+                          or cast(policy.employmentCodes as string)
+                              like concat('%,', concat(:employmentCode, ',%'))
                       )
                       and (
                           not exists (

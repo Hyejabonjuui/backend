@@ -15,6 +15,9 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     boolean existsByNickname(String nickname);
 
+    // 로그인용. 이메일은 중복 불가라 최대 1건입니다.
+    Optional<Member> findByEmail(String email);
+
     // 이메일 찾기용. 닉네임은 중복 불가라 최대 1건입니다.
     Optional<Member> findByNickname(String nickname);
 }

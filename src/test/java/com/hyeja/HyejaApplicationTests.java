@@ -5,6 +5,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -73,5 +74,21 @@ class HyejaApplicationTests {
         assertThat(response.headers().firstValue("Content-Type").orElse(""))
                 .startsWith("text/html");
         assertThat(response.body()).contains("swagger-ui-bundle.js");
+    }
+
+    // 회원은 토큰으로 식별하므로 정책 상세 문서에는 policyId만 노출됩니다(memberId는 숨김).
+    @Test
+    void policyDetailOpenApiExposesOnlyPolicyId() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + "/v3/api-docs"))
+                .GET().build();
+
+        HttpResponse<String> response = HttpClient.newHttpClient()
+                .send(request, HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        List<String> parameterNames = JsonPath.parse(response.body()).read(
+                "$.paths['/api/policies/{policyId}'].get.parameters[*].name");
+        assertThat(parameterNames).containsExactly("policyId");
     }
 }

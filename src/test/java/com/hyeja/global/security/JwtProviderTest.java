@@ -1,0 +1,41 @@
+package com.hyeja.global.security;
+
+import com.hyeja.domain.member.entity.Member;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class JwtProviderTest {
+
+    private final JwtProvider jwtProvider = new JwtProvider("hyeja-test-only-jwt-secret-key-0123456789");
+
+    // 토큰에는 회원 ID와 권한이 들어가고, 30분 뒤 만료됩니다.
+    @Test
+    void createdTokenContainsMemberIdAndRole() {
+        Claims claims = jwtProvider.parse(jwtProvider.createAccessToken(member(1L)));
+
+        assertThat(claims.getSubject()).isEqualTo("1");
+        assertThat(claims.get("role", String.class)).isEqualTo("USER");
+        assertThat(claims.getExpiration().getTime() - claims.getIssuedAt().getTime())
+                .isEqualTo(30 * 60 * 1000L);
+    }
+
+    // 다른 키로 서명한 토큰(위조)은 거부합니다.
+    @Test
+    void rejectsTokenSignedWithOtherKey() {
+        String forged = new JwtProvider("other-secret-key-for-forged-token-0123456789")
+                .createAccessToken(member(1L));
+
+        assertThatThrownBy(() -> jwtProvider.parse(forged)).isInstanceOf(JwtException.class);
+    }
+
+    private Member member(Long memberId) {
+        Member member = Member.builder().email("hyeja@example.com").password("encoded").nickname("민지").build();
+        ReflectionTestUtils.setField(member, "memberId", memberId);
+        return member;
+    }
+}

@@ -95,12 +95,16 @@ HTTP 요청
 | `DB_SEED_MODE` | SQL 초기화 모드 | `always` |
 | `SERVER_PORT` | 서버 포트 | `8080` |
 | `YOUTH_API_KEY` | 온통청년 API 키 | 없음 |
+| `JWT_SECRET` | 로그인 토큰 서명 키 (32자 이상, 없으면 서버가 뜨지 않음) | 없음 |
+| `REDIS_HOST` | 로그아웃 토큰 저장용 Redis 호스트 | `localhost` |
+| `REDIS_PORT` | Redis 포트 | `6379` |
 
 ## 실행과 문서 경로
 
 ```bash
+docker compose up -d   # 로컬 Redis(hyeja-redis) 실행. 토큰을 보내는 요청은 Redis가 꺼져 있으면 실패한다
 ./gradlew bootRun
-./gradlew test
+./gradlew test         # 테스트는 Redis 없이 실행된다
 ```
 
 - Swagger UI: `http://localhost:${SERVER_PORT:-8080}/swagger-ui.html`

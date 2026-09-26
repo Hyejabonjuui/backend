@@ -2,6 +2,7 @@ package com.hyeja.domain.member.converter;
 
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
+import com.hyeja.domain.member.dto.MemberLoginResponseDTO;
 import com.hyeja.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.domain.member.entity.Member;
 
@@ -25,6 +26,15 @@ public class MemberConverter {
                 .email(member.getEmail())
                 .nickname(member.getNickname())
                 .createdAt(member.getCreatedAt())
+                .build();
+    }
+
+    // 로그인 응답으로 변환합니다. 토큰은 서비스에서 발급한 값을 넘깁니다.
+    public static MemberLoginResponseDTO toLoginResponseDTO(Member member, String accessToken) {
+        return MemberLoginResponseDTO.builder()
+                .accessToken(accessToken)
+                .memberId(member.getMemberId())
+                .nickname(member.getNickname())
                 .build();
     }
 

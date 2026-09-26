@@ -1,5 +1,6 @@
 package com.hyeja.domain.policy.controller;
 
+import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyListDTO;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.enums.PolicyCategory;
@@ -17,13 +18,15 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "주거 정책", description = "주거 정책 동기화·조회 API")
+@Tag(name = "정책", description = "정책 관련 API")
 @RestController
 @RequestMapping("/api/policies")
 @RequiredArgsConstructor
@@ -31,25 +34,30 @@ public class PolicyController {
 
     private final PolicyService policyService;
 
-    // 1. 외부 API 데이터를 당겨와서 DB에 적재하는 수동 트리거 API
+    @Operation(
+            summary = "주거 정책 동기화",
+            description = "외부 정책 API에서 청년 주거 정책을 조회하여 데이터베이스에 동기화합니다."
+    )
     @PostMapping("/sync")
     public ApiResponse<String> syncPolicies() {
-        policyService.fetchAndSaveHousingPolicies();
-        return ApiResponse.onSuccess("온통청년 주거 정책 데이터 동기화가 성공적으로 완료되었습니다.");
+        int savedCount = policyService.fetchAndSaveHousingPolicies();
+        return ApiResponse.onSuccess(
+                "온통청년 주거 정책 " + savedCount + "건 동기화가 완료되었습니다.");
     }
 
-    // 2. 적재된 주거 정책 목록 조회 API
+    @Operation(
+            summary = "주거 정책 목록 조회",
+            description = "데이터베이스에 저장된 주거 정책 목록을 조회합니다."
+    )
     @GetMapping("/housing")
     public ApiResponse<List<Policy>> getHousingPolicies() {
-        List<Policy> housingPolicies = policyService.getHousingPolicies();
-        return ApiResponse.onSuccess(housingPolicies);
+        return ApiResponse.onSuccess(policyService.getHousingPolicies());
     }
 
     @Operation(
             summary = "로그인 회원용 주거 정책 목록 조회",
-            description = "진행 중인 주거 정책을 카테고리·정렬 조건으로 8개씩 조회합니다. "
-                    + "onlyEligible이 true이면 회원의 필수 조건(지역·나이·취업·무주택)에 맞는 정책만 반환합니다. "
-                    + "현재는 인증 도입 전이므로 memberId를 쿼리 파라미터로 받습니다."
+            description = "로그인한 회원을 기준으로 진행 중인 주거 정책을 카테고리·정렬 조건으로 조회합니다. "
+                    + "onlyEligible이 true이면 회원의 필수 조건(지역·나이·취업·무주택)에 맞는 정책만 반환합니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -58,7 +66,12 @@ public class PolicyController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "회원 ID 누락·잘못된 필터·페이지 조건 (COMMON_001)",
+                    description = "잘못된 필터·페이지 조건 (COMMON_001)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패 (COMMON_002)",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -69,15 +82,7 @@ public class PolicyController {
     })
     @GetMapping("/housing/me")
     public ApiResponse<PolicyListDTO> getHousingPoliciesForMember(
-            @Parameter(
-                    name = "memberId",
-                    description = "조회할 회원 ID",
-                    in = ParameterIn.QUERY,
-                    example = "1",
-                    required = true
-            )
-            @RequestParam(name = "memberId")
-            @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long memberId,
             @Parameter(
                     name = "category",
                     description = "정책 카테고리. 생략하면 전체",
@@ -118,5 +123,17 @@ public class PolicyController {
     ) {
         return ApiResponse.onSuccess(policyService.getHousingPoliciesForMember(
                 memberId, category, sort, onlyEligible, page, size));
+    }
+
+    @Operation(
+            summary = "정책 상세 조회",
+            description = "정책 ID와 로그인한 회원(토큰)을 기준으로 회원 맞춤 정보를 포함한 정책 상세 내용을 조회합니다."
+    )
+    @GetMapping("/{policyId}")
+    public ApiResponse<PolicyDetailResponseDTO> getPolicyDetailForMember(
+            @PathVariable("policyId") String policyId,
+            @AuthenticationPrincipal Long memberId) {
+        return ApiResponse.onSuccess(
+                policyService.getPolicyDetailForMember(policyId, memberId));
     }
 }

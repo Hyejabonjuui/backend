@@ -1,10 +1,14 @@
 package com.hyeja.domain.member.service;
 
+import com.hyeja.domain.favorite.repository.FavoriteRepository;
 import com.hyeja.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
+import com.hyeja.domain.member.dto.MemberLoginRequestDTO;
+import com.hyeja.domain.member.dto.MemberLoginResponseDTO;
 import com.hyeja.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.member.repository.MemberRepository;
+import com.hyeja.domain.notification.repository.NotificationRepository;
 import com.hyeja.domain.profile.dto.ProfileRequestDTO;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
@@ -13,8 +17,13 @@ import com.hyeja.domain.region.entity.Region;
 import com.hyeja.domain.region.repository.RegionRepository;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
+import com.hyeja.global.security.JwtProvider;
+import com.hyeja.global.security.TokenBlacklist;
+import io.jsonwebtoken.Jwts;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +37,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,6 +57,18 @@ class MemberServiceTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private FavoriteRepository favoriteRepository;
+
+    @Mock
+    private NotificationRepository notificationRepository;
+
+    @Mock
+    private JwtProvider jwtProvider;
+
+    @Mock
+    private TokenBlacklist tokenBlacklist;
 
     @InjectMocks
     private MemberService memberService;
@@ -219,6 +242,101 @@ class MemberServiceTest {
                 .isInstanceOf(GeneralException.class)
                 .extracting("code")
                 .isEqualTo(ErrorStatus.MEMBER_EMAIL_NOT_FOUND);
+    }
+
+    @Test
+    void withdrawSoftDeletesMemberAndProfileAndDeletesFavoritesAndNotifications() {
+        Member member = member(1L, LocalDateTime.now());
+        Profile profile = profile(member, LocalDate.of(2000, 3, 15));
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(profileRepository.findById("hyeja@example.com")).thenReturn(Optional.of(profile));
+
+        memberService.withdraw(1L);
+
+        assertThat(member.isDeleted()).isTrue();
+        assertThat(profile.isDeleted()).isTrue();
+        verify(favoriteRepository).deleteByMemberMemberId(1L);
+        verify(notificationRepository).deleteByMemberMemberId(1L);
+    }
+
+    // 이미 탈퇴한 회원은 404이고, 관심 정책·알림도 건드리지 않습니다.
+    @Test
+    void withdrawThrowsMemberNotFoundWhenAlreadyDeleted() {
+        Member deleted = member(1L, LocalDateTime.now());
+        deleted.softDelete();
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(deleted));
+
+        assertThatThrownBy(() -> memberService.withdraw(1L))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(ErrorStatus.MEMBER_NOT_FOUND);
+        verify(favoriteRepository, never()).deleteByMemberMemberId(anyLong());
+        verify(notificationRepository, never()).deleteByMemberMemberId(anyLong());
+    }
+
+    @Test
+    void loginReturnsTokenWhenPasswordMatches() {
+        Member member = member(1L, LocalDateTime.now());
+        when(memberRepository.findByEmail("hyeja@example.com")).thenReturn(Optional.of(member));
+        when(passwordEncoder.matches("hyeja1234!", "encoded-password")).thenReturn(true);
+        when(jwtProvider.createAccessToken(member)).thenReturn("access-token");
+
+        MemberLoginResponseDTO result = memberService.login(loginRequest("hyeja@example.com", "hyeja1234!"));
+
+        assertThat(result.getAccessToken()).isEqualTo("access-token");
+        assertThat(result.getMemberId()).isEqualTo(1L);
+        assertThat(result.getNickname()).isEqualTo("민지");
+    }
+
+    @Test
+    void loginFailsWithSameErrorWhenEmailIsUnknown() {
+        when(memberRepository.findByEmail("nobody@example.com")).thenReturn(Optional.empty());
+
+        assertLoginFails(loginRequest("nobody@example.com", "hyeja1234!"));
+    }
+
+    @Test
+    void loginFailsWithSameErrorWhenPasswordIsWrong() {
+        when(memberRepository.findByEmail("hyeja@example.com"))
+                .thenReturn(Optional.of(member(1L, LocalDateTime.now())));
+        when(passwordEncoder.matches("wrong1234!", "encoded-password")).thenReturn(false);
+
+        assertLoginFails(loginRequest("hyeja@example.com", "wrong1234!"));
+    }
+
+    @Test
+    void loginFailsWithSameErrorWhenMemberIsDeleted() {
+        Member deleted = member(1L, LocalDateTime.now());
+        deleted.softDelete();
+        when(memberRepository.findByEmail("hyeja@example.com")).thenReturn(Optional.of(deleted));
+
+        assertLoginFails(loginRequest("hyeja@example.com", "hyeja1234!"));
+    }
+
+    // 이메일·비밀번호·탈퇴 중 무엇이 원인이든 같은 에러이고, 토큰은 발급하지 않습니다.
+    private void assertLoginFails(MemberLoginRequestDTO request) {
+        assertThatThrownBy(() -> memberService.login(request))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(ErrorStatus.MEMBER_LOGIN_FAILED);
+        verify(jwtProvider, never()).createAccessToken(any());
+    }
+
+    private MemberLoginRequestDTO loginRequest(String email, String password) {
+        return MemberLoginRequestDTO.builder().email(email).password(password).build();
+    }
+
+    // 로그아웃한 토큰은 원래 만료 시각까지(여기서는 약 10분) 블랙리스트에 남습니다.
+    @Test
+    void logoutBlacklistsTokenUntilItExpires() {
+        Date expiration = new Date(System.currentTimeMillis() + Duration.ofMinutes(10).toMillis());
+        when(jwtProvider.parse("access-token")).thenReturn(Jwts.claims().expiration(expiration).build());
+
+        memberService.logout("access-token");
+
+        ArgumentCaptor<Duration> ttl = ArgumentCaptor.forClass(Duration.class);
+        verify(tokenBlacklist).add(eq("access-token"), ttl.capture());
+        assertThat(ttl.getValue()).isBetween(Duration.ofMinutes(9), Duration.ofMinutes(10));
     }
 
     private Profile profile(Member member, LocalDate birth) {
