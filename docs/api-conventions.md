@@ -25,7 +25,7 @@
 
 ## 실제 구현된 엔드포인트
 
-2026-09-26 현재 Controller 기준이다.
+2026-09-27 현재 Controller 기준이다.
 
 | Method | Path | 입력 | 로그인 | 비고 |
 | --- | --- | --- | --- | --- |
@@ -41,6 +41,7 @@
 | `GET` | `/api/regions` | 없음 | 불필요 | 시·도별 시군구 목록 |
 | `GET` | `/api/policies/card-news/guest` | 없음 | 불필요 | 대표 카드 중 최대 4건 |
 | `GET` | `/api/policies/housing` | 없음 | 불필요 | 현재는 저장된 Policy 전체 조회 |
+| `GET` | `/api/policies/housing/me` | query `category?`, `sort=DEADLINE`, `onlyEligible=false`, `page=0`, `size=8` | 필요 | 진행 중 정책 페이지 조회, 회원 조건 필터와 관심 여부 포함 |
 | `GET` | `/api/policies/{policyId}` | path `policyId` | 필요 | 회원 맞춤 정보를 포함한 정책 상세 |
 | `POST` | `/api/policies/sync` | 없음 | 필요 | 외부 정책 수동 동기화 |
 | `GET` | `/api/favorite` | query `keyword?`, `page=0`, `size=8` | 필요 | 관심 정책을 최근 등록순으로 페이지 조회, 정책명·지원 내용 검색 |
