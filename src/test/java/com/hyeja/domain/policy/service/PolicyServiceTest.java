@@ -442,6 +442,7 @@ class PolicyServiceTest {
                 assertThat(itemRegion.getRegionName()).isEqualTo("서울특별시 마포구");
             });
             assertThat(item.isNationwide()).isFalse();
+            assertThat(item.getApplyPeriodCode()).isEqualTo("PERIOD");
             assertThat(item.getDDay()).isEqualTo(4);
             assertThat(item.isFavoriteYn()).isTrue();
         });

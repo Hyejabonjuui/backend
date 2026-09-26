@@ -58,6 +58,7 @@ class PolicyControllerTest {
                         .build()))
                 .nationwide(false)
                 .applyEndDate(LocalDate.of(2026, 9, 30))
+                .applyPeriodCode("0057001")
                 .dDay(4)
                 .favoriteYn(true)
                 .build();
@@ -84,6 +85,7 @@ class PolicyControllerTest {
                 .andExpect(jsonPath("$.result.policies[0].policy_id").value("POLICY-1"))
                 .andExpect(jsonPath("$.result.policies[0].category_code").value("MONTHLY_RENT"))
                 .andExpect(jsonPath("$.result.policies[0].regions[0].region_code").value("11440"))
+                .andExpect(jsonPath("$.result.policies[0].apply_period_code").value("0057001"))
                 .andExpect(jsonPath("$.result.policies[0].d_day").value(4))
                 .andExpect(jsonPath("$.result.policies[0].favorite_yn").value(true));
 

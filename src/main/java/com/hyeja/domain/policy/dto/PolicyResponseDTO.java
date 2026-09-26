@@ -58,6 +58,10 @@ public final class PolicyResponseDTO {
         @Schema(description = "신청 마감일. 상시 모집이면 null", example = "2026-09-30", nullable = true)
         private LocalDate applyEndDate;
 
+        @JsonProperty("apply_period_code")
+        @Schema(description = "신청 기간 구분 코드", example = "0057001")
+        private String applyPeriodCode;
+
         @JsonProperty("d_day")
         @Schema(description = "마감일까지 남은 일수. 상시 모집이면 null", example = "4", nullable = true)
         private Integer dDay;

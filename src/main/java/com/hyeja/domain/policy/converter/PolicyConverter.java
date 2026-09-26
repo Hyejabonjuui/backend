@@ -59,6 +59,7 @@ public final class PolicyConverter {
                         .toList())
                 .nationwide(regions.isEmpty())
                 .applyEndDate(policy.getApplyEndDate())
+                .applyPeriodCode(policy.getApplyPeriodCode())
                 .dDay(policy.getApplyEndDate() == null
                         ? null : Math.toIntExact(ChronoUnit.DAYS.between(today, policy.getApplyEndDate())))
                 .favoriteYn(favoriteYn)

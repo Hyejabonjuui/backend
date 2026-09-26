@@ -40,8 +40,17 @@ class PolicyRepositoryTest {
                 "nationwide", "전국 정책", today.plusDays(2), "EMPLOYED", true, 19, 39);
         Policy matching = persistPolicy(
                 "matching", "마포 정책", today.plusDays(5), "EMPLOYED", true, 19, 39);
+        Policy houselessNotRequired = persistPolicy(
+                "houseless-not-required", "무주택 무관 정책", today.plusDays(3),
+                "EMPLOYED", false, 19, 39);
+        Policy employmentNotRestricted = persistPolicy(
+                "employment-not-restricted", "취업 제한 없음 정책", today.plusDays(4),
+                "NO_RESTRICTION", true, 19, 39);
         Policy alwaysOpen = persistPolicy(
                 "always-open", "상시 정책", null, "EMPLOYED", true, 19, 39);
+        persistPolicy(
+                "closed-without-end-date", "마감 코드 정책", null, "EMPLOYED", true,
+                19, 39, "0057003");
         Policy wrongRegion = persistPolicy(
                 "wrong-region", "강남 정책", today.plusDays(1), "EMPLOYED", true, 19, 39);
         persistPolicy("wrong-age", "연령 불일치", today.plusDays(1), "EMPLOYED", true, 30, 39);
@@ -67,10 +76,12 @@ class PolicyRepositoryTest {
                 .extracting(Policy::getPolicyId)
                 .containsExactly(
                         nationwide.getPolicyId(),
+                        houselessNotRequired.getPolicyId(),
+                        employmentNotRestricted.getPolicyId(),
                         matching.getPolicyId(),
                         alwaysOpen.getPolicyId()
                 );
-        assertThat(result.getTotalElements()).isEqualTo(3);
+        assertThat(result.getTotalElements()).isEqualTo(5);
     }
 
     @Test
@@ -115,6 +126,28 @@ class PolicyRepositoryTest {
             int minAge,
             int maxAge
     ) {
+        return persistPolicy(
+                policyId,
+                policyName,
+                endDate,
+                employmentCodes,
+                houselessYn,
+                minAge,
+                maxAge,
+                "PERIOD"
+        );
+    }
+
+    private Policy persistPolicy(
+            String policyId,
+            String policyName,
+            LocalDate endDate,
+            String employmentCodes,
+            boolean houselessYn,
+            int minAge,
+            int maxAge,
+            String applyPeriodCode
+    ) {
         Policy policy = Policy.builder()
                 .policyId(policyId)
                 .policyName(policyName)
@@ -126,7 +159,7 @@ class PolicyRepositoryTest {
                         ? null : java.util.Set.of(
                                 PolicyEmploymentCondition.valueOf(employmentCodes)))
                 .houselessYn(houselessYn)
-                .applyPeriodCode("PERIOD")
+                .applyPeriodCode(applyPeriodCode)
                 .applyEndDate(endDate)
                 .build();
         entityManager.persist(policy);

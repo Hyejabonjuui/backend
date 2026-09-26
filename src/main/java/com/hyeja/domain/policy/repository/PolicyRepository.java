@@ -22,6 +22,7 @@ public interface PolicyRepository extends JpaRepository<Policy, String> {
             from Policy policy
             where policy.deletedAt is null
               and policy.activeYn = true
+              and policy.applyPeriodCode <> '0057003'
               and (policy.applyEndDate is null or policy.applyEndDate >= :today)
               and (:category is null or policy.category = :category)
               and (
@@ -34,10 +35,15 @@ public interface PolicyRepository extends JpaRepository<Policy, String> {
                               and (policy.maxAge is null or policy.maxAge >= :age)
                           )
                       )
-                      and (policy.houselessYn is null or policy.houselessYn = :houselessYn)
+                      and (
+                          policy.houselessYn is null
+                          or policy.houselessYn = false
+                          or :houselessYn = true
+                      )
                       and (
                           policy.employmentCodes is null
                           or trim(cast(policy.employmentCodes as string)) = ''
+                          or cast(policy.employmentCodes as string) like '%NO_RESTRICTION%'
                           or cast(policy.employmentCodes as string) = :employmentCode
                           or cast(policy.employmentCodes as string) like concat(:employmentCode, ',%')
                           or cast(policy.employmentCodes as string) like concat('%,', :employmentCode)
