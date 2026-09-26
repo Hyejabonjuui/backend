@@ -34,6 +34,7 @@ public class FavoriteController {
     @Operation(
             summary = "관심 정책 목록 조회",
             description = "회원이 관심 정책으로 등록한 정책을 최근 등록순으로 8개씩 조회합니다. "
+                    + "keyword가 있으면 정책명 또는 지원 내용으로 검색합니다. "
                     + "더보기 요청 시 page 값을 1씩 증가시키며, 관심 정책이 없으면 빈 목록을 반환합니다."
     )
     @ApiResponses({
@@ -64,6 +65,13 @@ public class FavoriteController {
             @RequestParam(name = "memberId")
             @Positive(message = "회원 ID는 양수여야 합니다.") Long memberId,
             @Parameter(
+                    name = "keyword",
+                    description = "정책명 또는 지원 내용 검색어. 생략하거나 공백이면 전체 목록을 조회합니다.",
+                    in = ParameterIn.QUERY,
+                    example = "월세"
+            )
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @Parameter(
                     name = "page",
                     description = "페이지 번호(0부터 시작)",
                     in = ParameterIn.QUERY,
@@ -80,7 +88,7 @@ public class FavoriteController {
             @RequestParam(name = "size", defaultValue = "8")
             @Positive(message = "페이지 크기는 양수여야 합니다.") int size
     ) {
-        FavoriteListDTO result = favoriteService.getMyFavorites(memberId, page, size);
+        FavoriteListDTO result = favoriteService.getMyFavorites(memberId, keyword, page, size);
         return ApiResponse.onSuccess(result);
     }
 

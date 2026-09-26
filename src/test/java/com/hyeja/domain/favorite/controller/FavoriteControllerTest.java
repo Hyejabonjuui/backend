@@ -48,10 +48,11 @@ class FavoriteControllerTest {
                 .categoryName("월세")
                 .supportContent("월세를 지원합니다.")
                 .applyEndDate(LocalDate.of(2026, 9, 30))
+                .applyPeriodCode("0057003")
                 .applyUrl("https://example.com/apply")
                 .createdAt(LocalDateTime.of(2026, 9, 24, 10, 30))
                 .build();
-        when(favoriteService.getMyFavorites(1L, 0, 8)).thenReturn(FavoriteListDTO.builder()
+        when(favoriteService.getMyFavorites(1L, null, 0, 8)).thenReturn(FavoriteListDTO.builder()
                 .favorites(List.of(favorite))
                 .page(0)
                 .size(8)
@@ -76,15 +77,39 @@ class FavoriteControllerTest {
                 .andExpect(jsonPath("$.result.favorites[0].category_name").value("월세"))
                 .andExpect(jsonPath("$.result.favorites[0].support_content").value("월세를 지원합니다."))
                 .andExpect(jsonPath("$.result.favorites[0].apply_end_date").value("2026-09-30"))
+                .andExpect(jsonPath("$.result.favorites[0].apply_period_code").value("0057003"))
                 .andExpect(jsonPath("$.result.favorites[0].apply_url").value("https://example.com/apply"))
                 .andExpect(jsonPath("$.result.favorites[0].created_at").value("2026-09-24T10:30:00"));
 
-        verify(favoriteService).getMyFavorites(1L, 0, 8);
+        verify(favoriteService).getMyFavorites(1L, null, 0, 8);
+    }
+
+    @Test
+    void searchesMyFavoritePoliciesByKeyword() throws Exception {
+        when(favoriteService.getMyFavorites(1L, "월세", 0, 8))
+                .thenReturn(FavoriteListDTO.builder()
+                        .favorites(List.of())
+                        .page(0)
+                        .size(8)
+                        .totalElements(0)
+                        .totalPages(0)
+                        .hasNext(false)
+                        .build());
+
+        mvc.perform(get("/api/favorite")
+                        .param("memberId", "1")
+                        .param("keyword", "월세"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"))
+                .andExpect(jsonPath("$.result.favorites").isEmpty())
+                .andExpect(jsonPath("$.result.totalElements").value(0));
+
+        verify(favoriteService).getMyFavorites(1L, "월세", 0, 8);
     }
 
     @Test
     void returnsNotFoundWhenMemberDoesNotExist() throws Exception {
-        when(favoriteService.getMyFavorites(99L, 0, 8))
+        when(favoriteService.getMyFavorites(99L, null, 0, 8))
                 .thenThrow(new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
 
         mvc.perform(get("/api/favorite").param("memberId", "99"))
@@ -110,6 +135,7 @@ class FavoriteControllerTest {
                 .categoryName("월세")
                 .supportContent("월세를 지원합니다.")
                 .applyEndDate(LocalDate.of(2026, 9, 30))
+                .applyPeriodCode("0057003")
                 .applyUrl("https://example.com/apply")
                 .createdAt(LocalDateTime.of(2026, 9, 24, 10, 30))
                 .build();
@@ -126,7 +152,8 @@ class FavoriteControllerTest {
                 .andExpect(jsonPath("$.result.policy_name").value("청년 월세 지원"))
                 .andExpect(jsonPath("$.result.category_code").value("MONTHLY_RENT"))
                 .andExpect(jsonPath("$.result.category_name").value("월세"))
-                .andExpect(jsonPath("$.result.apply_end_date").value("2026-09-30"));
+                .andExpect(jsonPath("$.result.apply_end_date").value("2026-09-30"))
+                .andExpect(jsonPath("$.result.apply_period_code").value("0057003"));
 
         verify(favoriteService).createFavorite(1L, "policy-1");
     }
