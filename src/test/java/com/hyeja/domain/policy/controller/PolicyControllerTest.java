@@ -19,6 +19,8 @@ import com.hyeja.domain.policy.enums.EligibilityStatus;
 import com.hyeja.domain.policy.service.PolicyService;
 import com.hyeja.domain.policy.service.PolicySearchService;
 import com.hyeja.global.exception.ExceptionAdvice;
+import com.hyeja.global.exception.GeneralException;
+import com.hyeja.global.apiPayload.status.ErrorStatus;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -254,5 +256,20 @@ class PolicyControllerTest {
                 .andExpect(jsonPath("$.result.declined").isEmpty());
 
         verify(policySearchService).search(1L, "#월세");
+    }
+
+    @Test
+    void rejectsPolicySearchQueryLongerThanTwoHundredCharacters() throws Exception {
+        String query = "가".repeat(201);
+        when(policySearchService.search(1L, query))
+                .thenThrow(new GeneralException(ErrorStatus.POLICY_SEARCH_QUERY_TOO_LONG));
+
+        mvc.perform(get("/api/policies/search").param("query", query))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("POLICY_SEARCH_007"))
+                .andExpect(jsonPath("$.message").value("검색어는 200자 이하여야 합니다."))
+                .andExpect(jsonPath("$.result").isEmpty());
+
+        verify(policySearchService).search(1L, query);
     }
 }

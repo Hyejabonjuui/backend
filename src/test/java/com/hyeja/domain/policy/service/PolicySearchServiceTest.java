@@ -21,6 +21,8 @@ import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.policy.repository.PolicyRepository;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.SearchIntent;
+import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.AnalysisException;
+import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.FailureType;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import com.hyeja.domain.profile.enums.HousingType;
@@ -143,6 +145,57 @@ class PolicySearchServiceTest {
         verify(policyRepository, never()).searchActivePolicies(
                 any(Boolean.class), any(Boolean.class), any(Boolean.class), any(Boolean.class),
                 any(Boolean.class), any(), any(), any());
+    }
+
+    @Test
+    void searchesAllCategoriesWhenHousingIntentHasNoSpecificCategory() {
+        when(aiAnalyzer.analyzeIntent("청년 주거 정책 알려줘"))
+                .thenReturn(new SearchIntent(true, Set.of()));
+        when(policyRepository.searchActivePolicies(
+                org.mockito.ArgumentMatchers.eq(true),
+                org.mockito.ArgumentMatchers.eq(true),
+                org.mockito.ArgumentMatchers.eq(true),
+                org.mockito.ArgumentMatchers.eq(true),
+                org.mockito.ArgumentMatchers.eq(true),
+                org.mockito.ArgumentMatchers.eq("11440"),
+                org.mockito.ArgumentMatchers.eq(LocalDate.of(2026, 9, 27)),
+                any())).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.search(1L, "청년 주거 정책 알려줘"))
+                .isInstanceOfSatisfying(GeneralException.class,
+                        exception -> assertThat(exception.getCode())
+                                .isEqualTo(ErrorStatus.POLICY_SEARCH_EMPTY));
+    }
+
+    @Test
+    void mapsAiFailuresToDedicatedSearchErrors() {
+        assertAiFailure(FailureType.UNAVAILABLE, ErrorStatus.POLICY_SEARCH_AI_UNAVAILABLE);
+        assertAiFailure(FailureType.EMPTY_RESPONSE, ErrorStatus.POLICY_SEARCH_AI_EMPTY_RESPONSE);
+        assertAiFailure(FailureType.INVALID_RESPONSE, ErrorStatus.POLICY_SEARCH_AI_INVALID_RESPONSE);
+    }
+
+    @Test
+    void validatesSearchQueryWithDedicatedErrors() {
+        assertThatThrownBy(() -> service.search(1L, "   "))
+                .isInstanceOfSatisfying(GeneralException.class,
+                        exception -> assertThat(exception.getCode())
+                                .isEqualTo(ErrorStatus.POLICY_SEARCH_QUERY_REQUIRED));
+        assertThatThrownBy(() -> service.search(1L, "가".repeat(201)))
+                .isInstanceOfSatisfying(GeneralException.class,
+                        exception -> assertThat(exception.getCode())
+                                .isEqualTo(ErrorStatus.POLICY_SEARCH_QUERY_TOO_LONG));
+        verify(profileService, never()).getActiveProfile(any());
+    }
+
+    private void assertAiFailure(FailureType failureType, ErrorStatus expectedStatus) {
+        when(aiAnalyzer.analyzeIntent("일반 검색 " + failureType))
+                .thenThrow(new AnalysisException(failureType, "테스트 실패"));
+
+        assertThatThrownBy(() -> service.search(1L, "일반 검색 " + failureType))
+                .isInstanceOfSatisfying(GeneralException.class, exception -> {
+                    assertThat(exception.getCode()).isEqualTo(expectedStatus);
+                    assertThat(exception.getMessage()).isEqualTo(expectedStatus.getMessage());
+                });
     }
 
     private Policy policy(String id) {
