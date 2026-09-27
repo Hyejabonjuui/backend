@@ -77,6 +77,8 @@ class EmailVerificationServiceTest {
         ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
         verify(values).set(eq("email-verification:code:" + EMAIL), code.capture(), eq(Duration.ofMinutes(5)));
         assertThat(code.getValue()).matches("\\d{6}");
+        // 재발송해도 틀린 횟수를 초기화하지 않습니다(초기화하면 4번 틀리고 재발송을 반복해 잠금을 피할 수 있음).
+        verify(values, never()).set(eq("email-verification:failures:" + EMAIL), anyString(), any(Duration.class));
         // HTML 본문과 글자 본문에 코드와 유효 시간이 들어가고, 템플릿 자리표시({{...}})는 남지 않아야 합니다.
         assertThat(bodyOf(mail.getValue())).contains("<html", code.getValue(), "5분").doesNotContain("{{");
     }
@@ -119,7 +121,7 @@ class EmailVerificationServiceTest {
     @Test
     void confirmMarksEmailVerifiedForThirtyMinutes() {
         when(values.get("email-verification:code:" + EMAIL)).thenReturn("384021");
-        when(values.get("email-verification:failures:" + EMAIL)).thenReturn("0");
+        when(values.increment("email-verification:failures:" + EMAIL)).thenReturn(1L);
 
         service.confirm(EMAIL, "384021");
 
@@ -133,9 +135,33 @@ class EmailVerificationServiceTest {
         when(values.get("email-verification:code:" + EMAIL)).thenReturn("384021");
         when(values.increment("email-verification:failures:" + EMAIL)).thenReturn(2L);
 
-        assertError(() -> service.confirm(EMAIL, "000000"), ErrorStatus.VERIFY_CODE_MISMATCH);
         assertThatThrownBy(() -> service.confirm(EMAIL, "000000"))
-                .extracting("result").extracting("remainingAttempts").isEqualTo(3L);
+                .isInstanceOf(GeneralException.class)
+                .satisfies(e -> {
+                    assertThat(((GeneralException) e).getCode()).isEqualTo(ErrorStatus.VERIFY_CODE_MISMATCH);
+                    assertThat(e).extracting("result").extracting("remainingAttempts").isEqualTo(3L);
+                });
+        verify(values).increment("email-verification:failures:" + EMAIL);
+    }
+
+    // 첫 시도에만 1시간 유효 시간을 걸어, 그 1시간 동안은 재발송해도 횟수가 이어집니다.
+    @Test
+    void firstAttemptKeepsCountForOneHour() {
+        when(values.get("email-verification:code:" + EMAIL)).thenReturn("384021");
+        when(values.increment("email-verification:failures:" + EMAIL)).thenReturn(1L);
+
+        assertError(() -> service.confirm(EMAIL, "000000"), ErrorStatus.VERIFY_CODE_MISMATCH);
+        verify(redisTemplate).expire("email-verification:failures:" + EMAIL, Duration.ofHours(1));
+    }
+
+    // 동시에 여러 요청을 보내 5번을 넘긴 요청은 맞는 코드여도 통과시키지 않습니다.
+    @Test
+    void confirmRejectsCorrectCodeBeyondFifthAttempt() {
+        when(values.get("email-verification:code:" + EMAIL)).thenReturn("384021");
+        when(values.increment("email-verification:failures:" + EMAIL)).thenReturn(6L);
+
+        assertError(() -> service.confirm(EMAIL, "384021"), ErrorStatus.VERIFY_TOO_MANY_FAILURES);
+        verify(values, never()).set(eq("email-verification:verified:" + EMAIL), anyString(), any(Duration.class));
     }
 
     @Test
