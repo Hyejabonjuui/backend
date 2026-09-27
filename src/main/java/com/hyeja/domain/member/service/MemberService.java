@@ -122,15 +122,21 @@ public class MemberService {
      * 지우지 않으면 탈퇴한 회원의 관심 정책에 D-7 알림이 계속 만들어집니다.
      * 회원이 없거나 이미 탈퇴했으면 MEMBER_NOT_FOUND(404)를 던집니다.
      * 탈퇴한 이메일·닉네임은 행이 남아 있어 재가입할 수 없습니다(의도된 동작).
+     * 비밀번호가 틀리면 MEMBER_PASSWORD_MISMATCH(400)를 던지고 아무것도 지우지 않습니다.
+     * 마지막으로 요청에 쓴 토큰을 로그아웃과 같이 무효화해, 탈퇴 후 같은 토큰으로는 어떤 API도 부를 수 없게 합니다.
      */
     @Transactional
-    public void withdraw(Long memberId) {
+    public void withdraw(Long memberId, String password, String token) {
         Member member = getActiveMember(memberId);
+        if (!passwordEncoder.matches(password, member.getPassword())) {
+            throw new GeneralException(ErrorStatus.MEMBER_PASSWORD_MISMATCH);
+        }
         notificationRepository.deleteByMemberMemberId(memberId);
         favoriteRepository.deleteByMemberMemberId(memberId);
         profileRepository.findById(member.getEmail()).ifPresent(Profile::softDelete);
         // 트랜잭션이 끝날 때 바뀐 deleted_at이 UPDATE로 저장됩니다 (save 호출 불필요).
         member.softDelete();
+        logout(token);
     }
 
     /**

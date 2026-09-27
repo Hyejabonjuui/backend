@@ -37,7 +37,7 @@
 | `POST` | `/api/members/logout` | 없음 | 필요 | 토큰을 Redis 블랙리스트에 등록 |
 | `GET` | `/api/members/find-email` | query `nickname`, `birth` | 불필요 | 가린 이메일과 가입일 |
 | `GET` | `/api/members/me` | 없음 | 필요 | 내 계정 조회 |
-| `PATCH` | `/api/members/me/delete` | 없음 | 필요 | 회원 탈퇴(soft delete) |
+| `PATCH` | `/api/members/me/delete` | body `password` | 필요 | 회원 탈퇴(soft delete). 비밀번호 확인(틀리면 `MEMBER_006`), 요청에 쓴 토큰도 로그아웃처럼 무효화 |
 | `GET` | `/api/members/me/profile` | 없음 | 필요 | 내 조건 조회 |
 | `PATCH` | `/api/members/me/profile` | body 내 조건 | 필요 | 내 조건 전체 교체 |
 | `GET` | `/api/regions` | 없음 | 불필요 | 시·도별 시군구 목록 |
