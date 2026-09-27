@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 public class JwtProvider {
 
     // 명세상 refresh token은 없어서, 만료되면 다시 로그인합니다.
-    private static final Duration ACCESS_TOKEN_EXPIRY = Duration.ofMinutes(30);
+    private static final Duration ACCESS_TOKEN_EXPIRY = Duration.ofMinutes(300);
 
     private final SecretKey key;
 

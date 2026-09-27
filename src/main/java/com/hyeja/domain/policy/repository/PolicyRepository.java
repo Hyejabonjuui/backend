@@ -13,7 +13,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PolicyRepository extends JpaRepository<Policy, String> {
 
-    // "주거" 카테고리 정책을 마감일 오름차순으로 조회
     List<Policy> findAllByOrderByApplyEndDateAsc();
 
     @Query("""
@@ -22,14 +21,36 @@ public interface PolicyRepository extends JpaRepository<Policy, String> {
             where policy.deletedAt is null
               and policy.activeYn = true
               and policy.applyPeriodCode <> com.hyeja.domain.policy.enums.PolicyApplyPeriod.CLOSED
+              and (policy.applyStartDate is null or policy.applyStartDate <= :today)
               and (policy.applyEndDate is null or policy.applyEndDate >= :today)
               and (
                   :category is null
-                  or cast(policy.categories as string) = :category
-                  or cast(policy.categories as string) like concat(:category, ',%')
-                  or cast(policy.categories as string) like concat('%,', :category)
-                  or cast(policy.categories as string)
-                      like concat('%,', concat(:category, ',%'))
+                  or locate(
+                      concat(',', concat(:category, ',')),
+                      concat(',', concat(cast(policy.categories as string), ','))
+                  ) > 0
+              )
+            """)
+    Page<Policy> findGuestHousingPolicies(
+            @Param("category") String category,
+            @Param("today") LocalDate today,
+            Pageable pageable
+    );
+
+    @Query("""
+            select policy
+            from Policy policy
+            where policy.deletedAt is null
+              and policy.activeYn = true
+              and policy.applyPeriodCode <> com.hyeja.domain.policy.enums.PolicyApplyPeriod.CLOSED
+              and (policy.applyStartDate is null or policy.applyStartDate <= :today)
+              and (policy.applyEndDate is null or policy.applyEndDate >= :today)
+              and (
+                  :category is null
+                  or locate(
+                      concat(',', concat(:category, ',')),
+                      concat(',', concat(cast(policy.categories as string), ','))
+                  ) > 0
               )
               and (
                   :onlyEligible = false
@@ -50,12 +71,14 @@ public interface PolicyRepository extends JpaRepository<Policy, String> {
                       and (
                           policy.employmentCodes is null
                           or trim(cast(policy.employmentCodes as string)) = ''
-                          or cast(policy.employmentCodes as string) like '%NO_RESTRICTION%'
-                          or cast(policy.employmentCodes as string) = :employmentCode
-                          or cast(policy.employmentCodes as string) like concat(:employmentCode, ',%')
-                          or cast(policy.employmentCodes as string) like concat('%,', :employmentCode)
-                          or cast(policy.employmentCodes as string)
-                              like concat('%,', concat(:employmentCode, ',%'))
+                          or locate(
+                              ',NO_RESTRICTION,',
+                              concat(',', concat(cast(policy.employmentCodes as string), ','))
+                          ) > 0
+                          or locate(
+                              concat(',', concat(:employmentCode, ',')),
+                              concat(',', concat(cast(policy.employmentCodes as string), ','))
+                          ) > 0
                       )
                       and (
                           not exists (

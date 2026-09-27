@@ -46,8 +46,41 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
+sourceSets {
+	e2eTest {
+		compileClasspath += sourceSets.main.output
+		runtimeClasspath += sourceSets.main.output
+	}
+}
+
+configurations {
+	e2eTestImplementation.extendsFrom implementation, testImplementation
+	e2eTestCompileOnly.extendsFrom compileOnly, testCompileOnly
+	e2eTestRuntimeOnly.extendsFrom runtimeOnly, testRuntimeOnly
+	e2eTestAnnotationProcessor.extendsFrom annotationProcessor, testAnnotationProcessor
+}
+
+dependencies {
+	e2eTestImplementation platform('org.testcontainers:testcontainers-bom:2.0.5')
+	e2eTestImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	e2eTestImplementation 'org.testcontainers:testcontainers-mariadb'
+	e2eTestRuntimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+	e2eTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	e2eTestAnnotationProcessor 'org.projectlombok:lombok'
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.register('e2eTest', Test) {
+	description = 'Runs API E2E tests against MariaDB and Redis Testcontainers.'
+	group = 'verification'
+	testClassesDirs = sourceSets.e2eTest.output.classesDirs
+	classpath = sourceSets.e2eTest.runtimeClasspath
+	useJUnitPlatform()
+	shouldRunAfter tasks.named('test')
+	systemProperty 'user.timezone', 'Asia/Seoul'
 }
 
 tasks.withType(JavaCompile).configureEach {

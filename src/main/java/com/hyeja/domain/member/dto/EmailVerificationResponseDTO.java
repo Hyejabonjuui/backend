@@ -27,4 +27,13 @@ public final class EmailVerificationResponseDTO {
         @Schema(description = "인증 성공 여부 (실패는 에러 코드로 응답하므로 항상 true)", example = "true")
         private boolean verified;
     }
+
+    @Getter
+    @AllArgsConstructor
+    @Schema(name = "EmailVerificationMismatchResultDTO", description = "인증 코드 불일치(VERIFY_001) 에러 응답의 result")
+    public static class MismatchDTO {
+
+        @Schema(description = "남은 시도 횟수. 0이 되기 전에 맞히지 못하면 1시간 동안 인증이 막힙니다.", example = "4")
+        private long remainingAttempts;
+    }
 }

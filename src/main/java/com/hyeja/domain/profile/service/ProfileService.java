@@ -26,7 +26,7 @@ public class ProfileService {
 
     /**
      * 회원 ID로 내 조건(생년월일·거주지·취업 상태 등)을 조회합니다.
-     * 인증 기반이 생기면 컨트롤러가 토큰에서 꺼낸 회원 ID를 넘겨 호출합니다.
+     * 회원 ID는 컨트롤러가 토큰에서 꺼내 넘겨줍니다.
      * 회원이 없거나 탈퇴했으면 MEMBER_NOT_FOUND(404), 조건을 등록하지 않았으면 PROFILE_NOT_FOUND(404)를 던집니다.
      * 프론트는 PROFILE_NOT_FOUND를 받으면 온보딩(S-04)으로 이동합니다.
      */

@@ -32,8 +32,8 @@
 | `GET` | `/api/health` | 없음 | 불필요 | 공통 래퍼의 `result.status`로 `UP` 반환 |
 | `POST` | `/api/members` | body 계정 + `profile` | 불필요 | 회원가입(계정과 내 조건을 한 번에). 이메일 인증을 먼저 마쳐야 함(`VERIFY_003`) |
 | `POST` | `/api/members/email-verifications` | body `email` | 불필요 | 회원가입 인증 코드(6자리) 메일 발송. 유효 5분, 재발송 60초 제한 |
-| `POST` | `/api/members/email-verifications/confirmation` | body `email`, `code` | 불필요 | 인증 코드 확인. 통과 후 30분 안에 가입 가능, 5회 실패 시 코드 무효 |
-| `POST` | `/api/members/login` | body `email`, `password` | 불필요 | accessToken(30분)·memberId·nickname 반환 |
+| `POST` | `/api/members/email-verifications/confirmation` | body `email`, `code` | 불필요 | 인증 코드 확인. 통과 후 30분 안에 가입 가능. 틀리면 `result.remainingAttempts`(남은 기회), 5번 틀리면 1시간 동안 확인·발송 잠금(`VERIFY_005`). 재발송해도 틀린 횟수는 유지 |
+| `POST` | `/api/members/login` | body `email`, `password` | 불필요 | accessToken(300분)·memberId·nickname 반환 |
 | `POST` | `/api/members/logout` | 없음 | 필요 | 토큰을 Redis 블랙리스트에 등록 |
 | `GET` | `/api/members/find-email` | query `nickname`, `birth` | 불필요 | 가린 이메일과 가입일 |
 | `GET` | `/api/members/me` | 없음 | 필요 | 내 계정 조회 |
@@ -42,7 +42,7 @@
 | `PATCH` | `/api/members/me/profile` | body 내 조건 | 필요 | 내 조건 전체 교체 |
 | `GET` | `/api/regions` | 없음 | 불필요 | 시·도별 시군구 목록 |
 | `GET` | `/api/policies/card-news/guest` | 없음 | 불필요 | 대표 카드 중 최대 4건 |
-| `GET` | `/api/policies/housing` | 없음 | 불필요 | 현재는 저장된 Policy 전체 조회 |
+| `GET` | `/api/policies/housing` | query `category?`, `sort=DEADLINE`, `page=0`, `size=8` | 불필요 | 진행 중 정책 페이지 조회, 상시 정책은 마감일순 마지막 배치 |
 | `GET` | `/api/policies/housing/me` | query `category?`, `sort=DEADLINE`, `onlyEligible=false`, `page=0`, `size=8` | 필요 | 진행 중 정책 페이지 조회, 회원 조건 필터와 관심 여부 포함 |
 | `GET` | `/api/policies/{policyId}` | path `policyId` | 필요 | 회원 맞춤 정보를 포함한 정책 상세 |
 | `POST` | `/api/policies/sync` | 없음 | 필요 | 외부 정책 수동 동기화 |
@@ -60,14 +60,14 @@ Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한
 
 아래 목록은 Notion 명세의 계획을 요약한 것이며 현재 코드의 존재를 뜻하지 않는다.
 
-- 정책: 검색·추천·상세·페이지 목록·카드 상세
+- 정책: 검색·추천·카드 상세
 - 회원용 카드뉴스
 
 구현 전에 Method와 URL을 다시 확인한다. 명세에는 `/api` 누락, memberId 위치 불일치, `notificatonId` 오타 등 현재 코드와 다른 표기가 남아 있다.
 
 ## 인증 규칙
 
-- 로그인(`POST /api/members/login`)이 JWT accessToken(30분)을 발급하고, 로그아웃(`POST /api/members/logout`)이 토큰을 Redis 블랙리스트에 올린다.
+- 로그인(`POST /api/members/login`)이 JWT accessToken(300분)을 발급하고, 로그아웃(`POST /api/members/logout`)이 토큰을 Redis 블랙리스트에 올린다.
 - 로그인이 필요한 API는 요청 헤더에 `Authorization: Bearer <accessToken>`을 보낸다. 토큰이 없거나 잘못됐거나 로그아웃한 토큰이면 `401 COMMON_002`다.
 - 회원은 `memberId` 파라미터가 아니라 토큰으로 식별한다. 컨트롤러는 `@AuthenticationPrincipal Long memberId`로 받는다.
 - 기본은 로그인 필수이고, 로그인 없이 쓰는 API만 `SecurityConfig`에 허용 목록으로 둔다. 비로그인용 API를 새로 만들면 허용 목록에 추가한다.

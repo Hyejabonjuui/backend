@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Schema(name = "MemberLoginResponseDTO", description = "로그인 응답")
 public class MemberLoginResponseDTO {
 
-    @Schema(description = "액세스 토큰 (30분 유효)", example = "eyJhbGciOiJIUzI1NiJ9...")
+    @Schema(description = "액세스 토큰 (300분 유효)", example = "eyJhbGciOiJIUzI1NiJ9...")
     private String accessToken;
 
     @Schema(description = "회원 ID", example = "1")
