@@ -74,6 +74,26 @@ public class MemberController {
 
     // 내 계정 조회 (마이페이지 S-08 계정 탭) — 예: GET /api/members/me (헤더 Authorization: Bearer <accessToken>)
     // memberId는 인증 필터가 토큰에서 꺼낸 회원 ID입니다. 토큰이 없으면 SecurityConfig가 401로 막습니다.
+    @Operation(
+            summary = "내 계정 조회",
+            description = "로그인한 회원의 닉네임·이메일·가입일을 조회합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "내 계정 조회 성공 (SUCCESS_001)"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "토큰 없음·잘못된 토큰·만료·이미 로그아웃한 토큰 (COMMON_002)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "없거나 탈퇴한 회원 (MEMBER_001)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            )
+    })
     @GetMapping("/me")
     public ApiResponse<MemberAccountResponseDTO> getMyAccount(
             @AuthenticationPrincipal Long memberId
@@ -145,7 +165,7 @@ public class MemberController {
     // 로그인 — 예: POST /api/members/login
     @Operation(
             summary = "로그인",
-            description = "이메일·비밀번호가 맞으면 accessToken(30분 유효)을 발급합니다. "
+            description = "이메일·비밀번호가 맞으면 accessToken(300분 유효)을 발급합니다. "
                     + "이후 요청 헤더에 Authorization: Bearer <accessToken>으로 보냅니다. "
                     + "이메일이 없거나 비밀번호가 틀리거나 탈퇴한 회원이면 모두 MEMBER_005로 응답합니다."
     )

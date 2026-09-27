@@ -93,7 +93,7 @@ public class MemberService {
 
     /**
      * 회원 ID로 내 계정 정보(닉네임·이메일·가입일)를 조회합니다.
-     * 인증 기반이 생기면 컨트롤러가 토큰에서 꺼낸 회원 ID를 넘겨 호출합니다.
+     * 회원 ID는 컨트롤러가 토큰에서 꺼내 넘겨줍니다.
      * 회원이 없거나 탈퇴한 회원(deleted_at 기록)이면 MEMBER_NOT_FOUND(404)를 던집니다.
      */
     public MemberAccountResponseDTO getMyAccount(Long memberId) {
@@ -134,7 +134,7 @@ public class MemberService {
     }
 
     /**
-     * 이메일·비밀번호가 맞으면 로그인 토큰(30분 유효)을 발급합니다.
+     * 이메일·비밀번호가 맞으면 로그인 토큰(300분 유효)을 발급합니다.
      * 이메일이 없든, 탈퇴했든, 비밀번호가 틀렸든 같은 MEMBER_LOGIN_FAILED(401)를 던져
      * 어떤 이메일이 가입돼 있는지 알 수 없게 합니다.
      */

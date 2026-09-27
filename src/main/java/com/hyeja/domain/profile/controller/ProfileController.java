@@ -31,7 +31,7 @@ public class ProfileController {
     // memberId는 인증 필터가 토큰에서 꺼낸 회원 ID입니다. 토큰이 없으면 SecurityConfig가 401로 막습니다.
     @Operation(
             summary = "내 조건 조회",
-            description = "회원 ID로 등록된 조건(생년월일·거주지·취업 상태 등)을 조회합니다. "
+            description = "로그인한 회원이 등록한 조건(생년월일·거주지·취업 상태 등)을 조회합니다. "
                     + "코드(enum 이름)와 한글 이름을 함께 내려주며, 등록하지 않은 선택 항목은 null입니다."
     )
     @ApiResponses({
@@ -56,7 +56,7 @@ public class ProfileController {
     // 내 조건 수정 (마이페이지 S-08 내 조건 탭) — 예: PATCH /api/members/me/profile
     @Operation(
             summary = "내 조건 수정",
-            description = "회원 ID로 내 조건 8개를 전체 교체합니다. 선택 항목(혼인·소득·학력·주거 형태)을 null로 보내면 기존 값이 지워집니다. "
+            description = "로그인한 회원의 조건 8개를 전체 교체합니다. 선택 항목(혼인·소득·학력·주거 형태)을 null로 보내면 기존 값이 지워집니다. "
                     + "응답은 내 조건 조회와 같은 형식입니다."
     )
     @ApiResponses({

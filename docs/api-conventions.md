@@ -33,7 +33,7 @@
 | `POST` | `/api/members` | body 계정 + `profile` | 불필요 | 회원가입(계정과 내 조건을 한 번에). 이메일 인증을 먼저 마쳐야 함(`VERIFY_003`) |
 | `POST` | `/api/members/email-verifications` | body `email` | 불필요 | 회원가입 인증 코드(6자리) 메일 발송. 유효 5분, 재발송 60초 제한 |
 | `POST` | `/api/members/email-verifications/confirmation` | body `email`, `code` | 불필요 | 인증 코드 확인. 통과 후 30분 안에 가입 가능. 틀리면 `result.remainingAttempts`(남은 기회), 5번 틀리면 1시간 동안 확인·발송 잠금(`VERIFY_005`) |
-| `POST` | `/api/members/login` | body `email`, `password` | 불필요 | accessToken(30분)·memberId·nickname 반환 |
+| `POST` | `/api/members/login` | body `email`, `password` | 불필요 | accessToken(300분)·memberId·nickname 반환 |
 | `POST` | `/api/members/logout` | 없음 | 필요 | 토큰을 Redis 블랙리스트에 등록 |
 | `GET` | `/api/members/find-email` | query `nickname`, `birth` | 불필요 | 가린 이메일과 가입일 |
 | `GET` | `/api/members/me` | 없음 | 필요 | 내 계정 조회 |
@@ -67,7 +67,7 @@ Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한
 
 ## 인증 규칙
 
-- 로그인(`POST /api/members/login`)이 JWT accessToken(30분)을 발급하고, 로그아웃(`POST /api/members/logout`)이 토큰을 Redis 블랙리스트에 올린다.
+- 로그인(`POST /api/members/login`)이 JWT accessToken(300분)을 발급하고, 로그아웃(`POST /api/members/logout`)이 토큰을 Redis 블랙리스트에 올린다.
 - 로그인이 필요한 API는 요청 헤더에 `Authorization: Bearer <accessToken>`을 보낸다. 토큰이 없거나 잘못됐거나 로그아웃한 토큰이면 `401 COMMON_002`다.
 - 회원은 `memberId` 파라미터가 아니라 토큰으로 식별한다. 컨트롤러는 `@AuthenticationPrincipal Long memberId`로 받는다.
 - 기본은 로그인 필수이고, 로그인 없이 쓰는 API만 `SecurityConfig`에 허용 목록으로 둔다. 비로그인용 API를 새로 만들면 허용 목록에 추가한다.
