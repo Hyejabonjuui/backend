@@ -1,7 +1,9 @@
 package com.hyeja.domain.policy.entity;
 
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
 import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
+import com.hyeja.domain.policy.enums.PolicyHouselessRequirement;
 import com.hyeja.domain.policy.enums.PolicyMarriageCondition;
 import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
 import com.hyeja.global.config.JpaAuditingConfig;
@@ -35,7 +37,6 @@ class PolicyTest {
         Policy policy = requiredFields(id)
                 .policyName("가".repeat(200))
                 .apiSubCategory("임차료 지원")
-                .subtypeCode("TEST")
                 .keywords("청년,주거")
                 .description(longText)
                 .supportContent(longText)
@@ -44,7 +45,7 @@ class PolicyTest {
                 .incomeMin(0).incomeMax(5000).incomeEtc(longText)
                 .marriageCode(PolicyMarriageCondition.MARRIED)
                 .employmentCodes(java.util.Set.of(PolicyEmploymentCondition.EMPLOYED))
-                .houselessYn(false).housingType("TEST")
+                .houselessRequirement(PolicyHouselessRequirement.NOT_REQUIRED).housingType("TEST")
                 .extraQualification(longText)
                 .applyStartDate(LocalDate.of(2026, 1, 1))
                 .applyEndDate(LocalDate.of(2026, 12, 31))
@@ -59,9 +60,8 @@ class PolicyTest {
         Policy stored = entityManager.find(Policy.class, id);
         assertThat(stored.getPolicyId()).isEqualTo(id);
         assertThat(stored.getPolicyName()).hasSize(200);
-        assertThat(stored.getCategory()).isEqualTo(PolicyCategory.MONTHLY_RENT);
+        assertThat(stored.getCategories()).containsExactly(PolicyCategory.MONTHLY_RENT);
         assertThat(stored.getApiSubCategory()).isEqualTo("임차료 지원");
-        assertThat(stored.getSubtypeCode()).isEqualTo("TEST");
         assertThat(stored.getKeywords()).isEqualTo("청년,주거");
         assertThat(stored.getDescription()).isEqualTo(longText);
         assertThat(stored.getSupportContent()).isEqualTo(longText);
@@ -75,9 +75,10 @@ class PolicyTest {
         assertThat(stored.getMarriageCode()).isEqualTo(PolicyMarriageCondition.MARRIED);
         assertThat(stored.getEmploymentCodes())
                 .containsExactly(PolicyEmploymentCondition.EMPLOYED);
-        assertThat(stored.getHouselessYn()).isFalse();
+        assertThat(stored.getHouselessRequirement())
+                .isEqualTo(PolicyHouselessRequirement.NOT_REQUIRED);
         assertThat(stored.getHousingType()).isEqualTo("TEST");
-        assertThat(stored.getApplyPeriodCode()).isEqualTo("TEST");
+        assertThat(stored.getApplyPeriodCode()).isEqualTo(PolicyApplyPeriod.SPECIFIC_PERIOD);
         assertThat(stored.getExtraQualification()).isEqualTo(longText);
         assertThat(stored.getApplyStartDate()).isEqualTo(LocalDate.of(2026, 1, 1));
         assertThat(stored.getApplyEndDate()).isEqualTo(LocalDate.of(2026, 12, 31));
@@ -103,7 +104,8 @@ class PolicyTest {
         assertThat(stored.getMaxAge()).isNull();
         assertThat(stored.getIncomeMin()).isNull();
         assertThat(stored.getIncomeMax()).isNull();
-        assertThat(stored.getHouselessYn()).isNull();
+        assertThat(stored.getHouselessRequirement())
+                .isEqualTo(PolicyHouselessRequirement.UNKNOWN);
         assertThat(stored.getEmploymentCodes()).isNull();
         assertThat(stored.getApplyStartDate()).isNull();
         assertThat(stored.getApplyEndDate()).isNull();
@@ -122,12 +124,13 @@ class PolicyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"policy_name", "category", "age_limit_yn", "apply_period_code",
-            "view_count", "active_yn"})
+    @ValueSource(strings = {"policy_name", "category", "age_limit_yn", "houseless_yn",
+            "apply_period_code", "view_count", "active_yn"})
     void databaseRejectsMissingRequiredColumn(String missingColumn) {
-        String[] columns = {"policy_name", "category", "age_limit_yn", "apply_period_code",
-                "view_count", "active_yn"};
-        String[] values = {"'정책'", "'MONTHLY_RENT'", "false", "'TEST'", "0", "true"};
+        String[] columns = {"policy_name", "category", "age_limit_yn", "houseless_yn",
+                "apply_period_code", "view_count", "active_yn"};
+        String[] values = {"'정책'", "'MONTHLY_RENT'", "false", "'UNKNOWN'",
+                "'SPECIFIC_PERIOD'", "0", "true"};
         for (int i = 0; i < columns.length; i++) {
             if (columns[i].equals(missingColumn)) {
                 values[i] = "NULL";
@@ -145,17 +148,37 @@ class PolicyTest {
     @EnumSource(PolicyCategory.class)
     void storesEveryCategoryByName(PolicyCategory category) {
         String id = "category-" + category.name();
-        entityManager.persist(requiredFields(id).category(category).build());
+        entityManager.persist(requiredFields(id).categories(java.util.Set.of(category)).build());
         entityManager.flush();
         entityManager.clear();
 
-        assertThat(entityManager.find(Policy.class, id).getCategory()).isEqualTo(category);
+        assertThat(entityManager.find(Policy.class, id).getCategories()).containsExactly(category);
         assertThat(entityManager.createNativeQuery("SELECT category FROM policy WHERE policy_id = :id")
                 .setParameter("id", id).getSingleResult()).isEqualTo(category.name());
     }
 
+    @Test
+    void storesMultipleCategoriesInOnePolicy() {
+        String id = "multiple-categories";
+        entityManager.persist(requiredFields(id)
+                .categories(java.util.Set.of(
+                        PolicyCategory.MONTHLY_RENT, PolicyCategory.PUBLIC_RENT))
+                .build());
+        entityManager.flush();
+        entityManager.clear();
+
+        Policy stored = entityManager.find(Policy.class, id);
+        assertThat(stored.getCategories()).containsExactlyInAnyOrder(
+                PolicyCategory.MONTHLY_RENT, PolicyCategory.PUBLIC_RENT);
+        assertThat(entityManager.createNativeQuery(
+                        "SELECT category FROM policy WHERE policy_id = :id")
+                .setParameter("id", id).getSingleResult())
+                .isEqualTo("MONTHLY_RENT,PUBLIC_RENT");
+    }
+
     private Policy.PolicyBuilder requiredFields(String id) {
         return Policy.builder().policyId(id).policyName("테스트 정책")
-                .category(PolicyCategory.MONTHLY_RENT).ageLimitYn(false).applyPeriodCode("TEST");
+                .categories(java.util.Set.of(PolicyCategory.MONTHLY_RENT))
+                .ageLimitYn(false).applyPeriodCode(PolicyApplyPeriod.SPECIFIC_PERIOD);
     }
 }

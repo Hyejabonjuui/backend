@@ -43,9 +43,12 @@ class PolicySyncItemServiceTest {
         item.setPolicyName("청년 주거 정책");
         item.setSupportContent("지원 내용");
         item.setRegionCodes("11110, 11440");
+        item.setApplyPeriodCode("57002");
         PolicyAiAnalysis analysis = new PolicyAiAnalysis(
-                PolicyCategory.OTHER, 0.8, "기타",
-                null, 0.5, "확인 필요",
+                "청년의 주거비를 지원합니다.",
+                java.util.Set.of(PolicyCategory.OTHER), 0.8, "기타",
+                com.hyeja.domain.policy.enums.PolicyHouselessRequirement.UNKNOWN,
+                0.5, "확인 필요",
                 PolicyIncomeCondition.UNKNOWN, null, null,
                 0.5, "확인 필요");
         when(policyRepository.save(any(Policy.class)))
@@ -54,9 +57,7 @@ class PolicySyncItemServiceTest {
                 .thenReturn(false);
         Region firstRegion = Region.builder()
                 .regionCode("11110").sigunguName("서울특별시 종로구").build();
-        Region secondRegion = Region.builder()
-                .regionCode("11440").sigunguName("서울특별시 마포구").build();
-        when(regionRepository.findAllById(any())).thenReturn(List.of(firstRegion, secondRegion));
+        when(regionRepository.findAllById(any())).thenReturn(List.of(firstRegion));
         AtomicReference<CardNews> savedCardNews = new AtomicReference<>();
         when(cardNewsRepository.save(any(CardNews.class))).thenAnswer(invocation -> {
             CardNews cardNews = invocation.getArgument(0);
@@ -71,17 +72,17 @@ class PolicySyncItemServiceTest {
         verify(policyRegionRepository).saveAll(org.mockito.ArgumentMatchers.argThat(regions -> {
             java.util.List<com.hyeja.domain.policy.entity.PolicyRegion> values = new java.util.ArrayList<>();
             regions.forEach(values::add);
-            return values.size() == 2
-                    && values.stream().map(value -> value.getRegion().getRegionCode())
-                    .collect(java.util.stream.Collectors.toSet())
-                    .equals(java.util.Set.of("11110", "11440"));
+            return values.size() == 1
+                    && values.get(0).getRegion().getRegionCode().equals("11110");
         }));
         assertThat(savedCardNews.get()).isNotNull();
         assertThat(savedCardNews.get().getPolicy().getPolicyId()).isEqualTo("policy-1");
         assertThat(savedCardNews.get().getCardNo()).isEqualTo(1L);
         assertThat(savedCardNews.get().getBody()).isEqualTo("지원 내용");
-        assertThat(savedCardNews.get().getPolicy().getRegionCondition())
-                .isEqualTo("서울특별시 종로구, 서울특별시 마포구");
+        assertThat(savedCardNews.get().getPolicy().getDescription())
+                .isEqualTo("청년의 주거비를 지원합니다.");
+        assertThat(savedCardNews.get().getPolicy().getCategories())
+                .containsExactly(PolicyCategory.OTHER);
     }
 
     @Test
@@ -95,14 +96,17 @@ class PolicySyncItemServiceTest {
     }
 
     @Test
-    void expandsSidoCodeToAllSigunguRegions() {
+    void storesSidoCodeWithoutExpandingToSigunguRegions() {
         PolicyItem item = new PolicyItem();
         item.setPolicyId("seoul-policy");
         item.setPolicyName("서울특별시 지원 정책");
         item.setRegionCodes("11000");
+        item.setApplyPeriodCode("57002");
         PolicyAiAnalysis analysis = new PolicyAiAnalysis(
-                PolicyCategory.OTHER, 0.8, "기타",
-                null, 0.5, "확인 필요",
+                "서울특별시 지원 정책입니다.",
+                java.util.Set.of(PolicyCategory.OTHER), 0.8, "기타",
+                com.hyeja.domain.policy.enums.PolicyHouselessRequirement.UNKNOWN,
+                0.5, "확인 필요",
                 PolicyIncomeCondition.UNKNOWN, null, null,
                 0.5, "확인 필요");
         Region jongno = Region.builder()
@@ -119,20 +123,20 @@ class PolicySyncItemServiceTest {
         service.save(item, analysis);
 
         verify(regionRepository).findAllByRegionCodeStartingWith("11");
-        verify(policyRepository).save(org.mockito.ArgumentMatchers.argThat(policy ->
-                "서울특별시".equals(policy.getRegionCondition())));
+        verify(regionRepository).save(org.mockito.ArgumentMatchers.argThat(region ->
+                "11000".equals(region.getRegionCode())
+                        && "서울특별시".equals(region.getSigunguName())));
         verify(policyRegionRepository).saveAll(org.mockito.ArgumentMatchers.argThat(regions -> {
             java.util.List<com.hyeja.domain.policy.entity.PolicyRegion> values =
                     new java.util.ArrayList<>();
             regions.forEach(values::add);
-            return values.stream().map(value -> value.getRegion().getRegionCode())
-                    .collect(java.util.stream.Collectors.toSet())
-                    .equals(java.util.Set.of("11110", "11680"));
+            return values.size() == 1
+                    && values.get(0).getRegion().getRegionCode().equals("11000");
         }));
     }
 
     @Test
-    void summarizesNationwideRegionCodesInsteadOfExceedingColumnLength() {
+    void storesOnlyFirstRegionWhenApiValueContainsMultipleCodes() {
         PolicyItem item = new PolicyItem();
         item.setPolicyId("nationwide-policy");
         item.setPolicyName("전국 정책");
@@ -145,12 +149,15 @@ class PolicySyncItemServiceTest {
         item.setRegionCodes(regions.stream()
                 .map(Region::getRegionCode)
                 .collect(java.util.stream.Collectors.joining(",")));
+        item.setApplyPeriodCode("57002");
         PolicyAiAnalysis analysis = new PolicyAiAnalysis(
-                PolicyCategory.OTHER, 0.8, "기타",
-                null, 0.5, "확인 필요",
+                "전국 지원 정책입니다.",
+                java.util.Set.of(PolicyCategory.OTHER), 0.8, "기타",
+                com.hyeja.domain.policy.enums.PolicyHouselessRequirement.UNKNOWN,
+                0.5, "확인 필요",
                 PolicyIncomeCondition.UNKNOWN, null, null,
                 0.5, "확인 필요");
-        when(regionRepository.findAllById(any())).thenReturn(regions);
+        when(regionRepository.findAllById(any())).thenReturn(List.of(regions.get(0)));
         when(policyRepository.save(any(Policy.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(cardNewsRepository.existsByPolicy_PolicyIdAndCardNo("nationwide-policy", 1L))
@@ -158,7 +165,12 @@ class PolicySyncItemServiceTest {
 
         service.save(item, analysis);
 
-        verify(policyRepository).save(org.mockito.ArgumentMatchers.argThat(policy ->
-                "전국".equals(policy.getRegionCondition())));
+        verify(policyRegionRepository).saveAll(org.mockito.ArgumentMatchers.argThat(values -> {
+            java.util.List<com.hyeja.domain.policy.entity.PolicyRegion> policyRegions =
+                    new java.util.ArrayList<>();
+            values.forEach(policyRegions::add);
+            return policyRegions.size() == 1
+                    && policyRegions.get(0).getRegion().getRegionCode().equals("00001");
+        }));
     }
 }

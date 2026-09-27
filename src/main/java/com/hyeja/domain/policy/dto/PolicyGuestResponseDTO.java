@@ -1,10 +1,12 @@
 package com.hyeja.domain.policy.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -40,13 +42,13 @@ public final class PolicyGuestResponseDTO {
         @Schema(description = "정책명", example = "청년 월세 지원")
         private String policyName;
 
-        @JsonProperty("category_code")
-        @Schema(description = "정책 분류 코드", example = "MONTHLY_RENT")
-        private PolicyCategory categoryCode;
+        @JsonProperty("category_codes")
+        @Schema(description = "정책 분류 코드 목록", example = "[\"MONTHLY_RENT\"]")
+        private Set<PolicyCategory> categoryCodes;
 
-        @JsonProperty("category_name")
-        @Schema(description = "정책 분류 이름", example = "월세")
-        private String categoryName;
+        @JsonProperty("category_names")
+        @Schema(description = "정책 분류 이름 목록", example = "[\"월세\"]")
+        private List<String> categoryNames;
 
         @Schema(description = "정책 대상 지역. 빈 배열이면 전국 정책")
         private List<PolicyRegionItemDTO> regions;
@@ -59,8 +61,8 @@ public final class PolicyGuestResponseDTO {
         private LocalDate applyEndDate;
 
         @JsonProperty("apply_period_code")
-        @Schema(description = "신청 기간 구분 코드", example = "0057001")
-        private String applyPeriodCode;
+        @Schema(description = "신청 기간 구분 코드", example = "SPECIFIC_PERIOD")
+        private PolicyApplyPeriod applyPeriodCode;
 
         @JsonProperty("d_day")
         @Schema(description = "마감일까지 남은 일수. 상시 모집이면 null", example = "4", nullable = true)

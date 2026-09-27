@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.domain.notification.repository.NotificationRepository;
 import com.hyeja.domain.policy.entity.Policy;
+import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.repository.PolicyRepository;
 import com.hyeja.domain.profile.repository.ProfileRepository;
@@ -16,6 +17,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -109,11 +111,12 @@ public abstract class ApiE2eTestSupport {
         return policyRepository.saveAndFlush(Policy.builder()
                 .policyId(policyId)
                 .policyName(policyName)
-                .category(category)
+                .categories(Set.of(category))
                 .description(policyName + " 설명")
                 .supportContent(policyName + " 지원 내용")
                 .ageLimitYn(false)
-                .applyPeriodCode(applyEndDate == null ? "ALWAYS" : "LIMITED")
+                .applyPeriodCode(applyEndDate == null
+                        ? PolicyApplyPeriod.ALWAYS : PolicyApplyPeriod.SPECIFIC_PERIOD)
                 .applyStartDate(FIXED_TODAY.minusDays(30))
                 .applyEndDate(applyEndDate)
                 .applyUrl("https://example.com/" + policyId)

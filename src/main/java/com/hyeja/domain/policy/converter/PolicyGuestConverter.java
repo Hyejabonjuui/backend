@@ -7,6 +7,7 @@ import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.region.entity.Region;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;
@@ -45,8 +46,11 @@ public final class PolicyGuestConverter {
         return PolicyListItemDTO.builder()
                 .policyId(policy.getPolicyId())
                 .policyName(policy.getPolicyName())
-                .categoryCode(policy.getCategory())
-                .categoryName(policy.getCategory().getLabel())
+                .categoryCodes(policy.getCategories())
+                .categoryNames(policy.getCategories().stream()
+                        .sorted(Comparator.comparing(Enum::name))
+                        .map(com.hyeja.domain.policy.enums.PolicyCategory::getLabel)
+                        .toList())
                 .regions(regions.stream()
                         .map(region -> PolicyRegionItemDTO.builder()
                                 .regionCode(region.getRegionCode())

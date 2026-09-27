@@ -13,13 +13,26 @@ class PolicyCategoryConverterTest {
 
     @Test
     void convertsLegacyHousingCategoryToOther() {
-        assertThat(converter.convertToEntityAttribute("주거")).isEqualTo(PolicyCategory.OTHER);
+        assertThat(converter.convertToEntityAttribute("주거"))
+                .containsExactly(PolicyCategory.OTHER);
     }
 
     @ParameterizedTest
     @EnumSource(PolicyCategory.class)
     void convertsCurrentCategoryNamesBothWays(PolicyCategory category) {
-        assertThat(converter.convertToDatabaseColumn(category)).isEqualTo(category.name());
-        assertThat(converter.convertToEntityAttribute(category.name())).isEqualTo(category);
+        assertThat(converter.convertToDatabaseColumn(java.util.Set.of(category)))
+                .isEqualTo(category.name());
+        assertThat(converter.convertToEntityAttribute(category.name())).containsExactly(category);
+    }
+
+    @Test
+    void convertsMultipleCategoriesBothWays() {
+        var categories = java.util.Set.of(
+                PolicyCategory.MONTHLY_RENT, PolicyCategory.PUBLIC_RENT);
+
+        assertThat(converter.convertToDatabaseColumn(categories))
+                .isEqualTo("MONTHLY_RENT,PUBLIC_RENT");
+        assertThat(converter.convertToEntityAttribute("MONTHLY_RENT,PUBLIC_RENT"))
+                .containsExactlyInAnyOrderElementsOf(categories);
     }
 }

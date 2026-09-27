@@ -12,32 +12,32 @@ public class PolicyIncomeEligibilityEvaluator {
 
     public EligibilityStatus evaluate(Policy policy, Profile profile) {
         if (policy == null || policy.getIncomeConditionCode() == null) {
-            return EligibilityStatus.U;
+            return EligibilityStatus.UNKNOWN;
         }
 
         PolicyIncomeCondition condition = policy.getIncomeConditionCode();
         if (condition == PolicyIncomeCondition.NO_RESTRICTION) {
-            return EligibilityStatus.Y;
+            return EligibilityStatus.ABLE;
         }
         if (condition != PolicyIncomeCondition.COMPARABLE
                 || profile == null || profile.getIncomeRangeCode() == null) {
-            return EligibilityStatus.U;
+            return EligibilityStatus.UNKNOWN;
         }
 
         IncomeInterval memberIncome = intervalOf(profile.getIncomeRangeCode());
         Integer policyMin = policy.getIncomeMin();
         Integer policyMax = policy.getIncomeMax();
         if (policyMin == null && policyMax == null) {
-            return EligibilityStatus.U;
+            return EligibilityStatus.UNKNOWN;
         }
 
         if (isDisjoint(memberIncome, policyMin, policyMax)) {
-            return EligibilityStatus.N;
+            return EligibilityStatus.DISABLE;
         }
         if (isFullyIncluded(memberIncome, policyMin, policyMax)) {
-            return EligibilityStatus.Y;
+            return EligibilityStatus.ABLE;
         }
-        return EligibilityStatus.U;
+        return EligibilityStatus.UNKNOWN;
     }
 
     private boolean isDisjoint(IncomeInterval member, Integer policyMin, Integer policyMax) {

@@ -11,12 +11,14 @@ import com.hyeja.domain.policy.dto.PolicyGuestResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyListDTO;
 import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyListItemDTO;
 import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyRegionItemDTO;
+import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.enums.PolicySort;
 import com.hyeja.domain.policy.service.PolicyService;
 import com.hyeja.global.exception.ExceptionAdvice;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -52,15 +54,15 @@ class PolicyControllerTest {
                 PolicyGuestResponseDTO.PolicyListItemDTO.builder()
                         .policyId("POLICY-1")
                         .policyName("청년 월세 지원")
-                        .categoryCode(PolicyCategory.MONTHLY_RENT)
-                        .categoryName("월세")
+                        .categoryCodes(Set.of(PolicyCategory.MONTHLY_RENT))
+                        .categoryNames(List.of("월세"))
                         .regions(List.of(PolicyGuestResponseDTO.PolicyRegionItemDTO.builder()
                                 .regionCode("11440")
                                 .regionName("서울특별시 마포구")
                                 .build()))
                         .nationwide(false)
                         .applyEndDate(LocalDate.of(2026, 9, 30))
-                        .applyPeriodCode("0057001")
+                        .applyPeriodCode(PolicyApplyPeriod.SPECIFIC_PERIOD)
                         .dDay(3)
                         .build();
         when(policyService.getGuestHousingPolicies(
@@ -85,9 +87,9 @@ class PolicyControllerTest {
                 .andExpect(jsonPath("$.result.size").value(8))
                 .andExpect(jsonPath("$.result.totalElements").value(9))
                 .andExpect(jsonPath("$.result.policies[0].policy_id").value("POLICY-1"))
-                .andExpect(jsonPath("$.result.policies[0].category_code").value("MONTHLY_RENT"))
+                .andExpect(jsonPath("$.result.policies[0].category_codes[0]").value("MONTHLY_RENT"))
                 .andExpect(jsonPath("$.result.policies[0].regions[0].region_code").value("11440"))
-                .andExpect(jsonPath("$.result.policies[0].apply_period_code").value("0057001"))
+                .andExpect(jsonPath("$.result.policies[0].apply_period_code").value("SPECIFIC_PERIOD"))
                 .andExpect(jsonPath("$.result.policies[0].d_day").value(3))
                 .andExpect(jsonPath("$.result.policies[0].dday").doesNotExist())
                 .andExpect(jsonPath("$.result.policies[0].favorite_yn").doesNotExist());
@@ -144,15 +146,15 @@ class PolicyControllerTest {
         PolicyListItemDTO policy = PolicyListItemDTO.builder()
                 .policyId("POLICY-1")
                 .policyName("청년 월세 지원")
-                .categoryCode(PolicyCategory.MONTHLY_RENT)
-                .categoryName("월세")
+                .categoryCodes(java.util.Set.of(PolicyCategory.MONTHLY_RENT))
+                .categoryNames(List.of("월세"))
                 .regions(List.of(PolicyRegionItemDTO.builder()
                         .regionCode("11440")
                         .regionName("서울특별시 마포구")
                         .build()))
                 .nationwide(false)
                 .applyEndDate(LocalDate.of(2026, 9, 30))
-                .applyPeriodCode("0057001")
+                .applyPeriodCode(com.hyeja.domain.policy.enums.PolicyApplyPeriod.SPECIFIC_PERIOD)
                 .dDay(4)
                 .favoriteYn(true)
                 .build();
@@ -177,9 +179,9 @@ class PolicyControllerTest {
                 .andExpect(jsonPath("$.result.page").value(0))
                 .andExpect(jsonPath("$.result.totalElements").value(9))
                 .andExpect(jsonPath("$.result.policies[0].policy_id").value("POLICY-1"))
-                .andExpect(jsonPath("$.result.policies[0].category_code").value("MONTHLY_RENT"))
+                .andExpect(jsonPath("$.result.policies[0].category_codes[0]").value("MONTHLY_RENT"))
                 .andExpect(jsonPath("$.result.policies[0].regions[0].region_code").value("11440"))
-                .andExpect(jsonPath("$.result.policies[0].apply_period_code").value("0057001"))
+                .andExpect(jsonPath("$.result.policies[0].apply_period_code").value("SPECIFIC_PERIOD"))
                 .andExpect(jsonPath("$.result.policies[0].d_day").value(4))
                 .andExpect(jsonPath("$.result.policies[0].dday").doesNotExist())
                 .andExpect(jsonPath("$.result.policies[0].favorite_yn").value(true));
