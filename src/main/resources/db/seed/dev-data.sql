@@ -189,7 +189,7 @@ FROM (
     UNION ALL SELECT '임차인', '집이나 건물을 빌려 사용하는 사람입니다.', '시연 예시: 월세 집에 거주하는 계약자'
     UNION ALL SELECT '임대인', '집이나 건물을 다른 사람에게 빌려주는 사람입니다.', '시연 예시: 임대차 계약의 집주인'
     UNION ALL SELECT '전입신고', '새로운 거주지로 이사한 사실을 관할 기관에 신고하는 절차입니다.', '시연 예시: 이사 후 거주지 변경 신고'
-    UNION ALL SELECT '관리비', '건물과 공용 시설의 관리 등에 드는 비용입니다. 항목은 계약과 고지서를 확인합니다.', '시연 예시: 공용 전기료와 청소비'
+    UNION ALL SELECT '중위소득', '우리나라 모든 가구를 소득 순서로 세웠을 때 가운데 가구의 소득입니다.', '시연 예시: 중위소득 60% 이하'
 ) seed
 WHERE NOT EXISTS (
     SELECT 1 FROM term existing WHERE existing.term = seed.term

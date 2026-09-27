@@ -41,6 +41,7 @@
 | `GET` | `/api/members/me/profile` | 없음 | 필요 | 내 조건 조회 |
 | `PATCH` | `/api/members/me/profile` | body 내 조건 | 필요 | 내 조건 전체 교체 |
 | `GET` | `/api/regions` | 없음 | 불필요 | 시·도별 시군구 목록 |
+| `GET` | `/api/terms` | 없음 | 불필요 | 삭제되지 않은 정책 용어 풀이 목록을 ID 순으로 조회 |
 | `GET` | `/api/policies/card-news/guest` | 없음 | 불필요 | 대표 카드 중 최대 4건 |
 | `GET` | `/api/policies/housing` | query `category?`, `sort=DEADLINE`, `page=0`, `size=8` | 불필요 | 진행 중 정책 페이지 조회, 상시 정책은 마감일순 마지막 배치 |
 | `GET` | `/api/policies/housing/me` | query `category?`, `sort=DEADLINE`, `onlyEligible=false`, `page=0`, `size=8` | 필요 | 진행 중 정책 페이지 조회, 회원 조건 필터와 관심 여부 포함 |
