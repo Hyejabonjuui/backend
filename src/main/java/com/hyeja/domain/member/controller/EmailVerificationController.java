@@ -30,7 +30,7 @@ public class EmailVerificationController {
     @Operation(
             summary = "이메일 인증 코드 발송",
             description = "6자리 인증 코드를 메일로 보냅니다. 코드는 5분 동안 유효하고, 같은 이메일로는 60초 뒤에 다시 보낼 수 있습니다. "
-                    + "다시 보내면 새 코드로 바뀝니다."
+                    + "다시 보내면 새 코드로 바뀝니다. 코드를 5번 틀린 이메일은 1시간 동안 발송도 막힙니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -49,7 +49,7 @@ public class EmailVerificationController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "429",
-                    description = "60초 안에 다시 요청 (VERIFY_004)",
+                    description = "60초 안에 다시 요청 (VERIFY_004) / 5번 틀려 1시간 잠김 (VERIFY_005)",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -70,7 +70,7 @@ public class EmailVerificationController {
     @Operation(
             summary = "이메일 인증 코드 확인",
             description = "메일로 받은 코드를 확인합니다. 통과하면 30분 안에 이 이메일로 회원가입할 수 있습니다. "
-                    + "5번 틀리면 코드를 다시 받아야 합니다."
+                    + "틀리면 result.remainingAttempts로 남은 기회를 알려 주고, 5번 틀리면 1시간 동안 인증이 막힙니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -79,12 +79,13 @@ public class EmailVerificationController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "형식 오류 (COMMON_003) / 코드 불일치 (VERIFY_001) / 만료됐거나 발송 이력 없음 (VERIFY_002)",
+                    description = "형식 오류 (COMMON_003) / 코드 불일치 (VERIFY_001, result.remainingAttempts에 남은 기회) "
+                            + "/ 만료됐거나 발송 이력 없음 (VERIFY_002)",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "429",
-                    description = "5회 넘게 실패 (VERIFY_005)",
+                    description = "5번 틀려 1시간 잠김 (VERIFY_005). 5번째로 틀린 순간부터 이 코드로 응답합니다",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             )
     })
