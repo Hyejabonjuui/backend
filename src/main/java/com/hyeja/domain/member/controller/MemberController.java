@@ -5,6 +5,7 @@ import com.hyeja.domain.member.dto.MemberFindEmailResponseDTO;
 import com.hyeja.domain.member.dto.MemberLoginRequestDTO;
 import com.hyeja.domain.member.dto.MemberLoginResponseDTO;
 import com.hyeja.domain.member.dto.MemberSignupRequestDTO;
+import com.hyeja.domain.member.dto.MemberWithdrawRequestDTO;
 import com.hyeja.domain.member.service.MemberService;
 import com.hyeja.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -141,12 +142,18 @@ public class MemberController {
     @Operation(
             summary = "회원 탈퇴",
             description = "회원·내 조건은 soft delete(deleted_at 기록), 관심 정책·알림은 삭제합니다. 되돌릴 수 없습니다. "
+                    + "본인 확인을 위해 비밀번호를 다시 받고, 요청에 쓴 토큰도 로그아웃처럼 무효화합니다. "
                     + "탈퇴한 이메일·닉네임으로는 다시 가입할 수 없습니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "회원 탈퇴 성공 (SUCCESS_001)"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "비밀번호 누락 (COMMON_003) / 비밀번호 불일치 (MEMBER_006)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
@@ -156,9 +163,12 @@ public class MemberController {
     })
     @PatchMapping("/me/delete")
     public ApiResponse<Void> withdraw(
-            @AuthenticationPrincipal Long memberId
+            @AuthenticationPrincipal Long memberId,
+            @Parameter(hidden = true) Authentication authentication,
+            @Valid @RequestBody MemberWithdrawRequestDTO request
     ) {
-        memberService.withdraw(memberId);
+        // 인증 필터가 credentials에 토큰 원문을 넣어 둡니다(로그아웃과 같음).
+        memberService.withdraw(memberId, request.getPassword(), (String) authentication.getCredentials());
         return ApiResponse.onSuccess(null);
     }
 

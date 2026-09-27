@@ -229,20 +229,38 @@ class MemberControllerTest {
 
     @Test
     void withdraws() throws Exception {
-        mvc.perform(patch("/api/members/me/delete"))
+        mvc.perform(patch("/api/members/me/delete")
+                        .principal(new UsernamePasswordAuthenticationToken(1L, "access-token"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\": \"hyeja1234!\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS_001"))
                 .andExpect(jsonPath("$.result").value(nullValue()));
-        verify(memberService).withdraw(1L);
+        verify(memberService).withdraw(1L, "hyeja1234!", "access-token");
     }
 
     @Test
     void returnsNotFoundWhenWithdrawingDeletedMember() throws Exception {
-        doThrow(new GeneralException(ErrorStatus.MEMBER_NOT_FOUND)).when(memberService).withdraw(1L);
+        doThrow(new GeneralException(ErrorStatus.MEMBER_NOT_FOUND)).when(memberService).withdraw(1L, "hyeja1234!", "access-token");
 
-        mvc.perform(patch("/api/members/me/delete"))
+        mvc.perform(patch("/api/members/me/delete")
+                        .principal(new UsernamePasswordAuthenticationToken(1L, "access-token"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\": \"hyeja1234!\"}"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("MEMBER_001"));
+    }
+
+    @Test
+    void rejectsWithdrawWithoutPassword() throws Exception {
+        mvc.perform(patch("/api/members/me/delete")
+                        .principal(new UsernamePasswordAuthenticationToken(1L, "access-token"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_003"))
+                .andExpect(jsonPath("$.result.password").value("비밀번호를 입력해 주세요."));
+        verifyNoInteractions(memberService);
     }
 
     @Test

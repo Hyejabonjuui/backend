@@ -28,6 +28,8 @@ public enum ErrorStatus implements BaseErrorCode {
     MEMBER_EMAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_004", "가입된 정보가 없어요."),
     // 로그인 실패: 이메일·비밀번호 중 무엇이 틀렸는지, 탈퇴 회원인지 구분하지 않습니다(가입된 이메일 노출 방지).
     MEMBER_LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "MEMBER_005", "이메일 또는 비밀번호가 올바르지 않아요."),
+    // 탈퇴 시 비밀번호 확인 실패: 401이면 프론트가 "로그인 풀림"으로 처리하므로 400입니다.
+    MEMBER_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER_006", "비밀번호가 올바르지 않아요."),
 
     // 회원가입 이메일 인증
     VERIFY_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "VERIFY_001", "인증 코드가 일치하지 않아요."),
