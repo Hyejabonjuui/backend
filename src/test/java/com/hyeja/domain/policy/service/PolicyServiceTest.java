@@ -388,6 +388,51 @@ class PolicyServiceTest {
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class));
     }
 
+    // 한 페이지 요청이 한 번 실패해도 다시 시도해서 이어서 수집합니다.
+    @Test
+    void retriesFailedPageOnceAndContinues() {
+        ReflectionTestUtils.setField(service, "apiKey", "test-key");
+        ReflectionTestUtils.setField(service, "apiUrl", "https://example.com/policies");
+        PolicyItem first = approvedHousingPolicy("page-1");
+        PolicyItem second = approvedHousingPolicy("page-2");
+        when(restTemplate.getForObject(org.mockito.ArgumentMatchers.any(java.net.URI.class),
+                org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class)))
+                .thenReturn(page(200, first))
+                .thenThrow(new org.springframework.web.client.ResourceAccessException("Connection reset"))
+                .thenReturn(page(200, second));
+
+        assertThat(service.fetchAndSaveHousingPolicies()).isEqualTo(2);
+        verify(policySyncItemService).save(org.mockito.ArgumentMatchers.eq(second), org.mockito.ArgumentMatchers.any());
+    }
+
+    // 다시 시도해도 실패하면 거기서 멈추고, 그 전까지 저장한 건수를 정상으로 돌려줍니다(예외로 500이 나지 않음).
+    @Test
+    void stopsAndKeepsSavedPoliciesWhenPageFailsTwice() {
+        ReflectionTestUtils.setField(service, "apiKey", "test-key");
+        ReflectionTestUtils.setField(service, "apiUrl", "https://example.com/policies");
+        when(restTemplate.getForObject(org.mockito.ArgumentMatchers.any(java.net.URI.class),
+                org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class)))
+                .thenReturn(page(300, approvedHousingPolicy("page-1")))
+                .thenThrow(new org.springframework.web.client.ResourceAccessException("Connection reset"));
+
+        assertThat(service.fetchAndSaveHousingPolicies()).isEqualTo(1);
+        // 1페이지 1번 + 2페이지 2번(재시도 포함). 3페이지는 요청하지 않습니다.
+        verify(restTemplate, times(3)).getForObject(
+                org.mockito.ArgumentMatchers.any(java.net.URI.class),
+                org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class));
+    }
+
+    private PolicyApiResponseDTO page(int totCount, PolicyItem... items) {
+        PolicyApiResponseDTO.Pagging pagging = new PolicyApiResponseDTO.Pagging();
+        pagging.setTotCount(totCount);
+        PolicyApiResponseDTO.ResultData result = new PolicyApiResponseDTO.ResultData();
+        result.setPagging(pagging);
+        result.setYouthPolicyList(List.of(items));
+        PolicyApiResponseDTO response = new PolicyApiResponseDTO();
+        response.setResult(result);
+        return response;
+    }
+
     private PolicyMarriageCondition mapMarriageCondition(String code) {
         PolicyItem item = new PolicyItem();
         item.setPolicyId("marriage-test");
