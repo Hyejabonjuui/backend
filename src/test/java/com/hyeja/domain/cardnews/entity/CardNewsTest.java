@@ -2,6 +2,7 @@ package com.hyeja.domain.cardnews.entity;
 
 import com.hyeja.domain.cardnews.repository.CardNewsRepository;
 import com.hyeja.domain.policy.entity.Policy;
+import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.global.config.JpaAuditingConfig;
 import jakarta.persistence.EntityManager;
@@ -14,6 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -153,11 +155,33 @@ class CardNewsTest {
         assertThat(entityManager.find(Policy.class, "policy-1")).isNotNull();
     }
 
+    @Test
+    void homeCardsExcludeClosedAndExpiredPolicies() {
+        Policy closed = persistPolicy("closed", PolicyApplyPeriod.CLOSED,
+                java.time.LocalDate.now().plusDays(1));
+        Policy expired = persistPolicy("expired", PolicyApplyPeriod.SPECIFIC_PERIOD,
+                java.time.LocalDate.now().minusDays(1));
+        entityManager.persist(CardNews.builder().policy(policy).body("노출").cardNo(1L).build());
+        entityManager.persist(CardNews.builder().policy(closed).body("마감").cardNo(1L).build());
+        entityManager.persist(CardNews.builder().policy(expired).body("기한 지남").cardNo(1L).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(cardNewsRepository.findGuestHomeCardNews(
+                java.time.LocalDate.now(), PageRequest.of(0, 4)))
+                .extracting(card -> card.getPolicy().getPolicyId())
+                .containsExactly("policy-1");
+    }
+
     private Policy persistPolicy(String id) {
+        return persistPolicy(id, PolicyApplyPeriod.SPECIFIC_PERIOD, null);
+    }
+
+    private Policy persistPolicy(String id, PolicyApplyPeriod applyPeriod, java.time.LocalDate applyEndDate) {
         Policy value = Policy.builder().policyId(id).policyName("테스트 정책")
                 .categories(java.util.Set.of(PolicyCategory.OTHER))
-                .ageLimitYn(false).applyPeriodCode(
-                        com.hyeja.domain.policy.enums.PolicyApplyPeriod.SPECIFIC_PERIOD).build();
+                .ageLimitYn(false).applyPeriodCode(applyPeriod)
+                .applyEndDate(applyEndDate).build();
         entityManager.persist(value);
         return value;
     }
