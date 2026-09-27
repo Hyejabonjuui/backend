@@ -50,6 +50,7 @@ public class SecurityConfig {
                                 "/api/terms",
                                 "/api/policies/housing",
                                 "/api/policies/card-news/guest",
+                                "/api/policies/card-detail/*",
                                 "/api/health").permitAll()
                         // Swagger 화면, 그리고 예외 발생 시 Spring이 내부적으로 넘기는 /error
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/error").permitAll()

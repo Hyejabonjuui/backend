@@ -19,8 +19,8 @@ import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.domain.region.repository.RegionRepository;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.IntStream;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,7 +42,7 @@ class PolicySyncItemServiceTest {
         item.setPolicyId("policy-1");
         item.setPolicyName("청년 주거 정책");
         item.setSupportContent("지원 내용");
-        item.setRegionCodes("11110, 11440");
+        item.setRegionCodes("11110");
         item.setApplyPeriodCode("57002");
         PolicyAiAnalysis analysis = new PolicyAiAnalysis(
                 "청년의 주거비를 지원합니다.",
@@ -50,7 +50,9 @@ class PolicySyncItemServiceTest {
                 com.hyeja.domain.policy.enums.PolicyHouselessRequirement.UNKNOWN,
                 0.5, "확인 필요",
                 PolicyIncomeCondition.UNKNOWN, null, null,
-                0.5, "확인 필요");
+                0.5, "확인 필요",
+                "신청 대상 설명", "월 최대 20만 원",
+                "지원 혜택 설명", "온라인으로 신청해요.");
         when(policyRepository.save(any(Policy.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(cardNewsRepository.existsByPolicy_PolicyIdAndCardNo("policy-1", 1L))
@@ -58,10 +60,10 @@ class PolicySyncItemServiceTest {
         Region firstRegion = Region.builder()
                 .regionCode("11110").sigunguName("서울특별시 종로구").build();
         when(regionRepository.findAllById(any())).thenReturn(List.of(firstRegion));
-        AtomicReference<CardNews> savedCardNews = new AtomicReference<>();
+        List<CardNews> savedCardNews = new ArrayList<>();
         when(cardNewsRepository.save(any(CardNews.class))).thenAnswer(invocation -> {
             CardNews cardNews = invocation.getArgument(0);
-            savedCardNews.set(cardNews);
+            savedCardNews.add(cardNews);
             return cardNews;
         });
 
@@ -75,13 +77,17 @@ class PolicySyncItemServiceTest {
             return values.size() == 1
                     && values.get(0).getRegion().getRegionCode().equals("11110");
         }));
-        assertThat(savedCardNews.get()).isNotNull();
-        assertThat(savedCardNews.get().getPolicy().getPolicyId()).isEqualTo("policy-1");
-        assertThat(savedCardNews.get().getCardNo()).isEqualTo(1L);
-        assertThat(savedCardNews.get().getBody()).isEqualTo("지원 내용");
-        assertThat(savedCardNews.get().getPolicy().getDescription())
+        assertThat(savedCardNews).extracting(CardNews::getCardNo)
+                .containsExactly(1L, 2L, 3L, 4L);
+        assertThat(savedCardNews.get(0).getPolicy().getPolicyId()).isEqualTo("policy-1");
+        assertThat(savedCardNews.get(0).getBody()).isEqualTo("청년의 주거비를 지원합니다.");
+        assertThat(savedCardNews.get(1).getTitle()).isNull();
+        assertThat(savedCardNews.get(1).getBody()).isEqualTo("신청 대상 설명");
+        assertThat(savedCardNews.get(2).getTitle()).isEqualTo("월 최대 20만 원");
+        assertThat(savedCardNews.get(3).getBody()).isEqualTo("온라인으로 신청해요.");
+        assertThat(savedCardNews.get(0).getPolicy().getDescription())
                 .isEqualTo("청년의 주거비를 지원합니다.");
-        assertThat(savedCardNews.get().getPolicy().getCategories())
+        assertThat(savedCardNews.get(0).getPolicy().getCategories())
                 .containsExactly(PolicyCategory.OTHER);
     }
 
@@ -136,7 +142,7 @@ class PolicySyncItemServiceTest {
     }
 
     @Test
-    void storesOnlyFirstRegionWhenApiValueContainsMultipleCodes() {
+    void treatsMultipleRegionCodesAsNationwide() {
         PolicyItem item = new PolicyItem();
         item.setPolicyId("nationwide-policy");
         item.setPolicyName("전국 정책");
@@ -157,7 +163,6 @@ class PolicySyncItemServiceTest {
                 0.5, "확인 필요",
                 PolicyIncomeCondition.UNKNOWN, null, null,
                 0.5, "확인 필요");
-        when(regionRepository.findAllById(any())).thenReturn(List.of(regions.get(0)));
         when(policyRepository.save(any(Policy.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(cardNewsRepository.existsByPolicy_PolicyIdAndCardNo("nationwide-policy", 1L))
@@ -169,8 +174,7 @@ class PolicySyncItemServiceTest {
             java.util.List<com.hyeja.domain.policy.entity.PolicyRegion> policyRegions =
                     new java.util.ArrayList<>();
             values.forEach(policyRegions::add);
-            return policyRegions.size() == 1
-                    && policyRegions.get(0).getRegion().getRegionCode().equals("00001");
+            return policyRegions.isEmpty();
         }));
     }
 }
