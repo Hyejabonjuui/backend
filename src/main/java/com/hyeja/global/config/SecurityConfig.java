@@ -4,6 +4,8 @@ import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.security.JwtAuthenticationFilter;
 import com.hyeja.global.security.JwtProvider;
 import com.hyeja.global.security.TokenBlacklist;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -54,19 +56,27 @@ public class SecurityConfig {
                                 "/api/health").permitAll()
                         // Swagger 화면, 그리고 예외 발생 시 Spring이 내부적으로 넘기는 /error
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/error").permitAll()
+                        // 비용(OpenAI 호출)이나 다른 회원 데이터에 영향을 주는 API는 관리자(ADMIN)만 호출합니다.
+                        // 관리자 계정은 AdminInitializer가 .env의 ADMIN_EMAIL·ADMIN_PASSWORD로 만듭니다.
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/policies/sync",
+                                "/api/notification/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
-                // 인증이 필요한 API에 토큰이 없거나 잘못됐으면 공통 응답 형식의 401을 내려줍니다.
-                .exceptionHandling(exception -> exception.authenticationEntryPoint((request, response, e) -> {
-                    ErrorStatus error = ErrorStatus.UNAUTHORIZED;
-                    response.setStatus(error.getHttpStatus().value());
-                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                    response.setCharacterEncoding("UTF-8");
-                    response.getWriter().write("{\"isSuccess\":false,\"code\":\"%s\",\"message\":\"%s\",\"result\":null}"
-                            .formatted(error.getCode(), error.getMessage()));
-                }))
+                // 토큰이 없거나 잘못됐으면 401, 로그인했지만 권한이 없으면 403을 공통 응답 형식으로 내려줍니다.
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, e) -> writeError(response, ErrorStatus.UNAUTHORIZED))
+                        .accessDeniedHandler((request, response, e) -> writeError(response, ErrorStatus.FORBIDDEN)))
                 .addFilterBefore(new JwtAuthenticationFilter(jwtProvider, tokenBlacklist),
                         UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    private static void writeError(HttpServletResponse response, ErrorStatus error) throws IOException {
+        response.setStatus(error.getHttpStatus().value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write("{\"isSuccess\":false,\"code\":\"%s\",\"message\":\"%s\",\"result\":null}"
+                .formatted(error.getCode(), error.getMessage()));
     }
 
     // 프론트(React Vite 개발 서버, 5173 포트)에서 오는 요청을 허용합니다.

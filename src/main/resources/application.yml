@@ -58,6 +58,11 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
 
+# 관리자 계정. 서버 시작 시 이 이메일이 없으면 ADMIN으로 만듭니다(AdminInitializer). 비워 두면 건너뜁니다.
+admin:
+  email: ${ADMIN_EMAIL:}
+  password: ${ADMIN_PASSWORD:}
+
 server:
   port: ${SERVER_PORT:8080}
 
