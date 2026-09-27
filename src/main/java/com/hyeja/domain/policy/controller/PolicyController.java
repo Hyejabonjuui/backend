@@ -3,9 +3,11 @@ package com.hyeja.domain.policy.controller;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyGuestResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyListDTO;
+import com.hyeja.domain.policy.dto.PolicySearchResponseDTO;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.enums.PolicySort;
 import com.hyeja.domain.policy.service.PolicyService;
+import com.hyeja.domain.policy.service.PolicySearchService;
 import com.hyeja.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,6 +17,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +36,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class PolicyController {
 
     private final PolicyService policyService;
+    private final PolicySearchService policySearchService;
+
+    @Operation(
+            summary = "회원 맞춤 정책 검색",
+            description = "검색 질문 또는 월세·전세·청약·공공임대 해시태그를 분석해 "
+                    + "회원 조건별 신청 가능 여부와 개인화 이유를 최대 20건 반환합니다."
+    )
+    @GetMapping("/search")
+    public ApiResponse<PolicySearchResponseDTO> searchPolicies(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long memberId,
+            @RequestParam("query")
+            @NotBlank(message = "검색어를 입력해 주세요.") String query) {
+        return ApiResponse.onSuccess(policySearchService.search(memberId, query));
+    }
 
     @Operation(
             summary = "주거 정책 동기화",

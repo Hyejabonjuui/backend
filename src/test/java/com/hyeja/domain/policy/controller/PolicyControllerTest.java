@@ -11,10 +11,13 @@ import com.hyeja.domain.policy.dto.PolicyGuestResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyListDTO;
 import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyListItemDTO;
 import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyRegionItemDTO;
+import com.hyeja.domain.policy.dto.PolicySearchResponseDTO;
 import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.enums.PolicySort;
+import com.hyeja.domain.policy.enums.EligibilityStatus;
 import com.hyeja.domain.policy.service.PolicyService;
+import com.hyeja.domain.policy.service.PolicySearchService;
 import com.hyeja.global.exception.ExceptionAdvice;
 import java.time.LocalDate;
 import java.util.List;
@@ -31,13 +34,14 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class PolicyControllerTest {
 
     private final PolicyService policyService = mock(PolicyService.class);
+    private final PolicySearchService policySearchService = mock(PolicySearchService.class);
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(1L, null, List.of()));
-        mvc = MockMvcBuilders.standaloneSetup(new PolicyController(policyService))
+        mvc = MockMvcBuilders.standaloneSetup(new PolicyController(policyService, policySearchService))
                 .setControllerAdvice(new ExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();
@@ -224,5 +228,31 @@ class PolicyControllerTest {
         mvc.perform(get("/api/policies/housing/me").param("size", "51"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_001"));
+    }
+
+    @Test
+    void returnsMemberPolicySearchResult() throws Exception {
+        PolicySearchResponseDTO result = new PolicySearchResponseDTO(
+                List.of(new PolicySearchResponseDTO.PolicySearchItemDTO(
+                        "POLICY-1", "청년 월세 지원", Set.of(PolicyCategory.MONTHLY_RENT),
+                        LocalDate.of(2026, 9, 30), PolicyApplyPeriod.SPECIFIC_PERIOD,
+                        true, "서울에 거주하고 무주택이라 신청할 수 있어요.",
+                        new PolicySearchResponseDTO.PolicyEligibilityStatusDTO(
+                                EligibilityStatus.ABLE, EligibilityStatus.ABLE,
+                                EligibilityStatus.ABLE, EligibilityStatus.ABLE,
+                                EligibilityStatus.ABLE))),
+                List.of(), List.of());
+        when(policySearchService.search(1L, "#월세")).thenReturn(result);
+
+        mvc.perform(get("/api/policies/search").param("query", "#월세"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.approved[0].policyId").value("POLICY-1"))
+                .andExpect(jsonPath("$.result.approved[0].categories[0]").value("MONTHLY_RENT"))
+                .andExpect(jsonPath("$.result.approved[0].isFavorite").value(true))
+                .andExpect(jsonPath("$.result.approved[0].status.region").value("ABLE"))
+                .andExpect(jsonPath("$.result.underReview").isEmpty())
+                .andExpect(jsonPath("$.result.declined").isEmpty());
+
+        verify(policySearchService).search(1L, "#월세");
     }
 }
