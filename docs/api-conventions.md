@@ -42,7 +42,7 @@
 | `PATCH` | `/api/members/me/profile` | body 내 조건 | 필요 | 내 조건 전체 교체 |
 | `GET` | `/api/regions` | 없음 | 불필요 | 시·도별 시군구 목록 |
 | `GET` | `/api/policies/card-news/guest` | 없음 | 불필요 | 대표 카드 중 최대 4건 |
-| `GET` | `/api/policies/housing` | 없음 | 불필요 | 현재는 저장된 Policy 전체 조회 |
+| `GET` | `/api/policies/housing` | query `category?`, `sort=DEADLINE`, `page=0`, `size=8` | 불필요 | 진행 중 정책 페이지 조회, 상시 정책은 마감일순 마지막 배치 |
 | `GET` | `/api/policies/housing/me` | query `category?`, `sort=DEADLINE`, `onlyEligible=false`, `page=0`, `size=8` | 필요 | 진행 중 정책 페이지 조회, 회원 조건 필터와 관심 여부 포함 |
 | `GET` | `/api/policies/{policyId}` | path `policyId` | 필요 | 회원 맞춤 정보를 포함한 정책 상세 |
 | `POST` | `/api/policies/sync` | 없음 | 필요 | 외부 정책 수동 동기화 |
@@ -60,7 +60,7 @@ Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한
 
 아래 목록은 Notion 명세의 계획을 요약한 것이며 현재 코드의 존재를 뜻하지 않는다.
 
-- 정책: 검색·추천·상세·페이지 목록·카드 상세
+- 정책: 검색·추천·카드 상세
 - 회원용 카드뉴스
 
 구현 전에 Method와 URL을 다시 확인한다. 명세에는 `/api` 누락, memberId 위치 불일치, `notificatonId` 오타 등 현재 코드와 다른 표기가 남아 있다.
