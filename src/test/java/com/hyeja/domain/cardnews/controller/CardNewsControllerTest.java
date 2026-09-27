@@ -40,14 +40,14 @@ class CardNewsControllerTest {
 
     @Test
     void returnsCardNewsPopupDetail() throws Exception {
-        when(cardNewsService.getCardNewsDetail(10L, 1L)).thenReturn(
+        when(cardNewsService.getCardNewsDetail("20260923005400113576", 1L)).thenReturn(
                 new CardNewsDetailResponseDTO(
                         "policy-1", "월세", 5, true, true,
                         "https://example.com/apply",
                         List.of(new CardDTO(10L, 2L, null,
                                 List.of("만 19~34세", "전국"), "신청 대상"))));
 
-        mvc.perform(get("/api/policies/card-detail/10"))
+        mvc.perform(get("/api/policies/card-detail/20260923005400113576"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.policyId").value("policy-1"))
                 .andExpect(jsonPath("$.result.categoryLabel").value("월세"))
@@ -55,6 +55,6 @@ class CardNewsControllerTest {
                 .andExpect(jsonPath("$.result.isFavorite").value(true))
                 .andExpect(jsonPath("$.result.cards[0].badges[0]").value("만 19~34세"));
 
-        verify(cardNewsService).getCardNewsDetail(10L, 1L);
+        verify(cardNewsService).getCardNewsDetail("20260923005400113576", 1L);
     }
 }

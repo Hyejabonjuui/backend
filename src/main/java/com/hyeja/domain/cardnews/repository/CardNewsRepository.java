@@ -7,7 +7,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository 
 public interface CardNewsRepository extends JpaRepository<CardNews, Long> {
@@ -18,17 +17,6 @@ public interface CardNewsRepository extends JpaRepository<CardNews, Long> {
 
     // 특정 정책 ID와 카드 번호(card_No)로 카드뉴스가 이미 존재하는지 확인하는 메서드
     boolean existsByPolicy_PolicyIdAndCardNo(String policyId, Long cardNo);
-
-    @Query("""
-            select cardNews
-            from CardNews cardNews
-            join fetch cardNews.policy policy
-            where cardNews.cardNewsId = :cardNewsId
-              and cardNews.deletedAt is null
-              and policy.deletedAt is null
-              and policy.activeYn = true
-            """)
-    Optional<CardNews> findActiveByIdWithPolicy(@Param("cardNewsId") Long cardNewsId);
 
     @Query("""
             select cardNews

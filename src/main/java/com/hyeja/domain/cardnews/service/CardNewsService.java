@@ -45,18 +45,20 @@ public class CardNewsService {
                 .collect(Collectors.toList());
     }
 
-    public CardNewsDetailResponseDTO getCardNewsDetail(Long cardNewsId, Long memberId) {
-        CardNews selectedCard = cardNewsRepository.findActiveByIdWithPolicy(cardNewsId)
-                .orElseThrow(() -> new GeneralException(ErrorStatus.CARD_NEWS_NOT_FOUND));
-        Policy policy = selectedCard.getPolicy();
+    public CardNewsDetailResponseDTO getCardNewsDetail(String policyId, Long memberId) {
+        List<CardNews> cardNews = cardNewsRepository
+                .findAllActiveByPolicyIdOrderByCardNo(policyId);
+        if (cardNews.isEmpty()) {
+            throw new GeneralException(ErrorStatus.CARD_NEWS_NOT_FOUND);
+        }
+        Policy policy = cardNews.get(0).getPolicy();
         List<PolicyRegion> policyRegions = policyRegionRepository
                 .findAllActiveByPolicyIds(List.of(policy.getPolicyId()));
         List<String> eligibilityBadges = List.of(
                 formatAge(policy), formatFirstRegion(policyRegions));
         boolean authenticated = memberId != null;
 
-        List<CardDTO> cards = cardNewsRepository
-                .findAllActiveByPolicyIdOrderByCardNo(policy.getPolicyId()).stream()
+        List<CardDTO> cards = cardNews.stream()
                 .map(card -> new CardDTO(
                         card.getCardNewsId(),
                         card.getCardNo(),

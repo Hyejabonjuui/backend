@@ -38,10 +38,10 @@ public class CardNewsController {
     }
 
     @Operation(summary = "카드뉴스 팝업 상세 조회")
-    @GetMapping("/card-detail/{cardNewsId}")
+    @GetMapping("/card-detail/{policyId}")
     public ApiResponse<CardNewsDetailResponseDTO> getCardNewsDetail(
-            @PathVariable Long cardNewsId,
+            @PathVariable String policyId,
             @AuthenticationPrincipal Long memberId) {
-        return ApiResponse.onSuccess(cardNewsService.getCardNewsDetail(cardNewsId, memberId));
+        return ApiResponse.onSuccess(cardNewsService.getCardNewsDetail(policyId, memberId));
     }
 }

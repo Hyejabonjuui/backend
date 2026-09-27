@@ -73,9 +73,6 @@ class CardNewsTest {
         entityManager.flush();
         entityManager.clear();
 
-        assertThat(cardNewsRepository.findActiveByIdWithPolicy(first.getCardNewsId()))
-                .get().extracting(card -> card.getPolicy().getPolicyId())
-                .isEqualTo("policy-1");
         assertThat(cardNewsRepository.findAllActiveByPolicyIdOrderByCardNo("policy-1"))
                 .extracting(CardNews::getCardNo)
                 .containsExactly(1L, 2L);

@@ -21,7 +21,6 @@ import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -42,8 +41,6 @@ class CardNewsServiceTest {
                 card(policy, 4L, "2026-09-01 ~ 2026-09-30", "신청 방법"));
         Region region = Region.builder()
                 .regionCode("11000").sigunguName("서울특별시").build();
-        when(cardNewsRepository.findActiveByIdWithPolicy(1L))
-                .thenReturn(Optional.of(cards.get(0)));
         when(cardNewsRepository.findAllActiveByPolicyIdOrderByCardNo("policy-1"))
                 .thenReturn(cards);
         when(policyRegionRepository.findAllActiveByPolicyIds(List.of("policy-1")))
@@ -52,7 +49,7 @@ class CardNewsServiceTest {
                 .existsByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(7L, "policy-1"))
                 .thenReturn(true);
 
-        var response = service.getCardNewsDetail(1L, 7L);
+        var response = service.getCardNewsDetail("policy-1", 7L);
 
         assertThat(response.policyId()).isEqualTo("policy-1");
         assertThat(response.categoryLabel()).isEqualTo("월세");
@@ -71,13 +68,12 @@ class CardNewsServiceTest {
     void treatsMissingPrincipalAsGuest() {
         Policy policy = policy();
         CardNews card = card(policy, 1L, "정책명", "정책 소개");
-        when(cardNewsRepository.findActiveByIdWithPolicy(1L)).thenReturn(Optional.of(card));
         when(cardNewsRepository.findAllActiveByPolicyIdOrderByCardNo("policy-1"))
                 .thenReturn(List.of(card));
         when(policyRegionRepository.findAllActiveByPolicyIds(List.of("policy-1")))
                 .thenReturn(List.of());
 
-        var response = service.getCardNewsDetail(1L, null);
+        var response = service.getCardNewsDetail("policy-1", null);
 
         assertThat(response.isAuthenticated()).isFalse();
         assertThat(response.isFavorite()).isFalse();
@@ -89,9 +85,10 @@ class CardNewsServiceTest {
 
     @Test
     void rejectsUnknownCardNews() {
-        when(cardNewsRepository.findActiveByIdWithPolicy(99L)).thenReturn(Optional.empty());
+        when(cardNewsRepository.findAllActiveByPolicyIdOrderByCardNo("missing-policy"))
+                .thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.getCardNewsDetail(99L, null))
+        assertThatThrownBy(() -> service.getCardNewsDetail("missing-policy", null))
                 .isInstanceOfSatisfying(GeneralException.class,
                         exception -> assertThat(exception.getCode())
                                 .isEqualTo(ErrorStatus.CARD_NEWS_NOT_FOUND));
