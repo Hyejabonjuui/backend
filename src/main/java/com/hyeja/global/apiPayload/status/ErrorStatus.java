@@ -50,6 +50,13 @@ public enum ErrorStatus implements BaseErrorCode {
 
     // 정책
     POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "POLICY_001", "존재하지 않는 정책입니다."),
+    POLICY_SEARCH_EMPTY(HttpStatus.OK, "POLICY_SEARCH_001", "조건에 맞는 정책을 찾지 못했어요."),
+    POLICY_SEARCH_NOT_HOUSING(HttpStatus.BAD_REQUEST, "POLICY_SEARCH_002", "혜자는 주거 관련 혜택을 알려드려요."),
+    POLICY_SEARCH_AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "POLICY_SEARCH_003", "AI 검색 서비스에 연결할 수 없어요. 잠시 후 다시 시도해 주세요."),
+    POLICY_SEARCH_AI_EMPTY_RESPONSE(HttpStatus.BAD_GATEWAY, "POLICY_SEARCH_004", "AI 검색 서비스에서 결과를 받지 못했어요. 다시 시도해 주세요."),
+    POLICY_SEARCH_AI_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "POLICY_SEARCH_005", "AI 검색 결과를 해석할 수 없어요. 다시 시도해 주세요."),
+    POLICY_SEARCH_QUERY_REQUIRED(HttpStatus.BAD_REQUEST, "POLICY_SEARCH_006", "검색어를 입력해 주세요."),
+    POLICY_SEARCH_QUERY_TOO_LONG(HttpStatus.BAD_REQUEST, "POLICY_SEARCH_007", "검색어는 200자 이하여야 합니다."),
     CARD_NEWS_NOT_FOUND(HttpStatus.NOT_FOUND, "CARD_NEWS_001", "존재하지 않는 카드뉴스입니다."),
 
     // 관심 정책
