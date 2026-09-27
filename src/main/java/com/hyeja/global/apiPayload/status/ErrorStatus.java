@@ -34,7 +34,7 @@ public enum ErrorStatus implements BaseErrorCode {
     VERIFY_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "VERIFY_002", "인증 코드가 만료됐어요. 다시 받아 주세요."),
     VERIFY_REQUIRED(HttpStatus.BAD_REQUEST, "VERIFY_003", "이메일 인증을 먼저 완료해 주세요."),
     VERIFY_RESEND_TOO_SOON(HttpStatus.TOO_MANY_REQUESTS, "VERIFY_004", "잠시 후에 다시 요청해 주세요."),
-    VERIFY_TOO_MANY_FAILURES(HttpStatus.TOO_MANY_REQUESTS, "VERIFY_005", "시도 횟수를 초과했어요. 인증 코드를 다시 받아 주세요."),
+    VERIFY_TOO_MANY_FAILURES(HttpStatus.TOO_MANY_REQUESTS, "VERIFY_005", "인증 시도 횟수를 초과했어요. 1시간 후에 다시 시도해 주세요."),
     MAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "MAIL_001", "메일 발송에 실패했어요. 잠시 후 다시 시도해 주세요."),
 
     // 알림

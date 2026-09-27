@@ -26,7 +26,7 @@ public class ExceptionAdvice extends ResponseEntityExceptionHandler {
     public ResponseEntity<Object> handleGeneralException(GeneralException exception) {
         ReasonDTO reason = exception.getErrorReason();
         return ResponseEntity.status(reason.getHttpStatus())
-                .body(ApiResponse.onFailure(reason.getCode(), reason.getMessage(), null));
+                .body(ApiResponse.onFailure(reason.getCode(), reason.getMessage(), exception.getResult()));
     }
 
     @Override
