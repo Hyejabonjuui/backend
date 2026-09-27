@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -267,13 +268,35 @@ class MemberServiceTest {
         Profile profile = profile(member, LocalDate.of(2000, 3, 15));
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
         when(profileRepository.findById("hyeja@example.com")).thenReturn(Optional.of(profile));
+        when(jwtProvider.parse("access-token")).thenReturn(Jwts.claims()
+                .expiration(new Date(System.currentTimeMillis() + Duration.ofMinutes(10).toMillis())).build());
 
-        memberService.withdraw(1L);
+        when(passwordEncoder.matches("hyeja1234!", "encoded-password")).thenReturn(true);
+
+        memberService.withdraw(1L, "hyeja1234!", "access-token");
 
         assertThat(member.isDeleted()).isTrue();
         assertThat(profile.isDeleted()).isTrue();
         verify(favoriteRepository).deleteByMemberMemberId(1L);
         verify(notificationRepository).deleteByMemberMemberId(1L);
+        // 탈퇴에 쓴 토큰도 블랙리스트에 올라가 다시 쓸 수 없습니다.
+        verify(tokenBlacklist).add(eq("access-token"), any(Duration.class));
+    }
+
+    // 비밀번호가 틀리면 400이고, 아무것도 지우지 않으며 토큰도 그대로 둡니다.
+    @Test
+    void withdrawRejectsWrongPassword() {
+        Member member = member(1L, LocalDateTime.now());
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(passwordEncoder.matches("wrong1234!", "encoded-password")).thenReturn(false);
+
+        assertThatThrownBy(() -> memberService.withdraw(1L, "wrong1234!", "access-token"))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(ErrorStatus.MEMBER_PASSWORD_MISMATCH);
+        assertThat(member.isDeleted()).isFalse();
+        verify(favoriteRepository, never()).deleteByMemberMemberId(anyLong());
+        verify(tokenBlacklist, never()).add(anyString(), any(Duration.class));
     }
 
     // 이미 탈퇴한 회원은 404이고, 관심 정책·알림도 건드리지 않습니다.
@@ -283,7 +306,7 @@ class MemberServiceTest {
         deleted.softDelete();
         when(memberRepository.findById(1L)).thenReturn(Optional.of(deleted));
 
-        assertThatThrownBy(() -> memberService.withdraw(1L))
+        assertThatThrownBy(() -> memberService.withdraw(1L, "hyeja1234!", "access-token"))
                 .isInstanceOf(GeneralException.class)
                 .extracting("code")
                 .isEqualTo(ErrorStatus.MEMBER_NOT_FOUND);
