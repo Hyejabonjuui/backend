@@ -94,7 +94,7 @@ class EmailVerificationServiceTest {
         when(redisTemplate.hasKey("email-verification:locked:" + EMAIL)).thenReturn(true);
 
         assertError(() -> service.send(EMAIL), ErrorStatus.VERIFY_TOO_MANY_FAILURES);
-        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+        verify(mailSender, never()).send(any(MimeMessage.class));
     }
 
     @Test
