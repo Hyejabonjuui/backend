@@ -3,6 +3,11 @@ package com.hyeja.domain.member.service;
 import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
+import jakarta.mail.Multipart;
+import jakarta.mail.Part;
+import jakarta.mail.Session;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +21,6 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mail.MailSendException;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -56,23 +60,25 @@ class EmailVerificationServiceTest {
     @BeforeEach
     void setUp() {
         when(redisTemplate.opsForValue()).thenReturn(values);
+        when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
         ReflectionTestUtils.setField(service, "mailFrom", "hyeja.team@gmail.com");
     }
 
     @Test
-    void sendMailsSixDigitCodeAndStoresItForFiveMinutes() {
+    void sendMailsSixDigitCodeAndStoresItForFiveMinutes() throws Exception {
         when(values.setIfAbsent("email-verification:cooldown:" + EMAIL, "1", Duration.ofSeconds(60))).thenReturn(true);
 
         long expiresIn = service.send(EMAIL);
 
         assertThat(expiresIn).isEqualTo(300);
-        ArgumentCaptor<SimpleMailMessage> mail = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        ArgumentCaptor<MimeMessage> mail = ArgumentCaptor.forClass(MimeMessage.class);
         verify(mailSender).send(mail.capture());
-        assertThat(mail.getValue().getTo()).containsExactly(EMAIL);
+        assertThat(mail.getValue().getAllRecipients()).containsExactly(new InternetAddress(EMAIL));
         ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
         verify(values).set(eq("email-verification:code:" + EMAIL), code.capture(), eq(Duration.ofMinutes(5)));
         assertThat(code.getValue()).matches("\\d{6}");
-        assertThat(mail.getValue().getText()).contains(code.getValue());
+        // HTML 본문과 글자 본문에 코드와 유효 시간이 들어가고, 템플릿 자리표시({{...}})는 남지 않아야 합니다.
+        assertThat(bodyOf(mail.getValue())).contains("<html", code.getValue(), "5분").doesNotContain("{{");
     }
 
     @Test
@@ -80,7 +86,7 @@ class EmailVerificationServiceTest {
         when(memberRepository.existsByEmail(EMAIL)).thenReturn(true);
 
         assertError(() -> service.send(EMAIL), ErrorStatus.MEMBER_EMAIL_DUPLICATED);
-        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+        verify(mailSender, never()).send(any(MimeMessage.class));
     }
 
     @Test
@@ -88,14 +94,14 @@ class EmailVerificationServiceTest {
         when(values.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(false);
 
         assertError(() -> service.send(EMAIL), ErrorStatus.VERIFY_RESEND_TOO_SOON);
-        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+        verify(mailSender, never()).send(any(MimeMessage.class));
     }
 
     // 발송이 실패하면 코드를 저장하지 않고, 60초 대기도 풀어 바로 다시 요청할 수 있게 합니다.
     @Test
     void sendFailureReleasesCooldownAndStoresNoCode() {
         when(values.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
-        doThrow(new MailSendException("down")).when(mailSender).send(any(SimpleMailMessage.class));
+        doThrow(new MailSendException("down")).when(mailSender).send(any(MimeMessage.class));
 
         assertError(() -> service.send(EMAIL), ErrorStatus.MAIL_SEND_FAILED);
         verify(redisTemplate).delete("email-verification:cooldown:" + EMAIL);
@@ -144,6 +150,18 @@ class EmailVerificationServiceTest {
         when(redisTemplate.hasKey("email-verification:verified:" + EMAIL)).thenReturn(false);
 
         assertError(() -> service.checkVerified(EMAIL), ErrorStatus.VERIFY_REQUIRED);
+    }
+
+    // 메일은 HTML·글자 본문이 여러 조각(Multipart)으로 들어 있어, 조각을 모두 이어 붙여 확인합니다.
+    private static String bodyOf(Part part) throws Exception {
+        if (part.getContent() instanceof Multipart multipart) {
+            StringBuilder body = new StringBuilder();
+            for (int i = 0; i < multipart.getCount(); i++) {
+                body.append(bodyOf(multipart.getBodyPart(i)));
+            }
+            return body.toString();
+        }
+        return part.getContent().toString();
     }
 
     private void assertError(org.assertj.core.api.ThrowableAssert.ThrowingCallable call, ErrorStatus expected) {
