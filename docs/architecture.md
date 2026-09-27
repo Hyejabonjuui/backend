@@ -71,10 +71,12 @@ HTTP 요청
 `PolicyService`는 온통청년 API를 `RestTemplate`로 호출한다.
 
 - 연결 및 읽기 timeout은 각각 10초다.
-- 현재 첫 페이지 최대 100건만 가져온다.
+- 현재 최대 20페이지, 페이지당 100건을 가져온다.
 - 외부 분류가 `주거`인 데이터만 저장한다.
 - 동기화 스케줄러는 없고 `/api/policies/sync`로 수동 실행한다.
 - 외부 정책 ID를 서비스의 문자열 PK로 그대로 저장한다.
+- OpenAI 한 번의 요청으로 정책 요약, 복수 주거 카테고리, 무주택·소득 조건을 분석한다.
+- API 지역 코드는 `PolicyRegion`에 그대로 저장하며 `xx000`은 조회 시 앞 두 자리 범위로 판정한다.
 
 ## 관심 정책 마감 알림
 
@@ -123,6 +125,6 @@ docker compose up -d   # 로컬 Redis(hyeja-redis) 실행. 토큰을 보내는 �
 
 - 인증은 JWT 토큰 방식이다. 규칙은 `docs/api-conventions.md`의 인증 규칙을 따른다.
 - 관리자 권한 구분은 없어서 `/api/policies/sync`는 로그인한 회원이면 누구나 호출할 수 있다.
-- `/api/policies/housing`은 이름과 달리 저장된 Policy 전체를 반환하며 별도 category, active, deleted 필터가 없다.
+- `/api/policies/housing`은 비로그인 주거 정책 목록을 카테고리·정렬 조건으로 페이지 조회한다.
 - 카드뉴스 조회도 active와 soft-delete를 자동 필터링하지 않는다.
-- MariaDB, 실제 외부 API를 검증하는 통합 테스트는 아직 없다. 인증 흐름은 `SecurityTest`가 H2로 검증한다(Redis 블랙리스트는 mock).
+- 실제 외부 API(온통청년·OpenAI)를 호출하는 테스트는 없다. MariaDB·Redis를 포함한 인증 흐름은 E2E 테스트(`docs/e2e-testing.md`)가 검증한다.

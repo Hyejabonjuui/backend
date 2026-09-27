@@ -13,7 +13,7 @@
 --                 COLLEGE_STUDENT / MASTER_OR_DOCTOR / OTHER / NULL(미선택)
 -- housing_type: PARENTS / MONTHLY_RENT / JEONSE / OWNED
 -- category: MONTHLY_RENT / JEONSE / PURCHASE / PUBLIC_RENT / OTHER
--- apply_period_code: PERIOD(기간 지정). 외부 API 공식 코드가 아닙니다.
+-- apply_period_code: SPECIFIC_PERIOD(특정기간)
 -- 외부 API 코드인 employment_codes 등은 확인 전까지 NULL로 둡니다.
 -- 공통 테스트 비밀번호 Hyeja1234!의 BCrypt 해시를 저장합니다.
 
@@ -74,7 +74,7 @@ WHERE NOT EXISTS (
 );
 
 INSERT INTO policy (policy_id, policy_name, category, description, support_content, housing_type, keywords, min_age, max_age, age_limit_yn, houseless_yn, apply_period_code, extra_qualification, apply_start_date, apply_end_date, apply_method, apply_url, ref_url, view_count, active_yn, created_at, updated_at, deleted_at)
-SELECT seed.policy_id, seed.policy_name, seed.category, seed.description, seed.support_content, seed.housing_type, '청년,주거,시연', 19, 39, TRUE, NULL, 'PERIOD', '실제 신청할 수 없는 개발·시연용 가상 정책입니다.', CAST('2026-01-01' AS DATE), CAST('2027-12-31' AS DATE), '시연용 링크이며 신청 기능은 제공하지 않습니다.', 'https://example.com/hyeja-demo/apply', 'https://example.com/hyeja-demo', 0, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL
+SELECT seed.policy_id, seed.policy_name, seed.category, seed.description, seed.support_content, seed.housing_type, '청년,주거,시연', 19, 39, TRUE, 'UNKNOWN', 'SPECIFIC_PERIOD', '실제 신청할 수 없는 개발·시연용 가상 정책입니다.', CAST('2026-01-01' AS DATE), CAST('2027-12-31' AS DATE), '시연용 링크이며 신청 기능은 제공하지 않습니다.', 'https://example.com/hyeja-demo/apply', 'https://example.com/hyeja-demo', 0, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL
 FROM (
     SELECT 'DEMO-HOUSING-001' AS policy_id, '[시연] 월세 부담 완화' AS policy_name, 'MONTHLY_RENT' AS category, '월 임대료 일부를 지원하는 가상 정책입니다.' AS description, '월 10만원씩 6개월 지원' AS support_content, 'MONTHLY_RENT' AS housing_type
     UNION ALL SELECT 'DEMO-HOUSING-002', '[시연] 전세 보증금 이자 지원', 'JEONSE', '전세 보증금 대출 이자를 지원하는 가상 정책입니다.', '연 이자 최대 30만원 지원', 'JEONSE'

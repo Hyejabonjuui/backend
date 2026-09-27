@@ -62,11 +62,12 @@ class FavoriteServiceTest {
             assertThat(item.getFavoriteId()).isEqualTo(10L);
             assertThat(item.getPolicyId()).isEqualTo("policy-1");
             assertThat(item.getPolicyName()).isEqualTo("청년 월세 지원");
-            assertThat(item.getCategoryCode()).isEqualTo(PolicyCategory.MONTHLY_RENT);
-            assertThat(item.getCategoryName()).isEqualTo("월세");
+            assertThat(item.getCategoryCodes()).containsExactly(PolicyCategory.MONTHLY_RENT);
+            assertThat(item.getCategoryNames()).containsExactly("월세");
             assertThat(item.getSupportContent()).isEqualTo("월세를 지원합니다.");
             assertThat(item.getApplyEndDate()).isEqualTo(LocalDate.of(2026, 9, 30));
-            assertThat(item.getApplyPeriodCode()).isEqualTo("0057003");
+            assertThat(item.getApplyPeriodCode()).isEqualTo(
+                    com.hyeja.domain.policy.enums.PolicyApplyPeriod.CLOSED);
             assertThat(item.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 9, 24, 10, 30));
         });
         assertThat(result.getPage()).isZero();
@@ -178,9 +179,10 @@ class FavoriteServiceTest {
         assertThat(result.getFavoriteId()).isEqualTo(10L);
         assertThat(result.getPolicyId()).isEqualTo("policy-1");
         assertThat(result.getPolicyName()).isEqualTo("청년 월세 지원");
-        assertThat(result.getCategoryCode()).isEqualTo(PolicyCategory.MONTHLY_RENT);
-        assertThat(result.getCategoryName()).isEqualTo("월세");
-        assertThat(result.getApplyPeriodCode()).isEqualTo("0057003");
+        assertThat(result.getCategoryCodes()).containsExactly(PolicyCategory.MONTHLY_RENT);
+        assertThat(result.getCategoryNames()).containsExactly("월세");
+        assertThat(result.getApplyPeriodCode()).isEqualTo(
+                com.hyeja.domain.policy.enums.PolicyApplyPeriod.CLOSED);
         assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 9, 24, 10, 30));
         verify(favoriteRepository).saveAndFlush(any(Favorite.class));
     }
@@ -308,10 +310,10 @@ class FavoriteServiceTest {
         return Policy.builder()
                 .policyId("policy-1")
                 .policyName("청년 월세 지원")
-                .category(PolicyCategory.MONTHLY_RENT)
+                .categories(java.util.Set.of(PolicyCategory.MONTHLY_RENT))
                 .supportContent("월세를 지원합니다.")
                 .ageLimitYn(false)
-                .applyPeriodCode("0057003")
+                .applyPeriodCode(com.hyeja.domain.policy.enums.PolicyApplyPeriod.CLOSED)
                 .applyEndDate(LocalDate.of(2026, 9, 30))
                 .applyUrl("https://example.com/apply")
                 .build();

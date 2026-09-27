@@ -4,6 +4,7 @@ import com.hyeja.domain.favorite.dto.FavoriteResponseDTO.FavoriteItemDTO;
 import com.hyeja.domain.favorite.dto.FavoriteResponseDTO.FavoriteListDTO;
 import com.hyeja.domain.favorite.entity.Favorite;
 import org.springframework.data.domain.Page;
+import java.util.Comparator;
 
 public final class FavoriteConverter {
 
@@ -15,8 +16,11 @@ public final class FavoriteConverter {
                 .favoriteId(favorite.getFavoriteId())
                 .policyId(favorite.getPolicy().getPolicyId())
                 .policyName(favorite.getPolicy().getPolicyName())
-                .categoryCode(favorite.getPolicy().getCategory())
-                .categoryName(favorite.getPolicy().getCategory().getLabel())
+                .categoryCodes(favorite.getPolicy().getCategories())
+                .categoryNames(favorite.getPolicy().getCategories().stream()
+                        .sorted(Comparator.comparing(Enum::name))
+                        .map(com.hyeja.domain.policy.enums.PolicyCategory::getLabel)
+                        .toList())
                 .supportContent(favorite.getPolicy().getSupportContent())
                 .applyEndDate(favorite.getPolicy().getApplyEndDate())
                 .applyPeriodCode(favorite.getPolicy().getApplyPeriodCode())

@@ -1,13 +1,16 @@
 package com.hyeja.domain.policy.service;
 
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicyHouselessRequirement;
 import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
+import java.util.Set;
 
 public record PolicyAiAnalysis(
-        PolicyCategory category,
+        String description,
+        Set<PolicyCategory> categories,
         double categoryConfidence,
         String categoryReason,
-        Boolean houselessYn,
+        PolicyHouselessRequirement houselessRequirement,
         double houselessConfidence,
         String houselessReason,
         PolicyIncomeCondition incomeCondition,

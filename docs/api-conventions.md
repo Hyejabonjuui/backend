@@ -42,7 +42,7 @@
 | `PATCH` | `/api/members/me/profile` | body 내 조건 | 필요 | 내 조건 전체 교체 |
 | `GET` | `/api/regions` | 없음 | 불필요 | 시·도별 시군구 목록 |
 | `GET` | `/api/policies/card-news/guest` | 없음 | 불필요 | 대표 카드 중 최대 4건 |
-| `GET` | `/api/policies/housing` | 없음 | 불필요 | 현재는 저장된 Policy 전체 조회 |
+| `GET` | `/api/policies/housing` | query `category?`, `sort=DEADLINE`, `page=0`, `size=8` | 불필요 | 진행 중 정책 페이지 조회, 상시 정책은 마감일순 마지막 배치 |
 | `GET` | `/api/policies/housing/me` | query `category?`, `sort=DEADLINE`, `onlyEligible=false`, `page=0`, `size=8` | 필요 | 진행 중 정책 페이지 조회, 회원 조건 필터와 관심 여부 포함 |
 | `GET` | `/api/policies/{policyId}` | path `policyId` | 필요 | 회원 맞춤 정보를 포함한 정책 상세 |
 | `POST` | `/api/policies/sync` | 없음 | 필요 | 외부 정책 수동 동기화 |
@@ -81,6 +81,7 @@ Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한
 - CardNews `title`은 배열이 아니라 nullable 문자열이다.
 - 알림 응답의 `apply_end_date`는 알림 생성 시 저장한 정책 마감일 스냅샷이다.
 - enum은 표시 문구가 아니라 코드의 enum 상수와 converter 규칙을 사용한다.
+- 정책의 `categories`/`categoryLabels`와 관심 정책의 `category_codes`/`category_names`는 배열이다.
 
 ## API 추가·수정 체크리스트
 

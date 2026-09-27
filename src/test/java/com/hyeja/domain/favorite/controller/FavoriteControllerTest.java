@@ -62,11 +62,11 @@ class FavoriteControllerTest {
                 .favoriteId(10L)
                 .policyId("policy-1")
                 .policyName("청년 월세 지원")
-                .categoryCode(PolicyCategory.MONTHLY_RENT)
-                .categoryName("월세")
+                .categoryCodes(java.util.Set.of(PolicyCategory.MONTHLY_RENT))
+                .categoryNames(java.util.List.of("월세"))
                 .supportContent("월세를 지원합니다.")
                 .applyEndDate(LocalDate.of(2026, 9, 30))
-                .applyPeriodCode("0057003")
+                .applyPeriodCode(com.hyeja.domain.policy.enums.PolicyApplyPeriod.CLOSED)
                 .applyUrl("https://example.com/apply")
                 .createdAt(LocalDateTime.of(2026, 9, 24, 10, 30))
                 .build();
@@ -91,11 +91,11 @@ class FavoriteControllerTest {
                 .andExpect(jsonPath("$.result.favorites[0].favorite_id").value(10))
                 .andExpect(jsonPath("$.result.favorites[0].policy_id").value("policy-1"))
                 .andExpect(jsonPath("$.result.favorites[0].policy_name").value("청년 월세 지원"))
-                .andExpect(jsonPath("$.result.favorites[0].category_code").value("MONTHLY_RENT"))
-                .andExpect(jsonPath("$.result.favorites[0].category_name").value("월세"))
+                .andExpect(jsonPath("$.result.favorites[0].category_codes[0]").value("MONTHLY_RENT"))
+                .andExpect(jsonPath("$.result.favorites[0].category_names[0]").value("월세"))
                 .andExpect(jsonPath("$.result.favorites[0].support_content").value("월세를 지원합니다."))
                 .andExpect(jsonPath("$.result.favorites[0].apply_end_date").value("2026-09-30"))
-                .andExpect(jsonPath("$.result.favorites[0].apply_period_code").value("0057003"))
+                .andExpect(jsonPath("$.result.favorites[0].apply_period_code").value("CLOSED"))
                 .andExpect(jsonPath("$.result.favorites[0].apply_url").value("https://example.com/apply"))
                 .andExpect(jsonPath("$.result.favorites[0].created_at").value("2026-09-24T10:30:00"));
 
@@ -142,11 +142,11 @@ class FavoriteControllerTest {
                 .favoriteId(10L)
                 .policyId("policy-1")
                 .policyName("청년 월세 지원")
-                .categoryCode(PolicyCategory.MONTHLY_RENT)
-                .categoryName("월세")
+                .categoryCodes(java.util.Set.of(PolicyCategory.MONTHLY_RENT))
+                .categoryNames(java.util.List.of("월세"))
                 .supportContent("월세를 지원합니다.")
                 .applyEndDate(LocalDate.of(2026, 9, 30))
-                .applyPeriodCode("0057003")
+                .applyPeriodCode(com.hyeja.domain.policy.enums.PolicyApplyPeriod.CLOSED)
                 .applyUrl("https://example.com/apply")
                 .createdAt(LocalDateTime.of(2026, 9, 24, 10, 30))
                 .build();
@@ -160,10 +160,10 @@ class FavoriteControllerTest {
                 .andExpect(jsonPath("$.result.favorite_id").value(10))
                 .andExpect(jsonPath("$.result.policy_id").value("policy-1"))
                 .andExpect(jsonPath("$.result.policy_name").value("청년 월세 지원"))
-                .andExpect(jsonPath("$.result.category_code").value("MONTHLY_RENT"))
-                .andExpect(jsonPath("$.result.category_name").value("월세"))
+                .andExpect(jsonPath("$.result.category_codes[0]").value("MONTHLY_RENT"))
+                .andExpect(jsonPath("$.result.category_names[0]").value("월세"))
                 .andExpect(jsonPath("$.result.apply_end_date").value("2026-09-30"))
-                .andExpect(jsonPath("$.result.apply_period_code").value("0057003"));
+                .andExpect(jsonPath("$.result.apply_period_code").value("CLOSED"));
 
         verify(favoriteService).createFavorite(1L, "policy-1");
     }

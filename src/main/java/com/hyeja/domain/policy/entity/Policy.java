@@ -3,7 +3,9 @@ package com.hyeja.domain.policy.entity;
 import com.hyeja.domain.policy.converter.PolicyCategoryConverter;
 import com.hyeja.domain.policy.converter.PolicyEmploymentConditionsConverter;
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
 import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
+import com.hyeja.domain.policy.enums.PolicyHouselessRequirement;
 import com.hyeja.domain.policy.enums.PolicyMarriageCondition;
 import com.hyeja.domain.policy.enums.PolicyIncomeCondition;
 import com.hyeja.global.baseEntity.BaseEntity;
@@ -35,14 +37,11 @@ public class Policy extends BaseEntity {
     private String policyName;
 
     @Convert(converter = PolicyCategoryConverter.class)
-    @Column(name = "category", nullable = false, length = 20)
-    private PolicyCategory category;
+    @Column(name = "category", nullable = false, length = 100)
+    private Set<PolicyCategory> categories;
 
     @Column(name = "api_sub_category", length = 50)
     private String apiSubCategory;
-
-    @Column(name = "subtype_code", length = 20)
-    private String subtypeCode;
 
     @Column(name = "keywords", length = 500)
     private String keywords;
@@ -83,17 +82,16 @@ public class Policy extends BaseEntity {
     @Column(name = "employment_codes", length = 200)
     private Set<PolicyEmploymentCondition> employmentCodes;
 
-    @Column(name = "houseless_yn")
-    private Boolean houselessYn;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "houseless_yn", nullable = false, length = 20)
+    private PolicyHouselessRequirement houselessRequirement;
 
     @Column(name = "housing_type", length = 20)
     private String housingType;
 
-    @Column(name = "region_condition", length = 1000)
-    private String regionCondition;
-
-    @Column(name = "apply_period_code", nullable = false, length = 10)
-    private String applyPeriodCode;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "apply_period_code", nullable = false, length = 20)
+    private PolicyApplyPeriod applyPeriodCode;
 
     @Column(name = "extra_qualification", columnDefinition = "TEXT")
     private String extraQualification;
@@ -120,20 +118,20 @@ public class Policy extends BaseEntity {
     private Boolean activeYn;
 
     @Builder
-    public Policy(String policyId, String policyName, PolicyCategory category, String apiSubCategory,
-            String subtypeCode, String keywords, String description, String supportContent,
+    public Policy(String policyId, String policyName, Set<PolicyCategory> categories,
+            String apiSubCategory, String keywords, String description, String supportContent,
             Integer minAge, Integer maxAge, Boolean ageLimitYn,
             PolicyIncomeCondition incomeConditionCode,
             Integer incomeMin, Integer incomeMax, String incomeEtc,
             PolicyMarriageCondition marriageCode, Set<PolicyEmploymentCondition> employmentCodes,
-            Boolean houselessYn, String housingType, String regionCondition, String applyPeriodCode,
+            PolicyHouselessRequirement houselessRequirement, String housingType,
+            PolicyApplyPeriod applyPeriodCode,
             String extraQualification, LocalDate applyStartDate, LocalDate applyEndDate,
             String applyMethod, String applyUrl, String refUrl, Integer viewCount, Boolean activeYn) {
         this.policyId = policyId;
         this.policyName = policyName;
-        this.category = category;
+        this.categories = categories;
         this.apiSubCategory = apiSubCategory;
-        this.subtypeCode = subtypeCode;
         this.keywords = keywords;
         this.description = description;
         this.supportContent = supportContent;
@@ -146,9 +144,9 @@ public class Policy extends BaseEntity {
         this.incomeEtc = incomeEtc;
         this.marriageCode = marriageCode;
         this.employmentCodes = employmentCodes;
-        this.houselessYn = houselessYn;
+        this.houselessRequirement = houselessRequirement == null
+                ? PolicyHouselessRequirement.UNKNOWN : houselessRequirement;
         this.housingType = housingType;
-        this.regionCondition = regionCondition;
         this.applyPeriodCode = applyPeriodCode;
         this.extraQualification = extraQualification;
         this.applyStartDate = applyStartDate;
