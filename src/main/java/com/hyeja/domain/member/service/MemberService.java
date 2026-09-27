@@ -93,7 +93,7 @@ public class MemberService {
 
     /**
      * 회원 ID로 내 계정 정보(닉네임·이메일·가입일)를 조회합니다.
-     * 인증 기반이 생기면 컨트롤러가 토큰에서 꺼낸 회원 ID를 넘겨 호출합니다.
+     * 회원 ID는 컨트롤러가 토큰에서 꺼내 넘겨줍니다.
      * 회원이 없거나 탈퇴한 회원(deleted_at 기록)이면 MEMBER_NOT_FOUND(404)를 던집니다.
      */
     public MemberAccountResponseDTO getMyAccount(Long memberId) {
