@@ -84,6 +84,14 @@ class EmailVerificationServiceTest {
     }
 
     @Test
+    void sendRejectsLockedEmail() {
+        when(redisTemplate.hasKey("email-verification:locked:" + EMAIL)).thenReturn(true);
+
+        assertError(() -> service.send(EMAIL), ErrorStatus.VERIFY_TOO_MANY_FAILURES);
+        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+    }
+
+    @Test
     void sendRejectsWithinSixtySeconds() {
         when(values.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(false);
 
@@ -113,13 +121,15 @@ class EmailVerificationServiceTest {
         verify(redisTemplate).delete("email-verification:code:" + EMAIL);
     }
 
+    // 틀리면 횟수를 세고, 남은 기회를 에러 응답의 result로 알려 줍니다.
     @Test
-    void confirmCountsWrongCode() {
+    void confirmCountsWrongCodeAndReturnsRemainingAttempts() {
         when(values.get("email-verification:code:" + EMAIL)).thenReturn("384021");
-        when(values.get("email-verification:failures:" + EMAIL)).thenReturn("2");
+        when(values.increment("email-verification:failures:" + EMAIL)).thenReturn(2L);
 
         assertError(() -> service.confirm(EMAIL, "000000"), ErrorStatus.VERIFY_CODE_MISMATCH);
-        verify(values).increment("email-verification:failures:" + EMAIL);
+        assertThatThrownBy(() -> service.confirm(EMAIL, "000000"))
+                .extracting("result").extracting("remainingAttempts").isEqualTo(3L);
     }
 
     @Test
@@ -129,11 +139,22 @@ class EmailVerificationServiceTest {
         assertError(() -> service.confirm(EMAIL, "384021"), ErrorStatus.VERIFY_CODE_EXPIRED);
     }
 
-    // 5번 틀린 뒤에는 맞는 코드를 넣어도 막고, 코드를 다시 받게 합니다.
+    // 5번째로 틀린 순간 1시간 잠그고, 코드도 지워 더 이상 쓸 수 없게 합니다.
     @Test
-    void confirmBlocksAfterFiveFailures() {
+    void confirmLocksForOneHourOnFifthFailure() {
         when(values.get("email-verification:code:" + EMAIL)).thenReturn("384021");
-        when(values.get("email-verification:failures:" + EMAIL)).thenReturn("5");
+        when(values.increment("email-verification:failures:" + EMAIL)).thenReturn(5L);
+
+        assertError(() -> service.confirm(EMAIL, "000000"), ErrorStatus.VERIFY_TOO_MANY_FAILURES);
+        verify(values).set("email-verification:locked:" + EMAIL, "1", Duration.ofHours(1));
+        verify(redisTemplate).delete("email-verification:code:" + EMAIL);
+    }
+
+    // 잠긴 동안은 맞는 코드를 넣어도 막습니다.
+    @Test
+    void confirmRejectsWhileLocked() {
+        when(redisTemplate.hasKey("email-verification:locked:" + EMAIL)).thenReturn(true);
+        when(values.get("email-verification:code:" + EMAIL)).thenReturn("384021");
 
         assertError(() -> service.confirm(EMAIL, "384021"), ErrorStatus.VERIFY_TOO_MANY_FAILURES);
         verify(values, never()).set(eq("email-verification:verified:" + EMAIL), anyString(), any(Duration.class));

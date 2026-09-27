@@ -1,5 +1,6 @@
 package com.hyeja.domain.member.controller;
 
+import com.hyeja.domain.member.dto.EmailVerificationResponseDTO;
 import com.hyeja.domain.member.service.EmailVerificationService;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.ExceptionAdvice;
@@ -69,14 +70,28 @@ class EmailVerificationControllerTest {
         verify(service).confirm("hyeja@example.com", "384021");
     }
 
+    // 틀리면 남은 기회가 result.remainingAttempts로 내려갑니다.
     @Test
-    void returnsBadRequestWhenCodeMismatches() throws Exception {
-        doThrow(new GeneralException(ErrorStatus.VERIFY_CODE_MISMATCH)).when(service).confirm("hyeja@example.com", "000000");
+    void returnsBadRequestWithRemainingAttemptsWhenCodeMismatches() throws Exception {
+        doThrow(new GeneralException(ErrorStatus.VERIFY_CODE_MISMATCH, new EmailVerificationResponseDTO.MismatchDTO(3)))
+                .when(service).confirm("hyeja@example.com", "000000");
 
         mvc.perform(json("/api/members/email-verifications/confirmation",
                         "{\"email\": \"hyeja@example.com\", \"code\": \"000000\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VERIFY_001"));
+                .andExpect(jsonPath("$.code").value("VERIFY_001"))
+                .andExpect(jsonPath("$.result.remainingAttempts").value(3));
+    }
+
+    @Test
+    void returnsTooManyRequestsWhenLocked() throws Exception {
+        doThrow(new GeneralException(ErrorStatus.VERIFY_TOO_MANY_FAILURES)).when(service).confirm("hyeja@example.com", "000000");
+
+        mvc.perform(json("/api/members/email-verifications/confirmation",
+                        "{\"email\": \"hyeja@example.com\", \"code\": \"000000\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("VERIFY_005"))
+                .andExpect(jsonPath("$.message").value("인증 시도 횟수를 초과했어요. 1시간 후에 다시 시도해 주세요."));
     }
 
     // 코드는 숫자 6자리만 받습니다.
