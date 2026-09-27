@@ -60,7 +60,7 @@ Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한
 
 아래 목록은 Notion 명세의 계획을 요약한 것이며 현재 코드의 존재를 뜻하지 않는다.
 
-- 정책: 검색·추천·상세·페이지 목록·카드 상세
+- 정책: 검색·추천·카드 상세
 - 회원용 카드뉴스
 
 구현 전에 Method와 URL을 다시 확인한다. 명세에는 `/api` 누락, memberId 위치 불일치, `notificatonId` 오타 등 현재 코드와 다른 표기가 남아 있다.

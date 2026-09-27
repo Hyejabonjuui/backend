@@ -6,6 +6,9 @@
 - Spring Boot 4.1.1
 - Spring MVC, Bean Validation
 - Spring Data JPA
+- Spring Security, JWT(jjwt 0.13)
+- Redis(로그아웃 토큰·이메일 인증 코드)
+- Spring Mail(Gmail SMTP)
 - MariaDB(로컬 실행), H2(테스트)
 - Springdoc OpenAPI 3.1.1
 - Gradle Wrapper 9.7.1
@@ -18,23 +21,24 @@
 ```text
 com.hyeja
 ├── domain
-│   ├── cardnews       # ctrl, dto, entity, repository, service
-│   ├── favorite       # entity
-│   ├── member         # ctrl, dto, entity, repository, service, converter, enums
+│   ├── cardnews       # controller, dto, entity, repository, service
+│   ├── favorite       # controller, dto, entity, repository, service, converter
+│   ├── member         # controller, dto, entity, repository, service, converter, enums
 │   ├── notification   # controller, dto, entity, repository, service, scheduler, converter
-│   ├── policy         # ctrl, dto, entity, repository, service, converter, enums
-│   ├── profile        # entity, converter, enums
-│   ├── region         # entity
+│   ├── policy         # controller, dto, entity, repository, service, converter, enums
+│   ├── profile        # controller, dto, entity, repository, service, converter, enums
+│   ├── region         # controller, dto, entity, repository, service, converter, init
 │   └── term           # entity
 └── global
     ├── apiPayload     # 공통 응답과 상태 코드
     ├── baseEntity     # 감사 시각과 deletedAt
-    ├── config         # JPA Auditing, Scheduling, Swagger, RestTemplate
+    ├── config         # JPA Auditing, Scheduling, Swagger, RestTemplate, Security, PasswordEncoder
     ├── exception      # 전역 예외 처리
-    └── health         # 헬스체크
+    ├── health         # 헬스체크
+    └── security       # JWT 발급·검증 필터, 로그아웃 토큰 블랙리스트
 ```
 
-기존에 `ctrl`과 `controller` 같은 명칭이 혼재한다. 새 패키지명을 임의로 일괄 변경하지 말고, 기능을 추가할 때 해당 도메인의 기존 구조와 이슈 범위를 따른다.
+컨트롤러 패키지명은 `controller`로 통일되어 있다. 기능을 추가할 때 해당 도메인의 기존 구조와 이슈 범위를 따른다.
 
 ## 일반 요청 흐름
 
@@ -117,8 +121,8 @@ docker compose up -d   # 로컬 Redis(hyeja-redis) 실행. 토큰을 보내는 �
 
 ## 현재 구조상 주의점
 
-- 인증·인가는 아직 없다.
-- `/api/policies/sync`도 현재 인증 없이 노출된다.
+- 인증은 JWT 토큰 방식이다. 규칙은 `docs/api-conventions.md`의 인증 규칙을 따른다.
+- 관리자 권한 구분은 없어서 `/api/policies/sync`는 로그인한 회원이면 누구나 호출할 수 있다.
 - `/api/policies/housing`은 이름과 달리 저장된 Policy 전체를 반환하며 별도 category, active, deleted 필터가 없다.
 - 카드뉴스 조회도 active와 soft-delete를 자동 필터링하지 않는다.
-- MariaDB, 실제 외부 API, 인증 흐름을 검증하는 통합 테스트는 아직 없다.
+- MariaDB, 실제 외부 API를 검증하는 통합 테스트는 아직 없다. 인증 흐름은 `SecurityTest`가 H2로 검증한다(Redis 블랙리스트는 mock).
