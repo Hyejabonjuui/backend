@@ -51,4 +51,11 @@ public class Member extends BaseEntity {
         this.nickname = nickname;
         this.role = Role.USER;
     }
+
+    // 관리자 계정은 AdminInitializer에서만 만듭니다. 회원가입으로 만든 계정은 항상 USER입니다.
+    public static Member admin(String email, String password) {
+        Member admin = new Member(email, password, "관리자");
+        admin.role = Role.ADMIN;
+        return admin;
+    }
 }

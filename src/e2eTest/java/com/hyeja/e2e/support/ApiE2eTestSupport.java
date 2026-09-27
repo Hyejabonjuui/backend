@@ -2,6 +2,7 @@ package com.hyeja.e2e.support;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hyeja.domain.member.entity.Member;
 import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.domain.notification.repository.NotificationRepository;
 import com.hyeja.domain.policy.entity.Policy;
@@ -26,6 +27,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
 @ActiveProfiles({"test", "e2e"})
@@ -63,6 +65,9 @@ public abstract class ApiE2eTestSupport {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     protected RegionRepository regionRepository;
@@ -156,6 +161,23 @@ public abstract class ApiE2eTestSupport {
                 email,
                 nickname
         );
+    }
+
+    // 관리자 전용 API용. 관리자는 회원가입으로 만들 수 없어 DB에 직접 저장한 뒤 로그인합니다.
+    protected String adminAccessToken() throws Exception {
+        memberRepository.save(Member.admin("admin@example.com", passwordEncoder.encode(PASSWORD)));
+        ApiHttpResponse login = request(
+                "POST",
+                "/api/members/login",
+                """
+                        {"email":"admin@example.com","password":"%s"}
+                        """.formatted(PASSWORD),
+                null
+        );
+        if (login.status() != 200) {
+            throw new IllegalStateException("관리자 로그인 실패: " + login.body());
+        }
+        return login.body().path("result").path("accessToken").asText();
     }
 
     protected void markEmailVerified(String email) {

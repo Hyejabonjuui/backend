@@ -106,6 +106,8 @@ HTTP 요청
 | `REDIS_PORT` | Redis 포트 | `6379` |
 | `MAIL_USERNAME` | 인증 메일을 보내는 Gmail 주소. 비어 있으면 메일 대신 서버 로그에 인증 코드를 출력 | 없음 |
 | `MAIL_PASSWORD` | Gmail 앱 비밀번호(16자리) | 없음 |
+| `ADMIN_EMAIL` | 관리자 계정 이메일. 서버 시작 시 없으면 ADMIN으로 생성, 비어 있으면 건너뜀 | 없음 |
+| `ADMIN_PASSWORD` | 관리자 계정 비밀번호 | 없음 |
 
 ## 실행과 문서 경로
 
@@ -124,7 +126,7 @@ docker compose up -d   # 로컬 Redis(hyeja-redis) 실행. 토큰을 보내는 �
 ## 현재 구조상 주의점
 
 - 인증은 JWT 토큰 방식이다. 규칙은 `docs/api-conventions.md`의 인증 규칙을 따른다.
-- 관리자 권한 구분은 없어서 `/api/policies/sync`는 로그인한 회원이면 누구나 호출할 수 있다.
+- `/api/policies/sync`와 `/api/notification/admin/**`는 ADMIN만 호출할 수 있다. 관리자 계정은 `ADMIN_EMAIL`·`ADMIN_PASSWORD`로 서버 시작 시 만든다.
 - `/api/policies/housing`은 비로그인 주거 정책 목록을 카테고리·정렬 조건으로 페이지 조회한다.
 - 카드뉴스 조회도 active와 soft-delete를 자동 필터링하지 않는다.
 - 실제 외부 API(온통청년·OpenAI)를 호출하는 테스트는 없다. MariaDB·Redis를 포함한 인증 흐름은 E2E 테스트(`docs/e2e-testing.md`)가 검증한다.

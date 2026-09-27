@@ -15,22 +15,32 @@ class NotificationApiE2eTest extends ApiE2eTestSupport {
                 FIXED_TODAY.plusDays(7), 0, true);
         Session session = signupAndLogin();
         request("POST", "/api/favorite/DEADLINE-POLICY", null, session.accessToken());
+        String adminToken = adminAccessToken();
 
-        ApiHttpResponse generated = request(
+        // 알림 생성은 관리자 전용이라 일반 회원 토큰은 403입니다.
+        ApiHttpResponse forbidden = request(
                 "POST",
                 "/api/notification/admin/generate?memberId=" + session.memberId(),
                 null,
                 session.accessToken()
+        );
+        ApiHttpResponse generated = request(
+                "POST",
+                "/api/notification/admin/generate?memberId=" + session.memberId(),
+                null,
+                adminToken
         );
         ApiHttpResponse generatedAgain = request(
                 "POST",
                 "/api/notification/admin/generate?memberId=" + session.memberId(),
                 null,
-                session.accessToken()
+                adminToken
         );
         ApiHttpResponse listed = request(
                 "GET", "/api/notification?page=0&size=8", null, session.accessToken());
 
+        assertThat(forbidden.status()).isEqualTo(403);
+        assertThat(forbidden.body().path("code").asText()).isEqualTo("COMMON_004");
         assertThat(generated.status()).isEqualTo(200);
         assertThat(generated.body().path("isSuccess").asBoolean()).isTrue();
         assertThat(generated.body().path("result").asInt()).isEqualTo(1);

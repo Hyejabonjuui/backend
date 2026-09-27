@@ -25,6 +25,9 @@ API 개발과 프론트 시연을 위한 가상 데이터입니다. 실제 지�
    # 선택: 비워 두면 회원가입 인증 코드가 메일 대신 서버 로그에 출력됩니다.
    MAIL_USERNAME=
    MAIL_PASSWORD=
+   # 선택: 정책 동기화·알림 생성(관리자 전용 API)을 쓸 때만 넣습니다. 서버 시작 시 이 계정이 없으면 관리자로 만듭니다.
+   ADMIN_EMAIL=
+   ADMIN_PASSWORD=
    ```
 
    `DB_USERNAME`과 `DB_PASSWORD`는 본인의 MariaDB 계정 정보로 바꿉니다.

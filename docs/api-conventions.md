@@ -46,14 +46,14 @@
 | `GET` | `/api/policies/housing` | query `category?`, `sort=DEADLINE`, `page=0`, `size=8` | 불필요 | 진행 중 정책 페이지 조회, 상시 정책은 마감일순 마지막 배치 |
 | `GET` | `/api/policies/housing/me` | query `category?`, `sort=DEADLINE`, `onlyEligible=false`, `page=0`, `size=8` | 필요 | 진행 중 정책 페이지 조회, 회원 조건 필터와 관심 여부 포함 |
 | `GET` | `/api/policies/{policyId}` | path `policyId` | 필요 | 회원 맞춤 정보를 포함한 정책 상세 |
-| `POST` | `/api/policies/sync` | 없음 | 필요 | 외부 정책 수동 동기화 |
+| `POST` | `/api/policies/sync` | 없음 | 관리자 | 외부 정책 수동 동기화 |
 | `GET` | `/api/favorite` | query `keyword?`, `page=0`, `size=8` | 필요 | 관심 정책을 최근 등록순으로 페이지 조회, 정책명·지원 내용 검색 |
 | `POST` | `/api/favorite/{policyId}` | path `policyId` | 필요 | 관심 정책 등록, 중복 등록 불가 |
 | `DELETE` | `/api/favorite/{policyId}` | path `policyId` | 필요 | 관심 정책 영구 삭제 |
 | `GET` | `/api/notification` | query `page=0`, `size=8` | 필요 | 삭제되지 않은 알림 최신순 페이지 조회 |
 | `PATCH` | `/api/notification/{notificationId}/read` | path `notificationId` | 필요 | 본인 소유의 알림 읽음 처리 |
 | `DELETE` | `/api/notification/{notificationId}` | path `notificationId` | 필요 | 본인 소유의 알림 영구 삭제 |
-| `POST` | `/api/notification/admin/generate` | query `memberId: Long` | 필요 | 개발·테스트용, 지정 회원의 D-7 관심 정책 알림만 생성 |
+| `POST` | `/api/notification/admin/generate` | query `memberId: Long` | 관리자 | 개발·테스트용, 지정 회원의 D-7 관심 정책 알림만 생성 |
 
 Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한다.
 
@@ -73,6 +73,8 @@ Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한
 - 회원은 `memberId` 파라미터가 아니라 토큰으로 식별한다. 컨트롤러는 `@AuthenticationPrincipal Long memberId`로 받는다.
 - 기본은 로그인 필수이고, 로그인 없이 쓰는 API만 `SecurityConfig`에 허용 목록으로 둔다. 비로그인용 API를 새로 만들면 허용 목록에 추가한다.
 - 예외: 개발·테스트용 `POST /api/notification/admin/generate`의 `memberId`는 "알림을 만들 대상 회원"이라 query로 유지한다.
+- 로그인 열이 "관리자"인 API는 ADMIN 계정 토큰만 호출할 수 있고, 일반 회원 토큰이면 `403 COMMON_004`다. 관리자 화면·기능은 없고 비용이나 다른 회원 데이터에 영향을 주는 API만 보호한다.
+- 관리자 계정은 회원가입으로 만들 수 없다. `.env`에 `ADMIN_EMAIL`·`ADMIN_PASSWORD`를 넣고 서버를 시작하면 그 이메일이 없을 때 ADMIN으로 만들어진다(`AdminInitializer`).
 
 ## 필드와 직렬화
 
