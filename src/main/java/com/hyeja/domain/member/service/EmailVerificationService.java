@@ -3,15 +3,22 @@ package com.hyeja.domain.member.service;
 import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.MailPreparationException;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 /**
@@ -31,6 +38,8 @@ public class EmailVerificationService {
     static final int MAX_FAILURES = 5;
 
     private static final SecureRandom RANDOM = new SecureRandom();
+    // 메일 디자인은 resources/mail/verification-code.html에서 고칩니다. 서버가 뜰 때 한 번 읽어 둡니다.
+    private static final String MAIL_TEMPLATE = readTemplate("mail/verification-code.html");
 
     private final StringRedisTemplate redisTemplate;
     private final JavaMailSender mailSender;
@@ -111,12 +120,31 @@ public class EmailVerificationService {
             log.info("[로컬 개발] MAIL_USERNAME이 없어 메일 대신 로그로 출력합니다. {} 인증 코드: {}", email, code);
             return;
         }
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(mailFrom);
-        message.setTo(email);
-        message.setSubject("[혜자] 회원가입 인증 코드");
-        message.setText("인증 코드: " + code + "\n\n5분 안에 회원가입 화면에 입력해 주세요.");
+        String minutes = String.valueOf(CODE_TTL.toMinutes());
+        String html = MAIL_TEMPLATE.replace("{{code}}", code).replace("{{minutes}}", minutes);
+        // HTML을 못 보여 주는 메일 앱에서는 아래 글자만 보입니다.
+        String plain = "인증 코드: " + code + "\n\n" + minutes + "분 안에 회원가입 화면에 입력해 주세요.";
+
+        MimeMessage message = mailSender.createMimeMessage();
+        try {
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(mailFrom);
+            helper.setTo(email);
+            helper.setSubject("[혜자] 회원가입 인증 코드");
+            helper.setText(plain, html);
+        } catch (MessagingException e) {
+            // MailException으로 바꿔 던져, send()에서 발송 실패(MAIL_001)로 똑같이 처리합니다.
+            throw new MailPreparationException("인증 메일 작성 실패", e);
+        }
         mailSender.send(message);
+    }
+
+    private static String readTemplate(String path) {
+        try {
+            return new ClassPathResource(path).getContentAsString(StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static String key(String type, String email) {
