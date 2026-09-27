@@ -165,7 +165,7 @@ public class MemberController {
     // 로그인 — 예: POST /api/members/login
     @Operation(
             summary = "로그인",
-            description = "이메일·비밀번호가 맞으면 accessToken(30분 유효)을 발급합니다. "
+            description = "이메일·비밀번호가 맞으면 accessToken(300분 유효)을 발급합니다. "
                     + "이후 요청 헤더에 Authorization: Bearer <accessToken>으로 보냅니다. "
                     + "이메일이 없거나 비밀번호가 틀리거나 탈퇴한 회원이면 모두 MEMBER_005로 응답합니다."
     )
