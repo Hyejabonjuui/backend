@@ -180,6 +180,8 @@ class EmailVerificationServiceTest {
         assertError(() -> service.confirm(EMAIL, "000000"), ErrorStatus.VERIFY_TOO_MANY_FAILURES);
         verify(values).set("email-verification:locked:" + EMAIL, "1", Duration.ofHours(1));
         verify(redisTemplate).delete("email-verification:code:" + EMAIL);
+        // 횟수를 지우면 잠금 직전의 동시 요청이 1부터 다시 세므로 남겨 둡니다.
+        verify(redisTemplate, never()).delete("email-verification:failures:" + EMAIL);
     }
 
     // 잠긴 동안은 맞는 코드를 넣어도 막습니다.

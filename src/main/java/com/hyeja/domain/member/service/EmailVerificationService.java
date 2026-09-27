@@ -103,7 +103,8 @@ public class EmailVerificationService {
             if (remaining <= 0) {
                 redisTemplate.opsForValue().set(key("locked", email), "1", LOCK_TTL);
                 redisTemplate.delete(key("code", email));
-                redisTemplate.delete(key("failures", email));
+                // 횟수는 지우지 않습니다. 지우면 잠금 직전에 들어온 동시 요청이 1부터 다시 세어 비교를 통과할 수 있습니다.
+                // 횟수 키는 첫 시도부터 1시간 뒤 스스로 사라집니다.
                 throw new GeneralException(ErrorStatus.VERIFY_TOO_MANY_FAILURES);
             }
             throw new GeneralException(ErrorStatus.VERIFY_CODE_MISMATCH,
