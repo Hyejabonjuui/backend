@@ -124,6 +124,34 @@ class SecurityTest {
         }
     }
 
+    // 정책 동기화·알림 생성은 관리자 전용입니다. 일반 회원 토큰이면 컨트롤러까지 가지 않고 403입니다.
+    @Test
+    void adminApisRejectUserToken() throws Exception {
+        String userToken = jwtProvider.createAccessToken(member(1L));
+
+        for (String path : new String[] {"/api/policies/sync", "/api/notification/admin/generate?memberId=1"}) {
+            HttpResponse<String> response = send("POST", path, "Bearer " + userToken);
+
+            assertThat(response.statusCode()).as(path).isEqualTo(403);
+            var body = JsonPath.parse(response.body());
+            assertThat(body.read("$.isSuccess", Boolean.class)).isFalse();
+            assertThat(body.read("$.code", String.class)).isEqualTo("COMMON_004");
+        }
+    }
+
+    // 관리자 토큰은 통과합니다. (DB에 없는 회원 99번이라 알림 서비스가 MEMBER_001을 냅니다)
+    @Test
+    void adminApisAllowAdminToken() throws Exception {
+        Member admin = Member.admin("admin@hyeja.test", "encoded");
+        ReflectionTestUtils.setField(admin, "memberId", 1L);
+        String adminToken = jwtProvider.createAccessToken(admin);
+
+        HttpResponse<String> response = send("POST", "/api/notification/admin/generate?memberId=99", "Bearer " + adminToken);
+
+        assertThat(response.statusCode()).isEqualTo(404);
+        assertThat(JsonPath.parse(response.body()).read("$.code", String.class)).isEqualTo("MEMBER_001");
+    }
+
     // 브라우저는 다른 주소(프론트 5173)로 요청하기 전에 OPTIONS로 허용 여부를 먼저 묻습니다(preflight).
     // 이 요청에는 토큰이 없으므로, 로그인이 필요한 API에서도 막히지 않아야 합니다.
     @Test
