@@ -1,7 +1,6 @@
 package com.hyeja.domain.policy.repository;
 
 import com.hyeja.domain.policy.entity.Policy;
-import com.hyeja.domain.policy.enums.PolicyCategory;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.data.domain.Page;
@@ -22,9 +21,16 @@ public interface PolicyRepository extends JpaRepository<Policy, String> {
             from Policy policy
             where policy.deletedAt is null
               and policy.activeYn = true
-              and policy.applyPeriodCode <> '0057003'
+              and policy.applyPeriodCode <> com.hyeja.domain.policy.enums.PolicyApplyPeriod.CLOSED
               and (policy.applyEndDate is null or policy.applyEndDate >= :today)
-              and (:category is null or policy.category = :category)
+              and (
+                  :category is null
+                  or cast(policy.categories as string) = :category
+                  or cast(policy.categories as string) like concat(:category, ',%')
+                  or cast(policy.categories as string) like concat('%,', :category)
+                  or cast(policy.categories as string)
+                      like concat('%,', concat(:category, ',%'))
+              )
               and (
                   :onlyEligible = false
                   or (
@@ -36,8 +42,9 @@ public interface PolicyRepository extends JpaRepository<Policy, String> {
                           )
                       )
                       and (
-                          policy.houselessYn is null
-                          or policy.houselessYn = false
+                          policy.houselessRequirement is null
+                          or policy.houselessRequirement = com.hyeja.domain.policy.enums.PolicyHouselessRequirement.NOT_REQUIRED
+                          or policy.houselessRequirement = com.hyeja.domain.policy.enums.PolicyHouselessRequirement.UNKNOWN
                           or :houselessYn = true
                       )
                       and (
@@ -71,7 +78,7 @@ public interface PolicyRepository extends JpaRepository<Policy, String> {
               )
             """)
     Page<Policy> findHousingPoliciesForMember(
-            @Param("category") PolicyCategory category,
+            @Param("category") String category,
             @Param("onlyEligible") boolean onlyEligible,
             @Param("today") LocalDate today,
             @Param("age") int age,

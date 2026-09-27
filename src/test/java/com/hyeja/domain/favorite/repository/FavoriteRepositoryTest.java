@@ -269,10 +269,10 @@ class FavoriteRepositoryTest {
         Policy policy = Policy.builder()
                 .policyId(policyId)
                 .policyName(policyName)
-                .category(PolicyCategory.MONTHLY_RENT)
+                .categories(java.util.Set.of(PolicyCategory.MONTHLY_RENT))
                 .supportContent(supportContent)
                 .ageLimitYn(false)
-                .applyPeriodCode("0057003")
+                .applyPeriodCode(com.hyeja.domain.policy.enums.PolicyApplyPeriod.CLOSED)
                 .applyEndDate(applyEndDate)
                 .applyUrl("https://example.com/apply")
                 .build();

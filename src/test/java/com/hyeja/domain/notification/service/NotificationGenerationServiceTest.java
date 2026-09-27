@@ -179,9 +179,9 @@ class NotificationGenerationServiceTest {
         return Policy.builder()
                 .policyId(policyId)
                 .policyName("마감 예정 정책")
-                .category(PolicyCategory.MONTHLY_RENT)
+                .categories(java.util.Set.of(PolicyCategory.MONTHLY_RENT))
                 .ageLimitYn(false)
-                .applyPeriodCode("PERIOD")
+                .applyPeriodCode(com.hyeja.domain.policy.enums.PolicyApplyPeriod.SPECIFIC_PERIOD)
                 .applyEndDate(DEADLINE_DATE)
                 .build();
     }

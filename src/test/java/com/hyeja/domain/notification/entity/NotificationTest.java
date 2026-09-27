@@ -37,7 +37,9 @@ class NotificationTest {
         member = Member.builder().email("member@example.com")
                 .password("encoded-password").nickname("회원").build();
         policy = Policy.builder().policyId("policy-1").policyName("테스트 정책")
-                .category(PolicyCategory.MONTHLY_RENT).ageLimitYn(false).applyPeriodCode("TEST")
+                .categories(java.util.Set.of(PolicyCategory.MONTHLY_RENT))
+                .ageLimitYn(false).applyPeriodCode(
+                        com.hyeja.domain.policy.enums.PolicyApplyPeriod.SPECIFIC_PERIOD)
                 .applyEndDate(DEADLINE_DATE).build();
         entityManager.persist(member);
         entityManager.persist(policy);

@@ -50,7 +50,7 @@ class PolicyRepositoryTest {
                 "always-open", "상시 정책", null, "EMPLOYED", true, 19, 39);
         persistPolicy(
                 "closed-without-end-date", "마감 코드 정책", null, "EMPLOYED", true,
-                19, 39, "0057003");
+                19, 39, com.hyeja.domain.policy.enums.PolicyApplyPeriod.CLOSED);
         Policy wrongRegion = persistPolicy(
                 "wrong-region", "강남 정책", today.plusDays(1), "EMPLOYED", true, 19, 39);
         persistPolicy("wrong-age", "연령 불일치", today.plusDays(1), "EMPLOYED", true, 30, 39);
@@ -62,7 +62,7 @@ class PolicyRepositoryTest {
         entityManager.clear();
 
         var result = policyRepository.findHousingPoliciesForMember(
-                PolicyCategory.MONTHLY_RENT,
+                PolicyCategory.MONTHLY_RENT.name(),
                 true,
                 today,
                 26,
@@ -134,7 +134,7 @@ class PolicyRepositoryTest {
                 houselessYn,
                 minAge,
                 maxAge,
-                "PERIOD"
+                com.hyeja.domain.policy.enums.PolicyApplyPeriod.SPECIFIC_PERIOD
         );
     }
 
@@ -146,19 +146,21 @@ class PolicyRepositoryTest {
             boolean houselessYn,
             int minAge,
             int maxAge,
-            String applyPeriodCode
+            com.hyeja.domain.policy.enums.PolicyApplyPeriod applyPeriodCode
     ) {
         Policy policy = Policy.builder()
                 .policyId(policyId)
                 .policyName(policyName)
-                .category(PolicyCategory.MONTHLY_RENT)
+                .categories(java.util.Set.of(PolicyCategory.MONTHLY_RENT))
                 .ageLimitYn(true)
                 .minAge(minAge)
                 .maxAge(maxAge)
                 .employmentCodes(employmentCodes == null
                         ? null : java.util.Set.of(
                                 PolicyEmploymentCondition.valueOf(employmentCodes)))
-                .houselessYn(houselessYn)
+                .houselessRequirement(houselessYn
+                        ? com.hyeja.domain.policy.enums.PolicyHouselessRequirement.REQUIRED
+                        : com.hyeja.domain.policy.enums.PolicyHouselessRequirement.NOT_REQUIRED)
                 .applyPeriodCode(applyPeriodCode)
                 .applyEndDate(endDate)
                 .build();

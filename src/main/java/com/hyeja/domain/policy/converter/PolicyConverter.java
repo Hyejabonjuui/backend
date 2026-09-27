@@ -10,6 +10,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Comparator;
 import org.springframework.data.domain.Page;
 
 public final class PolicyConverter {
@@ -49,8 +50,11 @@ public final class PolicyConverter {
         return PolicyListItemDTO.builder()
                 .policyId(policy.getPolicyId())
                 .policyName(policy.getPolicyName())
-                .categoryCode(policy.getCategory())
-                .categoryName(policy.getCategory().getLabel())
+                .categoryCodes(policy.getCategories())
+                .categoryNames(policy.getCategories().stream()
+                        .sorted(Comparator.comparing(Enum::name))
+                        .map(com.hyeja.domain.policy.enums.PolicyCategory::getLabel)
+                        .toList())
                 .regions(regions.stream()
                         .map(region -> PolicyRegionItemDTO.builder()
                                 .regionCode(region.getRegionCode())

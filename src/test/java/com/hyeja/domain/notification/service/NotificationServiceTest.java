@@ -147,9 +147,9 @@ class NotificationServiceTest {
         Policy policy = Policy.builder()
                 .policyId("policy-1")
                 .policyName("테스트 정책")
-                .category(PolicyCategory.MONTHLY_RENT)
+                .categories(java.util.Set.of(PolicyCategory.MONTHLY_RENT))
                 .ageLimitYn(false)
-                .applyPeriodCode("PERIOD")
+                .applyPeriodCode(com.hyeja.domain.policy.enums.PolicyApplyPeriod.SPECIFIC_PERIOD)
                 .applyEndDate(LocalDate.of(2026, 10, 1))
                 .build();
         Notification notification = Notification.builder()
