@@ -42,7 +42,7 @@ class PolicySyncItemServiceTest {
         item.setPolicyId("policy-1");
         item.setPolicyName("청년 주거 정책");
         item.setSupportContent("지원 내용");
-        item.setRegionCodes("11110, 11440");
+        item.setRegionCodes("11110");
         item.setApplyPeriodCode("57002");
         PolicyAiAnalysis analysis = new PolicyAiAnalysis(
                 "청년의 주거비를 지원합니다.",
@@ -142,7 +142,7 @@ class PolicySyncItemServiceTest {
     }
 
     @Test
-    void storesOnlyFirstRegionWhenApiValueContainsMultipleCodes() {
+    void treatsMultipleRegionCodesAsNationwide() {
         PolicyItem item = new PolicyItem();
         item.setPolicyId("nationwide-policy");
         item.setPolicyName("전국 정책");
@@ -163,7 +163,6 @@ class PolicySyncItemServiceTest {
                 0.5, "확인 필요",
                 PolicyIncomeCondition.UNKNOWN, null, null,
                 0.5, "확인 필요");
-        when(regionRepository.findAllById(any())).thenReturn(List.of(regions.get(0)));
         when(policyRepository.save(any(Policy.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(cardNewsRepository.existsByPolicy_PolicyIdAndCardNo("nationwide-policy", 1L))
@@ -175,8 +174,7 @@ class PolicySyncItemServiceTest {
             java.util.List<com.hyeja.domain.policy.entity.PolicyRegion> policyRegions =
                     new java.util.ArrayList<>();
             values.forEach(policyRegions::add);
-            return policyRegions.size() == 1
-                    && policyRegions.get(0).getRegion().getRegionCode().equals("00001");
+            return policyRegions.isEmpty();
         }));
     }
 }
