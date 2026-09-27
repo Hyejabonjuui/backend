@@ -128,6 +128,7 @@ public abstract class ApiE2eTestSupport {
 
     protected Session signupAndLogin(String email, String nickname) throws Exception {
         saveDefaultRegion();
+        markEmailVerified(email);
 
         ApiHttpResponse signup = request("POST", "/api/members", signupBody(email, nickname), null);
         if (signup.status() != 200) {
@@ -152,6 +153,10 @@ public abstract class ApiE2eTestSupport {
                 email,
                 nickname
         );
+    }
+
+    protected void markEmailVerified(String email) {
+        redisTemplate.opsForValue().set("email-verification:verified:" + email, "1");
     }
 
     protected String signupBody(String email, String nickname) {

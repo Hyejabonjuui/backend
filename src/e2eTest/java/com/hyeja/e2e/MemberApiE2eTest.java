@@ -10,6 +10,7 @@ class MemberApiE2eTest extends ApiE2eTestSupport {
     @Test
     void signsUpLogsInAndLoadsAccountAndProfile() throws Exception {
         saveDefaultRegion();
+        markEmailVerified("member@example.com");
 
         ApiHttpResponse signup = request(
                 "POST",
