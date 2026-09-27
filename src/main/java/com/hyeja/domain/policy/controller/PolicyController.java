@@ -17,7 +17,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
@@ -46,8 +45,7 @@ public class PolicyController {
     @GetMapping("/search")
     public ApiResponse<PolicySearchResponseDTO> searchPolicies(
             @Parameter(hidden = true) @AuthenticationPrincipal Long memberId,
-            @RequestParam("query")
-            @NotBlank(message = "검색어를 입력해 주세요.") String query) {
+            @RequestParam("query") String query) {
         return ApiResponse.onSuccess(policySearchService.search(memberId, query));
     }
 

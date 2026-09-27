@@ -6,6 +6,8 @@ import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO.ConditionResultDTO;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.ReasonRequest;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.SearchIntent;
+import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.AnalysisException;
+import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.FailureType;
 import com.openai.client.OpenAIClient;
 import com.openai.core.JsonValue;
 import com.openai.models.responses.EasyInputMessage;
@@ -76,11 +78,17 @@ public class OpenAiPolicySearchAnalyzer implements PolicySearchAiAnalyzer {
     public SearchIntent analyzeIntent(String query) {
         IntentResponse response = parse(call(INTENT_PROMPT, query, "policy_search_intent", INTENT_SCHEMA),
                 IntentResponse.class);
-        Set<PolicyCategory> categories = response.categories() == null
-                ? Set.of()
-                : response.categories().stream()
-                        .map(PolicyCategory::valueOf)
-                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        Set<PolicyCategory> categories;
+        try {
+            categories = response.categories() == null
+                    ? Set.of()
+                    : response.categories().stream()
+                            .map(PolicyCategory::valueOf)
+                            .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        } catch (IllegalArgumentException exception) {
+            throw new AnalysisException(FailureType.INVALID_RESPONSE,
+                    "OpenAI 검색 분석 응답에 알 수 없는 카테고리가 있습니다.", exception);
+        }
         return new SearchIntent(response.housingRelated(), Set.copyOf(categories));
     }
 
@@ -109,18 +117,10 @@ public class OpenAiPolicySearchAnalyzer implements PolicySearchAiAnalyzer {
                 policyId: %s
                 policyName: %s
                 overallStatus: %s
-                housingType: %s
-                memberRegion: %s
                 evaluation:
                 %s
                 """.formatted(
-                request.policy().getPolicyId(), request.policy().getPolicyName(),
-                request.overallStatus(),
-                request.profile().getHousingType() == null
-                        ? "미입력" : request.profile().getHousingType().getLabel(),
-                request.profile().getRegion() == null
-                        ? "미입력" : request.profile().getRegion().getSigunguName(),
-                conditions);
+                request.policyId(), request.policyName(), request.overallStatus(), conditions);
     }
 
     private String conditionLine(ConditionResultDTO condition) {
@@ -144,14 +144,21 @@ public class OpenAiPolicySearchAnalyzer implements PolicySearchAiAnalyzer {
                                 .build())
                         .build())
                 .build();
-        Response response = openAIClient.responses().create(params);
+        Response response;
+        try {
+            response = openAIClient.responses().create(params);
+        } catch (RuntimeException exception) {
+            throw new AnalysisException(FailureType.UNAVAILABLE,
+                    "OpenAI 검색 분석 서비스를 호출할 수 없습니다.", exception);
+        }
         return response.output().stream()
                 .flatMap(output -> output.message().stream())
                 .flatMap(message -> message.content().stream())
                 .flatMap(content -> content.outputText().stream())
                 .map(output -> output.text())
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("OpenAI 검색 분석 응답이 비어 있습니다."));
+                .orElseThrow(() -> new AnalysisException(FailureType.EMPTY_RESPONSE,
+                        "OpenAI 검색 분석 응답이 비어 있습니다."));
     }
 
     private ResponseInputItem message(EasyInputMessage.Role role, String content) {
@@ -163,7 +170,8 @@ public class OpenAiPolicySearchAnalyzer implements PolicySearchAiAnalyzer {
         try {
             return objectMapper.readValue(value, type);
         } catch (JsonProcessingException exception) {
-            throw new IllegalStateException("OpenAI 검색 분석 응답을 해석할 수 없습니다.", exception);
+            throw new AnalysisException(FailureType.INVALID_RESPONSE,
+                    "OpenAI 검색 분석 응답을 해석할 수 없습니다.", exception);
         }
     }
 

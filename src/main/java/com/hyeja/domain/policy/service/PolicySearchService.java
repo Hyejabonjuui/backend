@@ -14,6 +14,7 @@ import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.policy.repository.PolicyRepository;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.ReasonRequest;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.SearchIntent;
+import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.AnalysisException;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.service.ProfileService;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
@@ -56,6 +57,12 @@ public class PolicySearchService {
 
     @Transactional(readOnly = true)
     public PolicySearchResponseDTO search(Long memberId, String rawQuery) {
+        if (rawQuery == null || rawQuery.isBlank()) {
+            throw new GeneralException(ErrorStatus.POLICY_SEARCH_QUERY_REQUIRED);
+        }
+        if (rawQuery.length() > 200) {
+            throw new GeneralException(ErrorStatus.POLICY_SEARCH_QUERY_TOO_LONG);
+        }
         String query = rawQuery.trim();
         Profile profile = profileService.getActiveProfile(memberId);
         SearchIntent intent = resolveIntent(query);
@@ -63,7 +70,7 @@ public class PolicySearchService {
             throw new GeneralException(ErrorStatus.POLICY_SEARCH_NOT_HOUSING);
         }
         Set<PolicyCategory> categories = intent.categories().isEmpty()
-                ? Set.of(PolicyCategory.OTHER) : intent.categories();
+                ? Set.of(PolicyCategory.values()) : intent.categories();
         LocalDate today = LocalDate.now(clock);
         List<Policy> policies = policyRepository.searchActivePolicies(
                 categories.contains(PolicyCategory.MONTHLY_RENT),
@@ -93,7 +100,7 @@ public class PolicySearchService {
                 .map(policy -> evaluate(policy, profile,
                         regionsByPolicyId.getOrDefault(policy.getPolicyId(), List.of())))
                 .toList();
-        Map<String, String> reasons = generateReasons(evaluated, profile);
+        Map<String, String> reasons = generateReasons(evaluated);
 
         List<PolicySearchItemDTO> approved = new ArrayList<>();
         List<PolicySearchItemDTO> underReview = new ArrayList<>();
@@ -112,9 +119,19 @@ public class PolicySearchService {
 
     private SearchIntent resolveIntent(String query) {
         PolicyCategory hashtagCategory = HASHTAG_CATEGORIES.get(query);
-        return hashtagCategory == null
-                ? aiAnalyzer.analyzeIntent(query)
-                : new SearchIntent(true, Set.of(hashtagCategory));
+        if (hashtagCategory != null) {
+            return new SearchIntent(true, Set.of(hashtagCategory));
+        }
+        try {
+            return aiAnalyzer.analyzeIntent(query);
+        } catch (AnalysisException exception) {
+            ErrorStatus errorStatus = switch (exception.getFailureType()) {
+                case UNAVAILABLE -> ErrorStatus.POLICY_SEARCH_AI_UNAVAILABLE;
+                case EMPTY_RESPONSE -> ErrorStatus.POLICY_SEARCH_AI_EMPTY_RESPONSE;
+                case INVALID_RESPONSE -> ErrorStatus.POLICY_SEARCH_AI_INVALID_RESPONSE;
+            };
+            throw new GeneralException(errorStatus);
+        }
     }
 
     private EvaluatedPolicy evaluate(Policy policy, Profile profile, List<PolicyRegion> regions) {
@@ -142,11 +159,12 @@ public class PolicySearchService {
                 && policyRegionCode.substring(0, 2).equals(memberRegionCode.substring(0, 2));
     }
 
-    private Map<String, String> generateReasons(List<EvaluatedPolicy> evaluated, Profile profile) {
+    private Map<String, String> generateReasons(List<EvaluatedPolicy> evaluated) {
         try {
             return aiAnalyzer.generateReasons(evaluated.stream()
                     .map(item -> new ReasonRequest(
-                            item.policy(), profile, item.overallStatus(), item.conditions()))
+                            item.policy().getPolicyId(), item.policy().getPolicyName(),
+                            item.overallStatus(), item.conditions()))
                     .toList());
         } catch (RuntimeException exception) {
             log.warn("정책 검색 개인화 이유 생성에 실패해 기본 문장을 사용합니다.", exception);
