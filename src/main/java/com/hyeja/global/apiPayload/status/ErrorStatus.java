@@ -48,6 +48,7 @@ public enum ErrorStatus implements BaseErrorCode {
 
     // 정책
     POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "POLICY_001", "존재하지 않는 정책입니다."),
+    CARD_NEWS_NOT_FOUND(HttpStatus.NOT_FOUND, "CARD_NEWS_001", "존재하지 않는 카드뉴스입니다."),
 
     // 관심 정책
     FAVORITE_ALREADY_EXISTS(HttpStatus.CONFLICT, "FAVORITE_001", "이미 등록된 관심 정책입니다."),

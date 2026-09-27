@@ -40,6 +40,13 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
             '~한다', '~이다', '~함', '~지원'과 같은 서술체·명사형 종결은 사용하지 않는다.
             제목, 불릿, 번호 없이 자연스러운 문장만 반환한다.
 
+            [카드뉴스]
+            eligibilityDescription은 신청 대상과 핵심 자격조건을 쉬운 존댓말 1~2문장으로 작성한다.
+            benefitTitle은 지원 혜택을 수치 중심의 짧은 제목으로 작성한다.
+            benefitDescription은 지원 내용과 지급 방식을 쉬운 존댓말 1~2문장으로 작성한다.
+            applicationDescription은 신청 방법과 준비 사항을 쉬운 존댓말 1~2문장으로 작성한다.
+            원문에 없는 조건, 금액, 기간, 신청 방법은 만들지 않는다.
+
             [카테고리]
             categories는 다음 값 중 하나 이상을 배열로 반환한다.
             - MONTHLY_RENT: 월세, 월 임차료 또는 월세 보증금 지원
@@ -80,6 +87,10 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
             "type", "object",
             "properties", Map.ofEntries(
                     Map.entry("description", Map.of("type", "string", "minLength", 1)),
+                    Map.entry("eligibilityDescription", Map.of("type", "string", "minLength", 1)),
+                    Map.entry("benefitTitle", Map.of("type", "string", "minLength", 1)),
+                    Map.entry("benefitDescription", Map.of("type", "string", "minLength", 1)),
+                    Map.entry("applicationDescription", Map.of("type", "string", "minLength", 1)),
                     Map.entry("categories", Map.of(
                             "type", "array",
                             "items", Map.of("type", "string", "enum", List.of(
@@ -100,7 +111,9 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
                     Map.entry("incomeConfidence", Map.of("type", "number", "minimum", 0, "maximum", 1)),
                     Map.entry("incomeReason", Map.of("type", "string"))),
             "required", List.of(
-                    "description", "categories", "categoryConfidence", "categoryReason",
+                    "description", "eligibilityDescription", "benefitTitle",
+                    "benefitDescription", "applicationDescription",
+                    "categories", "categoryConfidence", "categoryReason",
                     "houselessRequirement", "houselessConfidence", "houselessReason",
                     "incomeCondition", "incomeMin", "incomeMax",
                     "incomeConfidence", "incomeReason"),
@@ -152,7 +165,11 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
                 normalizedIncomeMin(result, incomeCondition),
                 normalizedIncomeMax(result, incomeCondition),
                 result.incomeConfidence(),
-                result.incomeReason());
+                result.incomeReason(),
+                result.eligibilityDescription().trim(),
+                result.benefitTitle().trim(),
+                result.benefitDescription().trim(),
+                result.applicationDescription().trim());
 
         log.info("AI 정책 카테고리 분석 - policyId={}, categories={}, confidence={}, reason={}",
                 item.getPolicyId(), analysis.categories(),
@@ -259,6 +276,10 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
 
     private record AiPolicyResponse(
             String description,
+            String eligibilityDescription,
+            String benefitTitle,
+            String benefitDescription,
+            String applicationDescription,
             List<String> categories,
             double categoryConfidence,
             String categoryReason,

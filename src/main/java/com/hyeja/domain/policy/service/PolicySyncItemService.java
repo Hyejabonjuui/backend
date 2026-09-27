@@ -42,7 +42,7 @@ public class PolicySyncItemService {
                 item, analysis.categories(), analysis.description(), analysis.houselessRequirement(),
                 analysis.incomeCondition(), analysis.incomeMin(), analysis.incomeMax()));
         replacePolicyRegions(policy, regions);
-        createTestCardNewsIfAbsent(policy);
+        createMissingCardNews(policy, analysis);
     }
 
     private List<Region> resolvePolicyRegions(String policyId, String rawRegionCodes) {
@@ -119,22 +119,41 @@ public class PolicySyncItemService {
         return regionCodes;
     }
 
-    private void createTestCardNewsIfAbsent(Policy policy) {
-        if (cardNewsRepository.existsByPolicy_PolicyIdAndCardNo(policy.getPolicyId(), 1L)) {
+    private void createMissingCardNews(Policy policy, PolicyAiAnalysis analysis) {
+        saveCardIfAbsent(policy, 1L, policy.getPolicyName(),
+                defaultIfBlank(analysis.description(), policy.getSupportContent()));
+        saveCardIfAbsent(policy, 2L, null,
+                defaultIfBlank(analysis.eligibilityDescription(), policy.getExtraQualification()));
+        saveCardIfAbsent(policy, 3L,
+                defaultIfBlank(analysis.benefitTitle(), "지원 혜택"),
+                defaultIfBlank(analysis.benefitDescription(), policy.getSupportContent()));
+        saveCardIfAbsent(policy, 4L, formatApplyPeriod(policy),
+                defaultIfBlank(analysis.applicationDescription(), policy.getApplyMethod()));
+    }
+
+    private void saveCardIfAbsent(Policy policy, Long cardNo, String title, String body) {
+        if (cardNewsRepository.existsByPolicy_PolicyIdAndCardNo(policy.getPolicyId(), cardNo)) {
             return;
         }
-
-        String body = defaultIfBlank(policy.getSupportContent(), "지원 내용이 등록되지 않았습니다.");
-        if (body.length() > CARD_BODY_MAX_LENGTH) {
-            body = body.substring(0, CARD_BODY_MAX_LENGTH - 3) + "...";
-        }
-
         cardNewsRepository.save(CardNews.builder()
                 .policy(policy)
-                .title(policy.getPolicyName())
-                .body(body)
-                .cardNo(1L)
+                .title(limit(title, 255))
+                .body(limit(defaultIfBlank(body, "등록된 내용이 없습니다."), CARD_BODY_MAX_LENGTH))
+                .cardNo(cardNo)
                 .build());
+    }
+
+    private String formatApplyPeriod(Policy policy) {
+        if (policy.getApplyStartDate() != null && policy.getApplyEndDate() != null) {
+            return "%s ~ %s".formatted(policy.getApplyStartDate(), policy.getApplyEndDate());
+        }
+        return policy.getApplyPeriodCode() == null
+                ? "신청 기간 미정" : policy.getApplyPeriodCode().getLabel();
+    }
+
+    private String limit(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) return value;
+        return value.substring(0, maxLength - 3) + "...";
     }
 
     private String defaultIfBlank(String value, String defaultValue) {

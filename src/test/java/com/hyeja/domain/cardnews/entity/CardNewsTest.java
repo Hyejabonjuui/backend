@@ -1,5 +1,6 @@
 package com.hyeja.domain.cardnews.entity;
 
+import com.hyeja.domain.cardnews.repository.CardNewsRepository;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.global.config.JpaAuditingConfig;
@@ -25,6 +26,9 @@ class CardNewsTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    private CardNewsRepository cardNewsRepository;
 
     private Policy policy;
 
@@ -56,6 +60,25 @@ class CardNewsTest {
         assertThat(persistenceUnitUtil.isLoaded(cards.get(0), "policy")).isFalse();
         assertThat(cards.get(0).getPolicy().getPolicyName()).isEqualTo("테스트 정책");
         assertThat(persistenceUnitUtil.isLoaded(cards.get(0), "policy")).isTrue();
+    }
+
+    @Test
+    void findsActivePopupCardsInCardNumberOrder() {
+        CardNews second = CardNews.builder()
+                .policy(policy).body("신청 대상").cardNo(2L).build();
+        CardNews first = CardNews.builder()
+                .policy(policy).title("정책명").body("정책 소개").cardNo(1L).build();
+        entityManager.persist(second);
+        entityManager.persist(first);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(cardNewsRepository.findActiveByIdWithPolicy(first.getCardNewsId()))
+                .get().extracting(card -> card.getPolicy().getPolicyId())
+                .isEqualTo("policy-1");
+        assertThat(cardNewsRepository.findAllActiveByPolicyIdOrderByCardNo("policy-1"))
+                .extracting(CardNews::getCardNo)
+                .containsExactly(1L, 2L);
     }
 
     @Test

@@ -112,6 +112,7 @@ class SecurityTest {
                 {"GET", "/api/regions"},
                 {"GET", "/api/policies/housing"},
                 {"GET", "/api/policies/card-news/guest"},
+                {"GET", "/api/policies/card-detail/1"},
                 {"GET", "/api/health"},
         };
         for (String[] api : apis) {
