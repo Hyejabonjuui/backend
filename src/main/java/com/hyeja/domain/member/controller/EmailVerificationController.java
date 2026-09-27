@@ -70,7 +70,8 @@ public class EmailVerificationController {
     @Operation(
             summary = "이메일 인증 코드 확인",
             description = "메일로 받은 코드를 확인합니다. 통과하면 30분 안에 이 이메일로 회원가입할 수 있습니다. "
-                    + "틀리면 result.remainingAttempts로 남은 기회를 알려 주고, 5번 틀리면 1시간 동안 인증이 막힙니다."
+                    + "틀리면 result.remainingAttempts로 남은 기회를 알려 주고, 5번 틀리면 1시간 동안 인증이 막힙니다. "
+                    + "틀린 횟수는 코드를 다시 받아도 초기화되지 않습니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(

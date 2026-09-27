@@ -53,7 +53,7 @@ public class EmailVerificationService {
     private String mailFrom;
 
     /**
-     * 6자리 인증 코드를 만들어 메일로 보냅니다. 다시 보내면 새 코드로 바뀌고 틀린 횟수도 초기화됩니다.
+     * 6자리 인증 코드를 만들어 메일로 보냅니다. 다시 보내면 새 코드로 바뀌지만 틀린 횟수는 그대로 이어집니다.
      * 이미 가입된 이메일이면 MEMBER_002, 5번 틀려 잠겼으면 VERIFY_005, 60초 안에 다시 요청하면 VERIFY_004,
      * 메일 발송이 실패하면 MAIL_001입니다.
      */
@@ -61,7 +61,7 @@ public class EmailVerificationService {
         if (memberRepository.existsByEmail(email)) {
             throw new GeneralException(ErrorStatus.MEMBER_EMAIL_DUPLICATED);
         }
-        // 재발송으로 틀린 횟수를 초기화해 잠금을 피하지 못하게, 잠긴 동안은 발송도 막습니다.
+        // 잠긴 동안은 새 코드를 받아 다시 시도하지 못하게 발송도 막습니다.
         checkNotLocked(email);
         // setIfAbsent: 키가 없을 때만 저장합니다. 이미 있으면(60초 안에 보낸 적 있음) false입니다.
         if (!Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key("cooldown", email), "1", RESEND_COOLDOWN))) {
@@ -79,7 +79,6 @@ public class EmailVerificationService {
         }
 
         redisTemplate.opsForValue().set(key("code", email), code, CODE_TTL);
-        redisTemplate.opsForValue().set(key("failures", email), "0", CODE_TTL);
         redisTemplate.delete(key("verified", email));
         return CODE_TTL.toSeconds();
     }
@@ -88,6 +87,7 @@ public class EmailVerificationService {
      * 코드가 맞으면 "인증 완료"를 30분 동안 표시해, 그동안 이 이메일로 가입할 수 있게 합니다.
      * 잠겼으면 VERIFY_005, 코드가 없거나 만료됐으면 VERIFY_002입니다.
      * 틀리면 VERIFY_001과 함께 남은 시도 횟수를 알려 주고, 5번째로 틀린 순간 1시간 동안 잠그고 VERIFY_005입니다.
+     * 틀린 횟수는 첫 시도부터 1시간 동안 유지돼, 재발송해도 초기화되지 않습니다.
      */
     public void confirm(String email, String code) {
         checkNotLocked(email);
@@ -95,10 +95,11 @@ public class EmailVerificationService {
         if (saved == null) {
             throw new GeneralException(ErrorStatus.VERIFY_CODE_EXPIRED);
         }
-        if (!saved.equals(code)) {
-            // increment는 기존 유효 시간을 유지한 채 1을 더하고, 더한 뒤의 값을 돌려줍니다.
-            Long failures = redisTemplate.opsForValue().increment(key("failures", email));
-            long remaining = MAX_FAILURES - (failures == null ? MAX_FAILURES : failures);
+        // 비교하기 전에 먼저 횟수를 셉니다. increment는 Redis가 한 번에 하나씩 처리하므로,
+        // 동시에 여러 요청을 보내도 5번까지만 코드 비교를 통과합니다(동시 요청으로 무차별 대입하는 것을 막음).
+        long attempts = countAttempt(email);
+        if (attempts > MAX_FAILURES || !saved.equals(code)) {
+            long remaining = MAX_FAILURES - attempts;
             if (remaining <= 0) {
                 redisTemplate.opsForValue().set(key("locked", email), "1", LOCK_TTL);
                 redisTemplate.delete(key("code", email));
@@ -119,6 +120,18 @@ public class EmailVerificationService {
         if (!Boolean.TRUE.equals(redisTemplate.hasKey(key("verified", email)))) {
             throw new GeneralException(ErrorStatus.VERIFY_REQUIRED);
         }
+    }
+
+    // 시도 횟수를 1 올리고 올린 값을 돌려줍니다. 첫 시도일 때만 1시간 유효 시간을 걸어, 재발송해도 횟수가 이어집니다.
+    private long countAttempt(String email) {
+        Long attempts = redisTemplate.opsForValue().increment(key("failures", email));
+        if (attempts == null) {
+            return MAX_FAILURES + 1L;
+        }
+        if (attempts == 1) {
+            redisTemplate.expire(key("failures", email), LOCK_TTL);
+        }
+        return attempts;
     }
 
     private void checkNotLocked(String email) {
