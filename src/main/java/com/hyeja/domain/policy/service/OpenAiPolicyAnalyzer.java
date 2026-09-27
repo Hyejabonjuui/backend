@@ -42,7 +42,7 @@ public class OpenAiPolicyAnalyzer implements PolicyAiAnalyzer {
 
             [카드뉴스]
             eligibilityDescription은 신청 대상과 핵심 자격조건을 쉬운 존댓말 1~2문장으로 작성한다.
-            benefitTitle은 지원 혜택을 수치 중심의 짧은 제목으로 작성한다.
+            benefitTitle은 원문에 명시된 내용만 바탕으로 지원 혜택을 짧은 제목으로 작성한다.
             benefitDescription은 지원 내용과 지급 방식을 쉬운 존댓말 1~2문장으로 작성한다.
             applicationDescription은 신청 방법과 준비 사항을 쉬운 존댓말 1~2문장으로 작성한다.
             원문에 없는 조건, 금액, 기간, 신청 방법은 만들지 않는다.

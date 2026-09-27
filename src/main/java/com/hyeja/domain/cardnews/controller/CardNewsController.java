@@ -11,6 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import com.hyeja.domain.cardnews.dto.CardNewsDetailResponseDTO;
 import com.hyeja.domain.cardnews.dto.CardNewsResponseDTO;
+import com.hyeja.domain.cardnews.dto.MemberCardNewsResponseDTO;
 import com.hyeja.domain.cardnews.service.CardNewsService;
 import com.hyeja.global.apiPayload.ApiResponse;
 
@@ -43,5 +44,12 @@ public class CardNewsController {
             @PathVariable String policyId,
             @AuthenticationPrincipal Long memberId) {
         return ApiResponse.onSuccess(cardNewsService.getCardNewsDetail(policyId, memberId));
+    }
+
+    @Operation(summary = "로그인 회원 맞춤 홈 카드뉴스 조회")
+    @GetMapping("/card-news")
+    public ApiResponse<List<MemberCardNewsResponseDTO>> getMemberCardNews(
+            @AuthenticationPrincipal Long memberId) {
+        return ApiResponse.onSuccess(cardNewsService.getMemberCardNews(memberId));
     }
 }
