@@ -42,6 +42,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -51,7 +52,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class PolicyService {
     private static final String HOUSING_CATEGORY = "주거";
     private static final int PAGE_SIZE = 100; // 100
-    private static final int MAX_PAGES = 20; // 20
+    // 끝은 totCount로 판단합니다. 이 값은 totCount가 비정상일 때 무한 반복을 막는 안전장치입니다.
+    // 2026-09-27 기준 전체 2,934건(30페이지)이라 여유를 두고 50으로 둡니다.
+    private static final int MAX_PAGES = 50;
 
     private final PolicyRepository policyRepository;
     private final RestTemplate restTemplate;
@@ -79,7 +82,7 @@ public class PolicyService {
         int failedCount = 0;
 
         do {
-            PolicyApiResponseDTO response = requestPage(pageNumber);
+            PolicyApiResponseDTO response = requestPageWithRetry(pageNumber);
             if (response == null || response.getResult() == null) {
                 log.warn("온통청년 API {}페이지의 응답이 비어 있습니다.", pageNumber);
                 break;
@@ -90,8 +93,10 @@ public class PolicyService {
             List<PolicyItem> items = response.getResult().getYouthPolicyList();
             if (items == null || items.isEmpty()) break;
 
+            int housingCount = 0;
             for (PolicyItem item : items) {
                 if (!isSavableHousingPolicy(item)) continue;
+                housingCount++;
                 try {
                     PolicyAiAnalysis analysis = policyAiAnalyzer.analyze(item);
                     policySyncItemService.save(item, analysis);
@@ -102,6 +107,7 @@ public class PolicyService {
                             pageNumber, item.getPolicyId(), item.getPolicyName(), exception);
                 }
             }
+            log.info("온통청년 {}페이지 - totCount={}, 주거 정책 {}건", pageNumber, totalCount, housingCount);
             pageNumber++;
         } while (pageNumber <= MAX_PAGES
                 && (long) (pageNumber - 1) * PAGE_SIZE < totalCount);
@@ -115,6 +121,21 @@ public class PolicyService {
         return HOUSING_CATEGORY.equals(trimToNull(item.getCategory()))
                 && trimToNull(item.getPolicyId()) != null
                 && policyApiCodeConverter.isApproved(item.getApprovalStatusCode());
+    }
+
+    // 온통청년 서버가 뒤쪽 페이지에서 연결을 끊는 경우가 있어 한 번 더 시도합니다.
+    // 그래도 실패하면 null을 돌려, 그때까지 저장한 정책은 유지한 채 수집을 끝냅니다(500 대신 정상 종료).
+    private PolicyApiResponseDTO requestPageWithRetry(int pageNumber) {
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            try {
+                return requestPage(pageNumber);
+            } catch (RestClientException exception) {
+                // 예외 메시지에는 API 키가 담긴 요청 URL이 들어 있어, 원인 메시지만 남깁니다.
+                log.warn("온통청년 API {}페이지 요청 실패 ({}번째 시도) - {}: {}", pageNumber, attempt,
+                        exception.getClass().getSimpleName(), exception.getMostSpecificCause().getMessage());
+            }
+        }
+        return null;
     }
 
     private PolicyApiResponseDTO requestPage(int pageNumber) {
