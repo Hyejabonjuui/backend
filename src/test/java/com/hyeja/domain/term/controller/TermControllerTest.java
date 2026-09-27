@@ -1,0 +1,61 @@
+package com.hyeja.domain.term.controller;
+
+import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.hyeja.domain.term.dto.TermResponseDTO;
+import com.hyeja.domain.term.service.TermService;
+import com.hyeja.global.exception.ExceptionAdvice;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+class TermControllerTest {
+
+    private final TermService termService = mock(TermService.class);
+    private MockMvc mvc;
+
+    @BeforeEach
+    void setUp() {
+        mvc = MockMvcBuilders.standaloneSetup(new TermController(termService))
+                .setControllerAdvice(new ExceptionAdvice())
+                .build();
+    }
+
+    @Test
+    void returnsTerms() throws Exception {
+        when(termService.getTerms()).thenReturn(List.of(
+                TermResponseDTO.builder()
+                        .termId(1)
+                        .term("중위소득")
+                        .easyDescription("전체 가구를 소득 순서로 세웠을 때 가운데 가구의 소득")
+                        .example("중위소득 60% 이하")
+                        .build(),
+                TermResponseDTO.builder()
+                        .termId(2)
+                        .term("무주택자")
+                        .easyDescription("본인 명의 주택을 소유하지 않은 사람")
+                        .build()
+        ));
+
+        mvc.perform(get("/api/terms"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true))
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"))
+                .andExpect(jsonPath("$.result[0].termId").value(1))
+                .andExpect(jsonPath("$.result[0].term").value("중위소득"))
+                .andExpect(jsonPath("$.result[0].easyDescription")
+                        .value("전체 가구를 소득 순서로 세웠을 때 가운데 가구의 소득"))
+                .andExpect(jsonPath("$.result[0].example").value("중위소득 60% 이하"))
+                .andExpect(jsonPath("$.result[1].example").value(nullValue()));
+
+        verify(termService).getTerms();
+    }
+}

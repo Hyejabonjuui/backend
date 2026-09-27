@@ -61,6 +61,9 @@ class SeedDataTest {
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM notification WHERE deadline_date IS NULL", Long.class))
                 .isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM term WHERE term = '중위소득'", Long.class))
+                .isOne();
     }
 
     @Test
