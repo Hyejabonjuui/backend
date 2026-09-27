@@ -51,6 +51,8 @@ class NotificationServiceTest {
         assertThat(result.getNotificationId()).isEqualTo(10L);
         assertThat(result.getMemberId()).isEqualTo(1L);
         assertThat(result.getPolicyId()).isEqualTo("policy-1");
+        assertThat(result.getPolicyName()).isEqualTo("테스트 정책");
+        assertThat(result.getContent()).isEqualTo("관심 정책의 신청 마감이 일주일 남았어요");
         assertThat(result.getReadYn()).isTrue();
         assertThat(result.getApplyEndDate()).isEqualTo(LocalDate.of(2026, 9, 30));
         verify(notificationRepository)

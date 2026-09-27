@@ -30,6 +30,13 @@ public final class NotificationResponseDTO {
         @Schema(description = "정책 ID", example = "R202609230001")
         private String policyId;
 
+        @JsonProperty("policy_name")
+        @Schema(description = "정책명", example = "서울시 청년 월세 지원")
+        private String policyName;
+
+        @Schema(description = "알림 내용", example = "관심 정책의 신청 마감이 일주일 남았어요")
+        private String content;
+
         @JsonProperty("read_yn")
         @Schema(description = "읽음 여부", example = "false")
         private Boolean readYn;

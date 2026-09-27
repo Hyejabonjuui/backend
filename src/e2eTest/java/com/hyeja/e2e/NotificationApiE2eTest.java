@@ -41,6 +41,9 @@ class NotificationApiE2eTest extends ApiE2eTestSupport {
         assertThat(listed.body().path("result").path("totalElements").asLong()).isEqualTo(1);
         var item = listed.body().path("result").path("notifications").get(0);
         assertThat(item.path("policy_id").asText()).isEqualTo("DEADLINE-POLICY");
+        assertThat(item.path("policy_name").asText()).isEqualTo("마감 예정 정책");
+        assertThat(item.path("content").asText())
+                .isEqualTo("관심 정책의 신청 마감이 일주일 남았어요");
         assertThat(item.path("read_yn").asBoolean()).isFalse();
         assertThat(item.path("apply_end_date").asText()).isEqualTo("2026-10-04");
         long notificationId = item.path("notification_id").asLong();
@@ -52,6 +55,10 @@ class NotificationApiE2eTest extends ApiE2eTestSupport {
                 session.accessToken()
         );
         assertThat(read.status()).isEqualTo(200);
+        assertThat(read.body().path("result").path("policy_name").asText())
+                .isEqualTo("마감 예정 정책");
+        assertThat(read.body().path("result").path("content").asText())
+                .isEqualTo("관심 정책의 신청 마감이 일주일 남았어요");
         assertThat(read.body().path("result").path("read_yn").asBoolean()).isTrue();
 
         ApiHttpResponse deleted = request(

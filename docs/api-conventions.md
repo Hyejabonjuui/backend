@@ -81,6 +81,7 @@ Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인한
 - 외부 정책 ID는 숫자로 변환하지 않고 문자열로 유지한다.
 - CardNews `title`은 배열이 아니라 nullable 문자열이다.
 - 알림 응답의 `apply_end_date`는 알림 생성 시 저장한 정책 마감일 스냅샷이다.
+- 알림 응답의 `policy_name`은 연결된 현재 정책명이며, `content`는 관심 정책 D-7 마감 안내 문구다.
 - enum은 표시 문구가 아니라 코드의 enum 상수와 converter 규칙을 사용한다.
 - 정책의 `categories`/`categoryLabels`와 관심 정책의 `category_codes`/`category_names`는 배열이다.
 
