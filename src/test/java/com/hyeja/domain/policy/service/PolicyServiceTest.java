@@ -385,6 +385,24 @@ class PolicyServiceTest {
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class));
     }
 
+    // 대분류가 "주거,주거"처럼 여러 개여도 주거가 있으면 수집하고, 주거가 없으면 건너뜁니다.
+    @Test
+    void savesPolicyWhoseCategoryListContainsHousing() {
+        ReflectionTestUtils.setField(service, "apiKey", "test-key");
+        ReflectionTestUtils.setField(service, "apiUrl", "https://example.com/policies");
+        PolicyItem duplicated = approvedHousingPolicy("duplicated-housing");
+        duplicated.setCategory("주거,주거");
+        PolicyItem other = approvedHousingPolicy("not-housing");
+        other.setCategory("일자리,복지문화");
+        when(restTemplate.getForObject(org.mockito.ArgumentMatchers.any(java.net.URI.class),
+                org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class)))
+                .thenReturn(page(2, duplicated, other));
+
+        assertThat(service.fetchAndSaveHousingPolicies()).isEqualTo(1);
+        verify(policySyncItemService).save(org.mockito.ArgumentMatchers.eq(duplicated), org.mockito.ArgumentMatchers.any());
+        verify(policySyncItemService, never()).save(org.mockito.ArgumentMatchers.eq(other), org.mockito.ArgumentMatchers.any());
+    }
+
     // 한 페이지 요청이 한 번 실패해도 다시 시도해서 이어서 수집합니다.
     @Test
     void retriesFailedPageOnceAndContinues() {
