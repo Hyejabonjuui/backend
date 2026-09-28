@@ -39,6 +39,8 @@ public class OpenAiPolicySearchAnalyzer implements PolicySearchAiAnalyzer {
     private static final String REASON_PROMPT = """
             청년 주거 정책 검색 결과에 표시할 개인화 이유를 작성하세요.
             evaluation과 overallStatus는 서버가 확정한 값이므로 절대 변경하지 마세요.
+            제공된 profile과 extraQualification을 직접 비교한 내용도 이유에 반영하세요.
+            추가 자격에 필요한 profile 정보가 없거나 문장만으로 판단할 수 없으면 확인이 필요하다고 안내하세요.
             제공된 회원 정보와 정책 조건만 사용하고 없는 사실은 추측하지 마세요.
             ABLE 결과는 충족한 핵심 근거를, UNKNOWN 결과는 추가 확인할 정보나 조건을,
             DISABLE 결과는 맞지 않는 조건과 회원 값을 우선하여 자연스러운 존댓말 한 문장으로 쓰세요.
@@ -116,11 +118,14 @@ public class OpenAiPolicySearchAnalyzer implements PolicySearchAiAnalyzer {
         return """
                 policyId: %s
                 policyName: %s
+                extraQualification: %s
+                profile: %s
                 overallStatus: %s
                 evaluation:
                 %s
                 """.formatted(
-                request.policyId(), request.policyName(), request.overallStatus(), conditions);
+                request.policyId(), request.policyName(), request.extraQualification(),
+                request.profile(), request.overallStatus(), conditions);
     }
 
     private String conditionLine(ConditionResultDTO condition) {

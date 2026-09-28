@@ -12,6 +12,7 @@ import com.hyeja.domain.policy.enums.EligibilityStatus;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.policy.repository.PolicyRepository;
+import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.ProfileSummary;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.ReasonRequest;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.SearchIntent;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.AnalysisException;
@@ -100,7 +101,7 @@ public class PolicySearchService {
                 .map(policy -> evaluate(policy, profile,
                         regionsByPolicyId.getOrDefault(policy.getPolicyId(), List.of())))
                 .toList();
-        Map<String, String> reasons = generateReasons(evaluated);
+        Map<String, String> reasons = generateReasons(evaluated, profile);
 
         List<PolicySearchItemDTO> approved = new ArrayList<>();
         List<PolicySearchItemDTO> underReview = new ArrayList<>();
@@ -159,11 +160,22 @@ public class PolicySearchService {
                 && policyRegionCode.substring(0, 2).equals(memberRegionCode.substring(0, 2));
     }
 
-    private Map<String, String> generateReasons(List<EvaluatedPolicy> evaluated) {
+    private Map<String, String> generateReasons(List<EvaluatedPolicy> evaluated, Profile profile) {
+        ProfileSummary profileSummary = new ProfileSummary(
+                profile.getBirth() == null ? null : profile.getBirth().toString(),
+                profile.getRegion() == null ? null : profile.getRegion().getSigunguName(),
+                profile.getEmploymentCode() == null ? null : profile.getEmploymentCode().getLabel(),
+                profile.getHouselessYn() == null ? null
+                        : profile.getHouselessYn() ? "무주택" : "주택 소유",
+                profile.getMarriageCode() == null ? null : profile.getMarriageCode().getLabel(),
+                profile.getIncomeRangeCode() == null ? null : profile.getIncomeRangeCode().getLabel(),
+                profile.getEducationCode() == null ? null : profile.getEducationCode().getLabel(),
+                profile.getHousingType() == null ? null : profile.getHousingType().getLabel());
         try {
             return aiAnalyzer.generateReasons(evaluated.stream()
                     .map(item -> new ReasonRequest(
                             item.policy().getPolicyId(), item.policy().getPolicyName(),
+                            item.policy().getExtraQualification(), profileSummary,
                             item.overallStatus(), item.conditions()))
                     .toList());
         } catch (RuntimeException exception) {

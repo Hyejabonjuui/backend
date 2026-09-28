@@ -18,8 +18,21 @@ public interface PolicySearchAiAnalyzer {
     record ReasonRequest(
             String policyId,
             String policyName,
+            String extraQualification,
+            ProfileSummary profile,
             EligibilityStatus overallStatus,
             List<ConditionResultDTO> conditions) {
+    }
+
+    record ProfileSummary(
+            String birth,
+            String region,
+            String employment,
+            String houseless,
+            String maritalStatus,
+            String income,
+            String education,
+            String housingType) {
     }
 
     enum FailureType {
