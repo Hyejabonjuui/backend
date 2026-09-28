@@ -80,6 +80,7 @@ class SecurityTest {
                 {"PATCH", "/api/notification/1/read"},
                 {"DELETE", "/api/notification/1"},
                 {"GET", "/api/policies/search?query=월세"},
+                {"GET", "/api/policies/card-news"},
         };
         for (String[] api : apis) {
             HttpResponse<String> response = send(api[0], api[1], null);
