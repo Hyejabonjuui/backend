@@ -60,8 +60,8 @@ public class RegionDataInitializer implements CommandLineRunner {
 
             List<RegionCsvDto> csvDataList = mappingIterator.readAll();
 
-            // 1. 이미 DB에 있는 코드는 건너뜁니다. 시드(dev-data.sql)가 일부 지역을 먼저 넣어도 나머지를 채우고,
-            //    서버를 다시 켜도 중복 저장되지 않습니다. (예전에는 count() > 0이면 건너뛰어, 새 DB에서 시드 10건만 남았습니다.)
+            // 1. 이미 DB에 있는 코드는 갱신하고 없는 코드는 추가하여,
+            //    서버를 다시 켜도 중복 저장되지 않습니다.
             Map<String, Region> existingRegions = regionRepository.findAll().stream()
                     .collect(Collectors.toMap(Region::getRegionCode, Function.identity()));
 
