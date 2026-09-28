@@ -85,7 +85,7 @@ public class PolicySearchService {
                         Sort.Order.asc("applyEndDate").nullsLast(),
                         Sort.Order.asc("policyId"))));
         if (policies.isEmpty()) {
-            throw new GeneralException(ErrorStatus.POLICY_SEARCH_EMPTY);
+            return new PolicySearchResponseDTO(List.of(), List.of(), List.of());
         }
 
         List<String> policyIds = policies.stream().map(Policy::getPolicyId).toList();
@@ -126,12 +126,8 @@ public class PolicySearchService {
         try {
             return aiAnalyzer.analyzeIntent(query);
         } catch (AnalysisException exception) {
-            ErrorStatus errorStatus = switch (exception.getFailureType()) {
-                case UNAVAILABLE -> ErrorStatus.POLICY_SEARCH_AI_UNAVAILABLE;
-                case EMPTY_RESPONSE -> ErrorStatus.POLICY_SEARCH_AI_EMPTY_RESPONSE;
-                case INVALID_RESPONSE -> ErrorStatus.POLICY_SEARCH_AI_INVALID_RESPONSE;
-            };
-            throw new GeneralException(errorStatus);
+            log.warn("정책 검색 의도 분석에 실패해 전체 주거 정책으로 검색합니다.", exception);
+            return new SearchIntent(true, Set.of());
         }
     }
 
