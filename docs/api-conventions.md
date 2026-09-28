@@ -51,8 +51,7 @@
 | `GET` | `/api/favorite` | query `keyword?`, `page=0`, `size=8` | 필요 | 관심 정책을 최근 등록순으로 페이지 조회, 정책명·지원 내용 검색 |
 | `POST` | `/api/favorite/{policyId}` | path `policyId` | 필요 | 관심 정책 등록, 중복 등록 불가 |
 | `DELETE` | `/api/favorite/{policyId}` | path `policyId` | 필요 | 관심 정책 영구 삭제 |
-| `GET` | `/api/notification` | query `page=0`, `size=8` | 필요 | 삭제되지 않은 알림 최신순 페이지 조회 |
-| `GET` | `/api/notification/unread-count` | 없음 | 필요 | 삭제되지 않은 알림 중 안 읽은 알림 개수 조회 |
+| `GET` | `/api/notification` | query `page=0`, `size=8` | 필요 | 삭제되지 않은 알림 최신순 페이지와 안 읽은 알림 개수 조회 |
 | `PATCH` | `/api/notification/{notificationId}/read` | path `notificationId` | 필요 | 본인 소유의 알림 읽음 처리 |
 | `DELETE` | `/api/notification/{notificationId}` | path `notificationId` | 필요 | 본인 소유의 알림 영구 삭제 |
 | `POST` | `/api/notification/admin/generate` | query `memberId: Long` | 관리자 | 개발·테스트용, 지정 회원의 D-7 관심 정책 알림만 생성 |

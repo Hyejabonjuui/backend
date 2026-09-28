@@ -58,6 +58,10 @@ public final class NotificationResponseDTO {
         @Schema(description = "현재 페이지의 알림 목록")
         private List<NotificationItemDTO> notifications;
 
+        @JsonProperty("unread_count")
+        @Schema(description = "삭제되지 않은 전체 알림 중 안 읽은 알림 개수", example = "3")
+        private long unreadCount;
+
         @Schema(description = "현재 페이지 번호", example = "0")
         private int page;
 
@@ -72,15 +76,5 @@ public final class NotificationResponseDTO {
 
         @Schema(description = "다음 페이지 존재 여부", example = "true")
         private boolean hasNext;
-    }
-
-    @Getter
-    @Builder
-    @Schema(name = "NotificationUnreadCountDTO", description = "안 읽은 알림 개수 응답")
-    public static class NotificationUnreadCountDTO {
-
-        @JsonProperty("unread_count")
-        @Schema(description = "안 읽은 알림 개수", example = "3")
-        private long unreadCount;
     }
 }
