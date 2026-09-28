@@ -60,7 +60,7 @@ public class PolicySyncItemService {
                 .toList());
     }
 
-    // REGION(시군구 269건)에서 코드를 찾습니다. REGION에는 새 행을 만들지 않습니다(회원 거주지 목록에 섞이지 않게).
+    // REGION(시군구 256건)에서 코드를 찾습니다. REGION에는 새 행을 만들지 않습니다(회원 거주지 목록에 섞이지 않게).
     // 시·도 코드(예: 11000 서울 전체)는 그 시·도의 시군구 전체로 풀어서 저장합니다.
     private List<Region> resolveRegions(String policyId, Set<String> regionCodes) {
         Map<String, Region> resolved = new LinkedHashMap<>();

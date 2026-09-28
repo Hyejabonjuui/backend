@@ -16,6 +16,7 @@ spring:
         - classpath:db/migration/normalize-income-range.sql
         - classpath:db/migration/drop-obsolete-policy-columns.sql
         - classpath:db/migration/normalize-policy-condition-enums.sql
+        - classpath:db/migration/remove-parent-city-regions.sql
         - classpath:db/seed/dev-data.sql
       encoding: UTF-8
       continue-on-error: false

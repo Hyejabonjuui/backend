@@ -41,7 +41,7 @@ public class RegionDataInitializer implements CommandLineRunner {
         }
         log.info("[RegionDataInitializer] Starting region CSV preprocessing and upload...");
 
-        // 시군구 269건. 출처·가공 방법·갱신 방법은 CSV 파일 맨 위 # 주석에 적어 두었습니다.
+        // 시군구 256건(구가 있는 시의 상위 시 제외). 출처·가공 방법·갱신 방법은 CSV 파일 맨 위 # 주석에 적어 두었습니다.
         ClassPathResource resource = new ClassPathResource("csv/region_sigungu.csv");
 
         try (InputStream inputStream = resource.getInputStream();
