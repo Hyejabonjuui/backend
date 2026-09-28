@@ -51,8 +51,30 @@ public class PolicyController {
 
     @Operation(
             summary = "주거 정책 동기화",
-            description = "외부 정책 API에서 청년 주거 정책을 조회하여 데이터베이스에 동기화합니다."
+            description = "외부 정책 API에서 청년 주거 정책을 조회하여 데이터베이스에 동기화합니다. 관리자(ADMIN)만 호출할 수 있습니다. "
+                    + "페이지 요청이 재시도까지 실패하면 멈추고 502를 반환하며, 그때까지 저장한 정책은 유지됩니다."
     )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "동기화 완료 (SUCCESS_001), result에 저장 건수 문구"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "토큰 없음·잘못된 토큰 (COMMON_002)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "관리자가 아님 (COMMON_004)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "502",
+                    description = "온통청년 API 요청 실패로 중간에 멈춤 (POLICY_002). result.stoppedPage·result.savedCount",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            )
+    })
     @PostMapping("/sync")
     public ApiResponse<String> syncPolicies() {
         int savedCount = policyService.fetchAndSaveHousingPolicies();
