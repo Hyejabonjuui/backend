@@ -1,18 +1,6 @@
 package com.hyeja.global.seed;
 
-import com.hyeja.domain.cardnews.entity.CardNews;
-import com.hyeja.domain.policy.entity.Policy;
-import com.hyeja.domain.policy.enums.PolicyCategory;
-import com.hyeja.domain.profile.entity.Profile;
-import com.hyeja.domain.profile.enums.EducationLevel;
-import com.hyeja.domain.profile.enums.EmploymentStatus;
-import com.hyeja.domain.profile.enums.HousingType;
-import com.hyeja.domain.profile.enums.IncomeRange;
-import com.hyeja.domain.profile.enums.MaritalStatus;
-import jakarta.persistence.EntityManager;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +8,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
-import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,9 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional
 class SeedDataTest {
 
-    private static final List<String> TABLES = List.of(
+    private static final List<String> NON_TERM_TABLES = List.of(
             "member", "profile", "region", "policy", "policy_region",
-            "card_news", "favorite", "notification", "term");
+            "card_news", "favorite", "notification");
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -45,109 +32,36 @@ class SeedDataTest {
     @Autowired
     private DataSource dataSource;
 
-    @Autowired
-    private EntityManager entityManager;
-
     @Test
-    void startupCreatesExpectedRowsWithTimestamps() {
-        for (String table : TABLES) {
-            assertThat(count(table)).as(table).isEqualTo(table.equals("term") ? 50 : 10);
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table
-                    + " WHERE created_at IS NULL OR updated_at IS NULL OR deleted_at IS NOT NULL", Long.class))
-                    .as(table + " timestamps").isZero();
-        }
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification WHERE read_yn = TRUE", Long.class))
-                .isEqualTo(5);
-        assertThat(jdbc.queryForObject(
-                "SELECT COUNT(*) FROM notification WHERE deadline_date IS NULL", Long.class))
-                .isZero();
+    void startupCreatesOnlyTerms() {
+        assertThat(count("term")).isEqualTo(50);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM term
+                WHERE created_at IS NULL OR updated_at IS NULL OR deleted_at IS NOT NULL
+                """, Long.class)).isZero();
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM term WHERE term = '중위소득'", Long.class))
                 .isOne();
-        assertThat(jdbc.queryForObject("SELECT COUNT(DISTINCT term) FROM term", Long.class)).isEqualTo(50);
+        assertThat(jdbc.queryForObject("SELECT COUNT(DISTINCT term) FROM term", Long.class))
+                .isEqualTo(50);
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM term WHERE example LIKE '시연 예시:%'", Long.class))
                 .isZero();
+
+        for (String table : NON_TERM_TABLES) {
+            assertThat(count(table)).as(table).isZero();
+        }
     }
 
     @Test
-    void seededEntitiesLoadWithRelationshipsAndExpandedColumns() {
-        Profile profile = entityManager.find(Profile.class, "seed01@hyeja.test");
-        assertThat(profile.getMember().getEmail()).isEqualTo("seed01@hyeja.test");
-        assertThat(profile.getRegion().getRegionCode()).isEqualTo("11440");
-        assertThat(profile.getEmploymentCode()).isEqualTo(EmploymentStatus.UNEMPLOYED);
-        assertThat(profile.getMarriageCode()).isEqualTo(MaritalStatus.SINGLE);
-        assertThat(profile.getHousingType()).isEqualTo(HousingType.MONTHLY_RENT);
-        Policy policy = entityManager.find(Policy.class, "DEMO-HOUSING-001");
-        assertThat(policy.getCategories()).containsExactly(PolicyCategory.MONTHLY_RENT);
-        assertThat(policy.getHousingType()).isEqualTo("MONTHLY_RENT");
-        CardNews card = entityManager.createQuery(
-                "select c from CardNews c where c.policy.policyId = :id", CardNews.class)
-                .setParameter("id", policy.getPolicyId()).getSingleResult();
-        assertThat(card.getTitle()).isEqualTo("[시연] 월세 부담 완화");
-        assertThat(card.getCardNo()).isEqualTo(1);
-        assertThat(jdbc.queryForObject("""
-                SELECT COUNT(*) FROM favorite f
-                JOIN member m ON m.member_id = f.member_id
-                JOIN profile pr ON pr.email = m.email
-                JOIN policy_region r ON r.policy_id = f.policy_id AND r.region_code = pr.region_code
-                JOIN card_news c ON c.policy_id = f.policy_id
-                JOIN notification n ON n.member_id = m.member_id AND n.policy_id = f.policy_id
-                """, Long.class)).isEqualTo(10);
-    }
-
-    @Test
-    void seedCoversEveryProfileOptionAndPolicyCategory() {
-        List<Profile> profiles = entityManager.createQuery("select p from Profile p", Profile.class)
-                .getResultList();
-        assertThat(profiles).extracting(Profile::getEmploymentCode).containsOnly(EmploymentStatus.values());
-        assertThat(profiles).extracting(Profile::getMarriageCode).containsOnly(MaritalStatus.values());
-        assertThat(profiles).extracting(Profile::getHousingType).containsOnly(HousingType.values());
-        assertThat(profiles).extracting(Profile::getIncomeRangeCode).containsOnly(IncomeRange.values());
-        assertThat(profiles).filteredOn(profile -> profile.getEducationCode() != null)
-                .extracting(Profile::getEducationCode).containsOnly(EducationLevel.values());
-        List<Policy> policies = entityManager.createQuery("select p from Policy p", Policy.class)
-                .getResultList();
-        assertThat(policies).flatExtracting(Policy::getCategories)
-                .contains(PolicyCategory.values());
-
-        Profile profile = entityManager.find(Profile.class, "seed01@hyeja.test");
-        assertThat(profile.getIncomeRangeCode()).isEqualTo(IncomeRange.R2000_3000);
-        assertThat(profile.getEducationCode()).isEqualTo(EducationLevel.COLLEGE_STUDENT);
-        assertThat(entityManager.find(Profile.class, "seed10@hyeja.test").getEducationCode()).isNull();
-    }
-
-    @Test
-    void allTestAccountsHaveValidBcryptPasswords() {
-        List<String> passwords = jdbc.queryForList("SELECT password FROM member", String.class);
-        assertThat(passwords).hasSize(10).allSatisfy(password -> {
-            assertThat(password).isNotEqualTo("Hyeja1234!");
-            assertThat(BCrypt.checkpw("Hyeja1234!", password)).isTrue();
-            assertThat(BCrypt.checkpw("wrong-password", password)).isFalse();
-        });
-    }
-
-    @Test
-    void rerunDoesNotDuplicateOverwriteOrRestoreExistingRows() {
-        jdbc.update("UPDATE member SET nickname = '수정한 닉네임' WHERE email = 'seed01@hyeja.test'");
-        jdbc.update("UPDATE profile SET housing_type = 'JEONSE', education_code = 'OTHER' WHERE email = 'seed01@hyeja.test'");
-        jdbc.update("UPDATE region SET sigungu_name = '수정한 지역명' WHERE region_code = '11440'");
-        jdbc.update("UPDATE policy SET view_count = 123, active_yn = FALSE WHERE policy_id = 'DEMO-HOUSING-001'");
-        jdbc.update("UPDATE policy_region SET deleted_at = CURRENT_TIMESTAMP WHERE policy_id = 'DEMO-HOUSING-001'");
-        jdbc.update("UPDATE card_news SET title = '수정한 제목' WHERE policy_id = 'DEMO-HOUSING-001'");
-        jdbc.update("UPDATE favorite SET deleted_at = CURRENT_TIMESTAMP WHERE policy_id = 'DEMO-HOUSING-001'");
-        jdbc.update("UPDATE notification SET read_yn = TRUE WHERE policy_id = 'DEMO-HOUSING-001'");
+    void rerunDoesNotDuplicateOrOverwriteModifiedTerm() {
         jdbc.update("UPDATE term SET easy_description = '수정한 설명' WHERE term = '무주택자'");
-        jdbc.update("""
-                INSERT INTO member (email, password, nickname, role, created_at, updated_at)
-                VALUES ('existing@hyeja.test', 'existing-hash', '기존 회원', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """);
-        var before = snapshot();
+        var before = jdbc.queryForList("SELECT * FROM term ORDER BY term");
 
         executeSeed();
         executeSeed();
 
-        assertThat(snapshot()).isEqualTo(before);
+        assertThat(jdbc.queryForList("SELECT * FROM term ORDER BY term")).isEqualTo(before);
     }
 
     @Test
@@ -171,11 +85,8 @@ class SeedDataTest {
     }
 
     @Test
-    void seedsNonEmptyDatabaseWithoutDependingOnGeneratedIds() {
-        for (String table : List.of("notification", "favorite", "card_news", "policy_region",
-                "profile", "policy", "member", "region", "term")) {
-            jdbc.update("DELETE FROM " + table);
-        }
+    void seedLeavesUnrelatedDataUntouched() {
+        jdbc.update("DELETE FROM term");
         jdbc.update("""
                 INSERT INTO member (member_id, email, password, nickname, role, created_at, updated_at)
                 VALUES (1, 'existing@hyeja.test', 'existing-hash', '기존 회원', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -191,30 +102,25 @@ class SeedDataTest {
 
         executeSeed();
 
-        for (String table : TABLES) {
-            long expected = table.equals("member") ? 11 : table.equals("term") ? 50 : 10;
-            assertThat(count(table)).as(table).isEqualTo(expected);
+        assertThat(count("term")).isEqualTo(50);
+        assertThat(count("member")).isOne();
+        assertThat(count("region")).isOne();
+        for (String table : List.of(
+                "profile", "policy", "policy_region", "card_news", "favorite", "notification")) {
+            assertThat(count(table)).as(table).isZero();
         }
         assertThat(jdbc.queryForObject("SELECT email FROM member WHERE member_id = 1", String.class))
                 .isEqualTo("existing@hyeja.test");
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM favorite WHERE member_id = 1", Long.class)).isZero();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification WHERE member_id = 1", Long.class)).isZero();
-        assertThat(jdbc.queryForObject("SELECT sigungu_name FROM region WHERE region_code = '11440'", String.class))
+        assertThat(jdbc.queryForObject(
+                "SELECT sigungu_name FROM region WHERE region_code = '11440'", String.class))
                 .isEqualTo("기존 지역명");
-        assertThat(jdbc.queryForObject("SELECT easy_description FROM term WHERE term = '무주택자'", String.class))
+        assertThat(jdbc.queryForObject(
+                "SELECT easy_description FROM term WHERE term = '무주택자'", String.class))
                 .isEqualTo("기존 설명");
     }
 
     private long count(String table) {
         return jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Long.class);
-    }
-
-    private Map<String, List<Map<String, Object>>> snapshot() {
-        Map<String, List<Map<String, Object>>> result = new LinkedHashMap<>();
-        for (String table : TABLES) {
-            result.put(table, jdbc.queryForList("SELECT * FROM " + table + " ORDER BY 1, 2"));
-        }
-        return result;
     }
 
     private void executeSeed() {

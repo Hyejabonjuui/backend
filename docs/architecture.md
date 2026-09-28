@@ -61,7 +61,7 @@ HTTP 요청
 - Hibernate DDL 이후 Spring SQL initializer가 일반 SQL을 실행한다.
 - Flyway나 Liquibase는 현재 사용하지 않는다.
 - 초기화 순서는 Policy category 정규화, IncomeRange 정규화, 개발 시드다.
-- 개발 시드는 TERM 50행과 나머지 8개 테이블 각 10행, 총 130행을 중복 없이 넣도록 구성되어 있다.
+- 개발 SQL 시드는 서비스 기준 데이터인 TERM 50행만 중복 없이 넣도록 구성되어 있다.
 - 자세한 실행·검증 방법은 `docs/dev-seed.md`를 참고한다.
 
 `BaseEntity`는 `@MappedSuperclass`이며 `BASE_ENTITY`라는 물리 테이블이 아니다. `softDelete()`는 `deletedAt`만 기록하고, 모든 조회에서 삭제 데이터를 자동 제외하지 않는다.

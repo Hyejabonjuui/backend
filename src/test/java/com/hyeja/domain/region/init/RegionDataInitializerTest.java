@@ -26,7 +26,7 @@ class RegionDataInitializerTest {
 
     @Test
     void loadsAllSigunguEvenWhenSeedExists() throws Exception {
-        // dev-data.sql처럼 시드 지역이 먼저 들어가 있는 상태
+        // 일부 지역이 이미 들어가 있는 상태
         regionRepository.save(Region.builder()
                 .regionCode("11440").sigunguName("변경 전 이름").build());
 

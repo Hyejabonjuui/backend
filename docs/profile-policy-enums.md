@@ -186,6 +186,6 @@ WHERE BINARY marriage_code = 'UNMARRIED';
 ```
 
 모든 enum 값의 저장·조회 및 DB 문자열을 확인하고, 선택 입력의 null 허용과 필수값 제약을 검증합니다.
-시드 테스트는 TERM 50개와 나머지 테이블 각 10개 입력, enum 전체 선택지 포함, 기존 데이터 보존을 확인합니다.
+시드 테스트는 TERM 50개 입력과 재실행 시 중복·기존 데이터 보존을 확인합니다.
 테스트용 H2 2.4.240의 [CHECK 제약 처리 문제](https://github.com/h2database/h2database/issues/4308)를 피하기 위해
 `application-test.yml`에서 `spring.test.database.replace: none`으로 설정된 H2/Hikari 연결 풀을 사용합니다.
