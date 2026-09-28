@@ -9,6 +9,8 @@ import com.hyeja.domain.policy.enums.PolicySort;
 import com.hyeja.domain.policy.service.PolicyService;
 import com.hyeja.domain.policy.service.PolicySearchService;
 import com.hyeja.global.apiPayload.ApiResponse;
+import com.hyeja.global.apiPayload.status.ErrorStatus;
+import com.hyeja.global.exception.GeneralException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -20,10 +22,12 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -210,12 +214,36 @@ public class PolicyController {
 
     @Operation(
             summary = "정책 상세 조회",
-            description = "정책 ID와 로그인한 회원(토큰)을 기준으로 회원 맞춤 정보를 포함한 정책 상세 내용을 조회합니다."
+            description = "비로그인도 조회할 수 있습니다. 로그인하면(토큰) 회원 조건별 가능 여부(conditions)·종합 판정·관심 여부를 함께 내려주고, "
+                    + "비로그인이면 conditions는 빈 목록, overallStatus는 null, isFavorite은 false입니다. "
+                    + "토큰을 보냈는데 만료·로그아웃·탈퇴 등으로 무효하면 비로그인으로 보지 않고 401입니다."
     )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "정책 상세 조회 성공 (SUCCESS_001)"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "보낸 토큰이 무효함 - 만료·로그아웃·탈퇴 (COMMON_002)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "없는 정책 (POLICY_001) / 로그인했지만 없거나 탈퇴한 회원 (MEMBER_001) / 조건 없음 (PROFILE_001)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            )
+    })
     @GetMapping("/{policyId}")
     public ApiResponse<PolicyDetailResponseDTO> getPolicyDetailForMember(
             @PathVariable("policyId") String policyId,
-            @AuthenticationPrincipal Long memberId) {
+            @AuthenticationPrincipal Long memberId,
+            @Parameter(hidden = true) @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+        // 상세는 비로그인도 볼 수 있어서 인증 필터가 무효한 토큰을 막지 않습니다(SecurityConfig 허용 목록).
+        // 토큰을 보냈는데 무효하면(만료·로그아웃·탈퇴) 비로그인 화면 대신 다른 API처럼 401로 알려, 프론트가 재로그인을 안내하게 합니다.
+        if (memberId == null && authorization != null) {
+            throw new GeneralException(ErrorStatus.UNAUTHORIZED);
+        }
         return ApiResponse.onSuccess(
                 policyService.getPolicyDetailForMember(policyId, memberId));
     }
