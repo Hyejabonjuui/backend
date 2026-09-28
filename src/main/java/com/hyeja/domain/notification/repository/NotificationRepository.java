@@ -22,6 +22,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             Long memberId
     );
 
+    long countByMemberMemberIdAndReadYnFalseAndDeletedAtIsNull(Long memberId);
+
     @Query(
             value = """
                     select notification

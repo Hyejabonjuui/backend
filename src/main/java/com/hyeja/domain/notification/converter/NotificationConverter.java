@@ -26,11 +26,15 @@ public final class NotificationConverter {
                 .build();
     }
 
-    public static NotificationListDTO toNotificationListDTO(Page<Notification> notificationPage) {
+    public static NotificationListDTO toNotificationListDTO(
+            Page<Notification> notificationPage,
+            long unreadCount
+    ) {
         return NotificationListDTO.builder()
                 .notifications(notificationPage.getContent().stream()
                         .map(NotificationConverter::toNotificationItemDTO)
                         .toList())
+                .unreadCount(unreadCount)
                 .page(notificationPage.getNumber())
                 .size(notificationPage.getSize())
                 .totalElements(notificationPage.getTotalElements())

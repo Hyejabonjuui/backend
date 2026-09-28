@@ -34,7 +34,8 @@ public class NotificationController {
     @Operation(
             summary = "알림 목록 조회",
             description = "회원 ID에 해당하는 삭제되지 않은 알림을 최신순으로 8개씩 조회합니다. "
-                    + "더보기 요청 시 page 값을 1씩 증가시킵니다."
+                    + "더보기 요청 시 page 값을 1씩 증가시킵니다. "
+                    + "응답에 전체 안 읽은 알림 개수를 함께 반환합니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(

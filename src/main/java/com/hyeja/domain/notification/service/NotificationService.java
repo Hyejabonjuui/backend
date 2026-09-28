@@ -29,7 +29,9 @@ public class NotificationService {
                 memberId,
                 PageRequest.of(page, size)
         );
-        return NotificationConverter.toNotificationListDTO(notificationPage);
+        long unreadCount = notificationRepository
+                .countByMemberMemberIdAndReadYnFalseAndDeletedAtIsNull(memberId);
+        return NotificationConverter.toNotificationListDTO(notificationPage, unreadCount);
     }
 
     @Transactional
