@@ -26,6 +26,7 @@ import java.net.URI;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Comparator;
@@ -114,8 +115,13 @@ public class PolicyService {
         return processedCount;
     }
 
+    // 대분류(lclsfNm)가 "주거,주거"처럼 쉼표로 여러 개 올 때가 있어, 그중 하나라도 주거면 저장합니다.
+    // (2026-09-28 실측: "청년월세 지원" 등 2건이 이 형태라 수집에서 빠지고 있었음)
     private boolean isSavableHousingPolicy(PolicyItem item) {
-        return HOUSING_CATEGORY.equals(trimToNull(item.getCategory()))
+        return item.getCategory() != null
+                && Arrays.stream(item.getCategory().split(","))
+                        .map(String::trim)
+                        .anyMatch(HOUSING_CATEGORY::equals)
                 && trimToNull(item.getPolicyId()) != null
                 && policyApiCodeConverter.isApproved(item.getApprovalStatusCode());
     }
