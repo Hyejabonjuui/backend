@@ -19,3 +19,8 @@ spring:
 # 테스트 전용 서명 키입니다. 실제 서버는 .env의 JWT_SECRET을 사용합니다.
 jwt:
   secret: hyeja-test-only-jwt-secret-key-0123456789
+
+# .env에 ADMIN_EMAIL이 있어도 테스트에서는 관리자 계정을 만들지 않습니다(AdminInitializer가 건너뜀).
+admin:
+  email: ""
+  password: ""
