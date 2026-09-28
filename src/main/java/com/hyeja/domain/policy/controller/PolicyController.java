@@ -216,7 +216,7 @@ public class PolicyController {
             summary = "정책 상세 조회",
             description = "비로그인도 조회할 수 있습니다. 로그인하면(토큰) 회원 조건별 가능 여부(conditions)·종합 판정·관심 여부를 함께 내려주고, "
                     + "비로그인이면 conditions는 빈 목록, overallStatus는 null, isFavorite은 false입니다. "
-                    + "토큰을 보냈는데 만료·로그아웃·탈퇴 등으로 무효하면 비로그인으로 보지 않고 401입니다."
+                    + "토큰을 보냈는데 무효하면(만료·위조·로그아웃, 탈퇴할 때 쓴 토큰) 비로그인으로 보지 않고 401입니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -225,7 +225,7 @@ public class PolicyController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
-                    description = "보낸 토큰이 무효함 - 만료·로그아웃·탈퇴 (COMMON_002)",
+                    description = "보낸 토큰이 무효함 - 만료·위조·로그아웃, 탈퇴할 때 쓴 토큰(블랙리스트) (COMMON_002)",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -240,7 +240,7 @@ public class PolicyController {
             @AuthenticationPrincipal Long memberId,
             @Parameter(hidden = true) @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
         // 상세는 비로그인도 볼 수 있어서 인증 필터가 무효한 토큰을 막지 않습니다(SecurityConfig 허용 목록).
-        // 토큰을 보냈는데 무효하면(만료·로그아웃·탈퇴) 비로그인 화면 대신 다른 API처럼 401로 알려, 프론트가 재로그인을 안내하게 합니다.
+        // 토큰을 보냈는데 무효하면(만료·위조·로그아웃, 탈퇴할 때 쓴 토큰) 비로그인 화면 대신 다른 API처럼 401로 알려, 프론트가 재로그인을 안내하게 합니다.
         if (memberId == null && authorization != null) {
             throw new GeneralException(ErrorStatus.UNAUTHORIZED);
         }
