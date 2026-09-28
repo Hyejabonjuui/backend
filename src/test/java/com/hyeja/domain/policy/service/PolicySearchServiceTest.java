@@ -20,9 +20,11 @@ import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.policy.repository.PolicyRepository;
+import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.AiAssessment;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.SearchIntent;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.AnalysisException;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.FailureType;
+import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.ReasonRequest;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import com.hyeja.domain.profile.enums.HousingType;
@@ -39,6 +41,7 @@ import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class PolicySearchServiceTest {
     private final PolicyRepository policyRepository = mock(PolicyRepository.class);
@@ -78,7 +81,7 @@ class PolicySearchServiceTest {
     }
 
     @Test
-    void mapsHashtagWithoutAiAndGroupsAtMostTwentyPolicies() {
+    void letsAiDowngradeEligibilityButNeverUpgradeIt() {
         Policy approved = policy("approved");
         Policy review = policy("review");
         Policy declined = policy("declined");
@@ -100,37 +103,59 @@ class PolicySearchServiceTest {
                 .thenReturn(conditions(EligibilityStatus.UNKNOWN));
         when(eligibilityEvaluator.evaluate(declined, profile, List.of()))
                 .thenReturn(conditions(EligibilityStatus.DISABLE));
-        when(aiAnalyzer.generateReasons(anyList())).thenReturn(Map.of(
-                "approved", "서울에 거주하고 무주택이라 신청할 수 있어요.",
-                "review", "소득 정보를 입력하면 정확히 알려드려요.",
-                "declined", "만 34세까지 신청할 수 있지만 현재 만 36세예요."));
+        when(aiAnalyzer.assess(anyList())).thenReturn(Map.of(
+                "approved", new AiAssessment(EligibilityStatus.UNKNOWN,
+                        "혼인 여부를 추가로 확인해야 해요."),
+                "review", new AiAssessment(EligibilityStatus.DISABLE,
+                        "소득 조건이 정책 기준과 일치하지 않아요."),
+                "declined", new AiAssessment(EligibilityStatus.ABLE,
+                        "나이 조건이 정책 기준과 일치해요.")));
 
         PolicySearchResponseDTO response = service.search(1L, " #월세 ");
 
-        assertThat(response.approved()).singleElement().satisfies(item -> {
+        assertThat(response.underReview()).singleElement().satisfies(item -> {
             assertThat(item.policyId()).isEqualTo("approved");
             assertThat(item.isFavorite()).isTrue();
             assertThat(item.categories()).containsExactly(PolicyCategory.MONTHLY_RENT);
+            assertThat(item.aiReason()).isEqualTo("혼인 여부를 추가로 확인해야 해요.");
         });
-        assertThat(response.underReview()).extracting(item -> item.policyId())
-                .containsExactly("review");
         assertThat(response.declined()).extracting(item -> item.policyId())
-                .containsExactly("declined");
+                .containsExactly("review", "declined");
+        assertThat(response.declined().get(0).aiReason())
+                .isEqualTo("소득 조건이 정책 기준과 일치하지 않아요.");
+        assertThat(response.declined().get(1).aiReason())
+                .isEqualTo("나이 조건은 정책 조건이지만 회원 정보는 회원 정보예요.");
+        assertThat(response.approvedCount()).isZero();
+        assertThat(response.underReviewCount()).isEqualTo(1);
+        assertThat(response.declinedCount()).isEqualTo(2);
         assertThat(response.approved().size() + response.underReview().size()
                 + response.declined().size()).isLessThanOrEqualTo(20);
+        ArgumentCaptor<List<ReasonRequest>> requests = ArgumentCaptor.forClass(List.class);
+        verify(aiAnalyzer).assess(requests.capture());
+        assertThat(requests.getValue()).allSatisfy(request -> {
+            assertThat(request.extraQualification()).isEqualTo("추가 자격 확인");
+            assertThat(request.profile().region()).isEqualTo("서울특별시 마포구");
+            assertThat(request.profile().employment()).isEqualTo("재직자");
+            assertThat(request.profile().housingType()).isEqualTo("월세");
+            assertThat(request.conditions()).hasSize(5);
+        });
         verify(aiAnalyzer, never()).analyzeIntent(any());
     }
 
     @Test
-    void throwsDedicatedErrorWhenNoCandidateExists() {
+    void returnsEmptySuccessResultWhenNoCandidateExists() {
         when(policyRepository.searchActivePolicies(
                 any(Boolean.class), any(Boolean.class), any(Boolean.class), any(Boolean.class),
                 any(Boolean.class), any(), any(), any())).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.search(1L, "#전세"))
-                .isInstanceOfSatisfying(GeneralException.class,
-                        exception -> assertThat(exception.getCode())
-                                .isEqualTo(ErrorStatus.POLICY_SEARCH_EMPTY));
+        PolicySearchResponseDTO response = service.search(1L, "#전세");
+
+        assertThat(response.approved()).isEmpty();
+        assertThat(response.underReview()).isEmpty();
+        assertThat(response.declined()).isEmpty();
+        assertThat(response.approvedCount()).isZero();
+        assertThat(response.underReviewCount()).isZero();
+        assertThat(response.declinedCount()).isZero();
     }
 
     @Test
@@ -161,17 +186,16 @@ class PolicySearchServiceTest {
                 org.mockito.ArgumentMatchers.eq(LocalDate.of(2026, 9, 27)),
                 any())).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.search(1L, "청년 주거 정책 알려줘"))
-                .isInstanceOfSatisfying(GeneralException.class,
-                        exception -> assertThat(exception.getCode())
-                                .isEqualTo(ErrorStatus.POLICY_SEARCH_EMPTY));
+        PolicySearchResponseDTO response = service.search(1L, "청년 주거 정책 알려줘");
+
+        assertThat(response.approved()).isEmpty();
     }
 
     @Test
-    void mapsAiFailuresToDedicatedSearchErrors() {
-        assertAiFailure(FailureType.UNAVAILABLE, ErrorStatus.POLICY_SEARCH_AI_UNAVAILABLE);
-        assertAiFailure(FailureType.EMPTY_RESPONSE, ErrorStatus.POLICY_SEARCH_AI_EMPTY_RESPONSE);
-        assertAiFailure(FailureType.INVALID_RESPONSE, ErrorStatus.POLICY_SEARCH_AI_INVALID_RESPONSE);
+    void searchesAllHousingCategoriesWhenAiIntentAnalysisFails() {
+        for (FailureType failureType : FailureType.values()) {
+            assertAiFailureFallsBackToAllHousing(failureType);
+        }
     }
 
     @Test
@@ -187,21 +211,24 @@ class PolicySearchServiceTest {
         verify(profileService, never()).getActiveProfile(any());
     }
 
-    private void assertAiFailure(FailureType failureType, ErrorStatus expectedStatus) {
+    private void assertAiFailureFallsBackToAllHousing(FailureType failureType) {
         when(aiAnalyzer.analyzeIntent("일반 검색 " + failureType))
                 .thenThrow(new AnalysisException(failureType, "테스트 실패"));
+        when(policyRepository.searchActivePolicies(
+                org.mockito.ArgumentMatchers.eq(true), org.mockito.ArgumentMatchers.eq(true),
+                org.mockito.ArgumentMatchers.eq(true), org.mockito.ArgumentMatchers.eq(true),
+                org.mockito.ArgumentMatchers.eq(true), org.mockito.ArgumentMatchers.eq("11440"),
+                org.mockito.ArgumentMatchers.eq(LocalDate.of(2026, 9, 27)), any()))
+                .thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.search(1L, "일반 검색 " + failureType))
-                .isInstanceOfSatisfying(GeneralException.class, exception -> {
-                    assertThat(exception.getCode()).isEqualTo(expectedStatus);
-                    assertThat(exception.getMessage()).isEqualTo(expectedStatus.getMessage());
-                });
+        assertThat(service.search(1L, "일반 검색 " + failureType).approved()).isEmpty();
     }
 
     private Policy policy(String id) {
         return Policy.builder()
                 .policyId(id)
                 .policyName("청년 월세 지원")
+                .extraQualification("추가 자격 확인")
                 .categories(Set.of(PolicyCategory.MONTHLY_RENT))
                 .ageLimitYn(false)
                 .applyPeriodCode(PolicyApplyPeriod.ALWAYS)

@@ -9,9 +9,19 @@ import java.util.List;
 import java.util.Set;
 
 public record PolicySearchResponseDTO(
+        int approvedCount,
+        int underReviewCount,
+        int declinedCount,
         List<PolicySearchItemDTO> approved,
         List<PolicySearchItemDTO> underReview,
         List<PolicySearchItemDTO> declined) {
+
+    public PolicySearchResponseDTO(
+            List<PolicySearchItemDTO> approved,
+            List<PolicySearchItemDTO> underReview,
+            List<PolicySearchItemDTO> declined) {
+        this(approved.size(), underReview.size(), declined.size(), approved, underReview, declined);
+    }
 
     public record PolicySearchItemDTO(
             String policyId,
