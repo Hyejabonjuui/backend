@@ -19,6 +19,7 @@ public record PolicyDetailResponseDTO(
         String description,
         String supportContent,
         String extraQualification,
+        List<TermSummaryDTO> terms,
         PolicyApplyPeriod applyPeriod,
         String applyPeriodLabel,
         LocalDate applyStartDate,
@@ -30,6 +31,9 @@ public record PolicyDetailResponseDTO(
         @JsonProperty("isFavorite") boolean isFavorite,
         EligibilityStatus overallStatus,
         List<ConditionResultDTO> conditions) {
+
+    public record TermSummaryDTO(Long termId, String termName) {
+    }
 
     public record ConditionResultDTO(
             EligibilityConditionType type,

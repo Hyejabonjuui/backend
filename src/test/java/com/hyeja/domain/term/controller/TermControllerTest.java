@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.hyeja.domain.term.dto.TermResponseDTO;
+import com.hyeja.domain.term.dto.TermDetailResponseDTO;
 import com.hyeja.domain.term.service.TermService;
 import com.hyeja.global.exception.ExceptionAdvice;
 import java.util.List;
@@ -33,13 +34,13 @@ class TermControllerTest {
     void returnsTerms() throws Exception {
         when(termService.getTerms()).thenReturn(List.of(
                 TermResponseDTO.builder()
-                        .termId(1)
+                        .termId(1L)
                         .term("중위소득")
                         .easyDescription("전체 가구를 소득 순서로 세웠을 때 가운데 가구의 소득")
                         .example("중위소득 60% 이하")
                         .build(),
                 TermResponseDTO.builder()
-                        .termId(2)
+                        .termId(2L)
                         .term("무주택자")
                         .easyDescription("본인 명의 주택을 소유하지 않은 사람")
                         .build()
@@ -57,5 +58,20 @@ class TermControllerTest {
                 .andExpect(jsonPath("$.result[1].example").value(nullValue()));
 
         verify(termService).getTerms();
+    }
+
+    @Test
+    void returnsTermDetail() throws Exception {
+        when(termService.getTerm(1L)).thenReturn(
+                new TermDetailResponseDTO(1L, "중위소득", "전체 가구 소득의 중간값"));
+
+        mvc.perform(get("/api/terms/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.termId").value(1))
+                .andExpect(jsonPath("$.result.termName").value("중위소득"))
+                .andExpect(jsonPath("$.result.description")
+                        .value("전체 가구 소득의 중간값"));
+
+        verify(termService).getTerm(1L);
     }
 }

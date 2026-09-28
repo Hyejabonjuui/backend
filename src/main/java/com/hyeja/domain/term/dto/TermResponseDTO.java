@@ -10,7 +10,7 @@ import lombok.Getter;
 public class TermResponseDTO {
 
     @Schema(description = "용어 ID", example = "1")
-    private Integer termId;
+    private Long termId;
 
     @Schema(description = "정책 용어", example = "중위소득")
     private String term;

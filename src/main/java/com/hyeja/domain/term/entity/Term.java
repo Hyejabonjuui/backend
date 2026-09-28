@@ -22,7 +22,7 @@ public class Term extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "term_id")
-    private Integer termId;
+    private Long termId;
 
     @Column(name = "term", nullable = false, length = 50)
     private String term;
