@@ -103,6 +103,7 @@ class PolicySyncItemServiceTest {
     }
 
     // 시·도 코드(11000)는 REGION에 새 행을 만들지 않고 그 시·도의 시군구 전체로 풀어서 저장합니다.
+    // 예전 수집이 만든 시·도 행이 REGION에 이미 있어도 그 행이 아니라 시군구로 저장합니다.
     @Test
     void expandsSidoCodeToSigunguRegionsWithoutCreatingRegion() {
         PolicyItem item = new PolicyItem();
@@ -123,8 +124,10 @@ class PolicySyncItemServiceTest {
                 .regionCode("11680").sigunguName("서울특별시 강남구").build();
         when(policyRepository.save(any(Policy.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        Region legacySido = Region.builder().regionCode("11000").sigunguName("서울특별시").build();
+        when(regionRepository.findAllById(any())).thenReturn(List.of(legacySido));
         when(regionRepository.findAllByRegionCodeStartingWith("11"))
-                .thenReturn(List.of(jongno, gangnam));
+                .thenReturn(List.of(legacySido, jongno, gangnam));
         when(cardNewsRepository.existsByPolicy_PolicyIdAndCardNo("seoul-policy", 1L))
                 .thenReturn(true);
 

@@ -64,7 +64,11 @@ public class PolicySyncItemService {
     // 시·도 코드(예: 11000 서울 전체)는 그 시·도의 시군구 전체로 풀어서 저장합니다.
     private List<Region> resolveRegions(String policyId, Set<String> regionCodes) {
         Map<String, Region> resolved = new LinkedHashMap<>();
-        regionRepository.findAllById(regionCodes).forEach(region -> resolved.put(region.getRegionCode(), region));
+        // 예전 수집이 만든 시·도 행(예: 11000)이 REGION에 남아 있어도 그대로 쓰지 않고 아래에서 시군구로 풉니다.
+        // 회원·정책이 참조하고 있을 수 있어 그 행을 지우지는 않습니다.
+        regionRepository.findAllById(regionCodes).stream()
+                .filter(region -> !isSidoCode(region.getRegionCode()))
+                .forEach(region -> resolved.put(region.getRegionCode(), region));
 
         Set<String> unresolved = new LinkedHashSet<>(regionCodes);
         unresolved.removeAll(resolved.keySet());
