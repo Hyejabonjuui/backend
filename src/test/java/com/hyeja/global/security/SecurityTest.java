@@ -79,7 +79,7 @@ class SecurityTest {
                 {"GET", "/api/notification"},
                 {"PATCH", "/api/notification/1/read"},
                 {"DELETE", "/api/notification/1"},
-                {"GET", "/api/policies/policy-1"},
+                {"GET", "/api/policies/search?query=월세"},
         };
         for (String[] api : apis) {
             HttpResponse<String> response = send(api[0], api[1], null);
@@ -115,6 +115,7 @@ class SecurityTest {
                 {"GET", "/api/policies/housing"},
                 {"GET", "/api/policies/card-news/guest"},
                 {"GET", "/api/policies/card-detail/20260923005400113576"},
+                {"GET", "/api/policies/policy-1"},
                 {"GET", "/api/health"},
         };
         for (String[] api : apis) {
@@ -123,6 +124,24 @@ class SecurityTest {
             // 요청 본문이 없어 400이 나는 API도 있지만, 인증 때문에 막히지(COMMON_002) 않으면 됩니다.
             assertThat(response.body()).as(api[0] + " " + api[1]).doesNotContain("COMMON_002");
         }
+    }
+
+    // 정책 상세는 비로그인도 볼 수 있지만, 토큰을 보냈는데 무효(위조·로그아웃·탈퇴)하면 비로그인 화면이 아니라 401입니다.
+    @Test
+    void policyDetailRejectsInvalidTokenButAllowsNoToken() throws Exception {
+        String loggedOut = jwtProvider.createAccessToken(member(3L));
+        when(tokenBlacklist.contains(loggedOut)).thenReturn(true);
+
+        for (String header : new String[] {"Bearer not-a-jwt", "Bearer " + loggedOut}) {
+            HttpResponse<String> response = send("GET", "/api/policies/policy-1", header);
+
+            assertThat(response.statusCode()).isEqualTo(401);
+            assertThat(JsonPath.parse(response.body()).read("$.code", String.class)).isEqualTo("COMMON_002");
+        }
+        // 토큰이 없으면 비로그인으로 조회합니다. (없는 정책이라 POLICY_001)
+        HttpResponse<String> guest = send("GET", "/api/policies/policy-1", null);
+        assertThat(guest.statusCode()).isEqualTo(404);
+        assertThat(JsonPath.parse(guest.body()).read("$.code", String.class)).isEqualTo("POLICY_001");
     }
 
     // 정책 동기화·알림 생성은 관리자 전용입니다. 일반 회원 토큰이면 컨트롤러까지 가지 않고 403입니다.

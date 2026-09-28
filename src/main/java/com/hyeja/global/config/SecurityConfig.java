@@ -46,6 +46,8 @@ public class SecurityConfig {
                                 "/api/members/login",
                                 "/api/members/email-verifications",
                                 "/api/members/email-verifications/confirmation").permitAll()
+                        // 정책 검색은 회원 조건으로 판정하므로 로그인이 필요합니다. 아래 /api/policies/*(정책 상세)보다 먼저 둡니다.
+                        .requestMatchers(HttpMethod.GET, "/api/policies/search").authenticated()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/members/find-email",
                                 "/api/regions",
@@ -53,6 +55,7 @@ public class SecurityConfig {
                                 "/api/policies/housing",
                                 "/api/policies/card-news/guest",
                                 "/api/policies/card-detail/*",
+                                "/api/policies/*",
                                 "/api/health").permitAll()
                         // Swagger 화면, 그리고 예외 발생 시 Spring이 내부적으로 넘기는 /error
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/error").permitAll()

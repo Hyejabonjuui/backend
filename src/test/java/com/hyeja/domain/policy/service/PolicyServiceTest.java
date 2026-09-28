@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.hyeja.domain.member.entity.Member;
-import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.domain.favorite.repository.FavoriteRepository;
 import com.hyeja.domain.policy.converter.PolicyApiCodeConverter;
 import com.hyeja.domain.policy.converter.PolicyApiConverter;
@@ -29,7 +28,6 @@ import com.hyeja.domain.policy.enums.PolicyHouselessRequirement;
 import com.hyeja.domain.policy.enums.PolicySort;
 import com.hyeja.domain.policy.repository.PolicyRepository;
 import com.hyeja.domain.policy.repository.PolicyRegionRepository;
-import com.hyeja.domain.profile.repository.ProfileRepository;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import com.hyeja.domain.profile.service.ProfileService;
@@ -56,8 +54,6 @@ class PolicyServiceTest {
     private final PolicyApiConverter apiConverter = new PolicyApiConverter(codeConverter);
     private final PolicyAiAnalyzer policyAiAnalyzer = mock(PolicyAiAnalyzer.class);
     private final PolicySyncItemService policySyncItemService = mock(PolicySyncItemService.class);
-    private final MemberRepository memberRepository = mock(MemberRepository.class);
-    private final ProfileRepository profileRepository = mock(ProfileRepository.class);
     private final ProfileService profileService = mock(ProfileService.class);
     private final PolicyRegionRepository policyRegionRepository = mock(PolicyRegionRepository.class);
     private final PolicyEligibilityEvaluator policyEligibilityEvaluator =
@@ -69,7 +65,7 @@ class PolicyServiceTest {
             ZoneId.of("Asia/Seoul"));
     private final PolicyService service = new PolicyService(
             policyRepository, restTemplate, codeConverter, policyAiAnalyzer,
-            policySyncItemService, memberRepository, profileRepository, profileService,
+            policySyncItemService, profileService,
             policyRegionRepository, policyEligibilityEvaluator, favoriteRepository,
             termRepository, clock);
 
@@ -568,13 +564,10 @@ class PolicyServiceTest {
                 .build();
         ReflectionTestUtils.setField(unrelatedTerm, "termId", 2);
 
-        Member member = mock(Member.class);
-        when(member.getEmail()).thenReturn("member@example.com");
         Profile profile = mock(Profile.class);
 
         when(policyRepository.findById("policy-detail")).thenReturn(Optional.of(policy));
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
-        when(profileRepository.findById("member@example.com")).thenReturn(Optional.of(profile));
+        when(profileService.getActiveProfile(1L)).thenReturn(profile);
         when(policyRegionRepository.findAllByPolicy_PolicyId("policy-detail"))
                 .thenReturn(List.of());
         when(favoriteRepository
@@ -593,6 +586,37 @@ class PolicyServiceTest {
                 new PolicyDetailResponseDTO.TermSummaryDTO(1, "중위소득"));
         assertThat(response.overallStatus()).isEqualTo(
                 com.hyeja.domain.policy.enums.EligibilityStatus.UNKNOWN);
+    }
+
+    // 비로그인(memberId null)은 판정 없이 정책 정보만 내려줍니다.
+    @Test
+    void returnsPolicyDetailWithoutConditionsForGuest() {
+        Policy policy = mock(Policy.class);
+        when(policy.getPolicyId()).thenReturn("policy-detail");
+        when(policy.getPolicyName()).thenReturn("청년 주거 정책");
+        when(policy.getCategories()).thenReturn(Set.of(PolicyCategory.OTHER));
+        when(policyRepository.findById("policy-detail")).thenReturn(Optional.of(policy));
+
+        PolicyDetailResponseDTO response = service.getPolicyDetailForMember("policy-detail", null);
+
+        assertThat(response.policyName()).isEqualTo("청년 주거 정책");
+        assertThat(response.conditions()).isEmpty();
+        assertThat(response.overallStatus()).isNull();
+        assertThat(response.isFavorite()).isFalse();
+        org.mockito.Mockito.verifyNoInteractions(profileService, favoriteRepository);
+    }
+
+    // 탈퇴한 회원의 토큰이면 목록 조회와 같이 MEMBER_001입니다.
+    @Test
+    void rejectsPolicyDetailForWithdrawnMember() {
+        when(policyRepository.findById("policy-detail")).thenReturn(Optional.of(mock(Policy.class)));
+        when(profileService.getActiveProfile(1L)).thenThrow(
+                new com.hyeja.global.exception.GeneralException(
+                        com.hyeja.global.apiPayload.status.ErrorStatus.MEMBER_NOT_FOUND));
+
+        assertThatThrownBy(() -> service.getPolicyDetailForMember("policy-detail", 1L))
+                .extracting("code")
+                .isEqualTo(com.hyeja.global.apiPayload.status.ErrorStatus.MEMBER_NOT_FOUND);
     }
 
     @Test
@@ -621,16 +645,13 @@ class PolicyServiceTest {
                 .regionCode("11200")
                 .sigunguName("서울특별시 성동구")
                 .build();
-        Member member = mock(Member.class);
-        when(member.getEmail()).thenReturn("member@example.com");
         Profile profile = mock(Profile.class);
         when(profile.getRegion()).thenReturn(memberRegion);
         when(profile.getEmploymentCode()).thenReturn(EmploymentStatus.UNEMPLOYED);
         when(profile.getHouselessYn()).thenReturn(true);
 
         when(policyRepository.findById("busan-policy")).thenReturn(Optional.of(policy));
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
-        when(profileRepository.findById("member@example.com")).thenReturn(Optional.of(profile));
+        when(profileService.getActiveProfile(1L)).thenReturn(profile);
         when(policyRegionRepository.findAllByPolicy_PolicyId("busan-policy"))
                 .thenReturn(List.of(policyRegionLink));
 
