@@ -46,8 +46,12 @@ public class SecurityConfig {
                                 "/api/members/login",
                                 "/api/members/email-verifications",
                                 "/api/members/email-verifications/confirmation").permitAll()
-                        // 정책 검색은 회원 조건으로 판정하므로 로그인이 필요합니다. 아래 /api/policies/*(정책 상세)보다 먼저 둡니다.
-                        .requestMatchers(HttpMethod.GET, "/api/policies/search").authenticated()
+                        // 아래 "/api/policies/*"(비로그인 정책 상세)는 /api/policies 아래 한 단계 경로를 모두 열어 버립니다.
+                        // 그래서 로그인이 필요한 한 단계 GET 경로(정책 검색, 회원 홈 카드뉴스)는 여기서 먼저 막습니다.
+                        // /api/policies 아래에 한 단계 GET API를 새로 만들면 로그인 필요 여부를 확인해 여기에 추가해 주세요.
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/policies/search",
+                                "/api/policies/card-news").authenticated()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/members/find-email",
                                 "/api/regions",
