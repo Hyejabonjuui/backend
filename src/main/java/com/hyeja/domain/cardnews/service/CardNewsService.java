@@ -7,13 +7,12 @@ import com.hyeja.domain.cardnews.dto.MemberCardNewsResponseDTO;
 import com.hyeja.domain.cardnews.entity.CardNews;
 import com.hyeja.domain.cardnews.repository.CardNewsRepository;
 import com.hyeja.domain.favorite.repository.FavoriteRepository;
-import com.hyeja.domain.member.entity.Member;
-import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.entity.PolicyRegion;
 import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.profile.entity.Profile;
-import com.hyeja.domain.profile.repository.ProfileRepository;
+import com.hyeja.domain.profile.service.ProfileService;
+import com.hyeja.domain.region.converter.RegionConverter;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
 
@@ -35,8 +34,7 @@ public class CardNewsService {
     private final CardNewsRepository cardNewsRepository;
     private final PolicyRegionRepository policyRegionRepository;
     private final FavoriteRepository favoriteRepository;
-    private final MemberRepository memberRepository;
-    private final ProfileRepository profileRepository;
+    private final ProfileService profileService;
 
     public List<CardNewsResponseDTO> getGuestCardNews() {
         // Pageable 없이 레포지토리에서 상위 4개를 바로 조회
@@ -55,10 +53,8 @@ public class CardNewsService {
     }
 
     public List<MemberCardNewsResponseDTO> getMemberCardNews(Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
-        Profile profile = profileRepository.findById(member.getEmail())
-                .orElseThrow(() -> new GeneralException(ErrorStatus.PROFILE_NOT_FOUND));
+        // 정책 목록·상세와 같은 기준으로, 탈퇴 회원은 MEMBER_001, 조건이 없거나 삭제됐으면 PROFILE_001입니다.
+        Profile profile = profileService.getActiveProfile(memberId);
         String regionCode = profile.getRegion().getRegionCode();
 
         return cardNewsRepository.findMemberHomeCardNews(
@@ -82,7 +78,8 @@ public class CardNewsService {
         List<PolicyRegion> policyRegions = policyRegionRepository
                 .findAllActiveByPolicyIds(List.of(policy.getPolicyId()));
         List<String> eligibilityBadges = List.of(
-                formatAge(policy), formatFirstRegion(policyRegions));
+                formatAge(policy), RegionConverter.summarize(
+                        policyRegions.stream().map(PolicyRegion::getRegion).toList()));
         boolean authenticated = memberId != null;
 
         List<CardDTO> cards = cardNews.stream()
@@ -115,14 +112,6 @@ public class CardNewsService {
         if (policy.getMinAge() != null) return "만 %d세 이상".formatted(policy.getMinAge());
         if (policy.getMaxAge() != null) return "만 %d세 이하".formatted(policy.getMaxAge());
         return "연령 제한 없음";
-    }
-
-    private String formatFirstRegion(List<PolicyRegion> policyRegions) {
-        return policyRegions.stream()
-                .findFirst()
-                .map(PolicyRegion::getRegion)
-                .map(region -> region.getSigunguName())
-                .orElse("전국");
     }
 
     private Integer calculateDDay(Policy policy) {
