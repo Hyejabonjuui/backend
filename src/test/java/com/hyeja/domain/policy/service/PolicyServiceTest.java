@@ -1,6 +1,7 @@
 package com.hyeja.domain.policy.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -405,9 +406,9 @@ class PolicyServiceTest {
         verify(policySyncItemService).save(org.mockito.ArgumentMatchers.eq(second), org.mockito.ArgumentMatchers.any());
     }
 
-    // 다시 시도해도 실패하면 거기서 멈추고, 그 전까지 저장한 건수를 정상으로 돌려줍니다(예외로 500이 나지 않음).
+    // 다시 시도해도 실패하면 거기서 멈추고, "완료" 대신 멈춘 페이지·저장 건수를 담은 POLICY_002를 던집니다.
     @Test
-    void stopsAndKeepsSavedPoliciesWhenPageFailsTwice() {
+    void stopsAndReportsStoppedPageWhenPageFailsTwice() {
         ReflectionTestUtils.setField(service, "apiKey", "test-key");
         ReflectionTestUtils.setField(service, "apiUrl", "https://example.com/policies");
         when(restTemplate.getForObject(org.mockito.ArgumentMatchers.any(java.net.URI.class),
@@ -415,11 +416,35 @@ class PolicyServiceTest {
                 .thenReturn(page(300, approvedHousingPolicy("page-1")))
                 .thenThrow(new org.springframework.web.client.ResourceAccessException("Connection reset"));
 
-        assertThat(service.fetchAndSaveHousingPolicies()).isEqualTo(1);
+        assertThatThrownBy(() -> service.fetchAndSaveHousingPolicies())
+                .isInstanceOf(com.hyeja.global.exception.GeneralException.class)
+                .satisfies(exception -> {
+                    com.hyeja.global.exception.GeneralException error =
+                            (com.hyeja.global.exception.GeneralException) exception;
+                    assertThat(error.getCode()).isEqualTo(com.hyeja.global.apiPayload.status.ErrorStatus.POLICY_SYNC_STOPPED);
+                    assertThat(error.getResult()).isEqualTo(java.util.Map.of("stoppedPage", 2, "savedCount", 1));
+                });
+        // 1페이지에서 저장한 정책은 남습니다.
+        verify(policySyncItemService).save(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
         // 1페이지 1번 + 2페이지 2번(재시도 포함). 3페이지는 요청하지 않습니다.
         verify(restTemplate, times(3)).getForObject(
                 org.mockito.ArgumentMatchers.any(java.net.URI.class),
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class));
+    }
+
+    // 1페이지부터 실패하면 예전처럼 "0건 완료"로 조용히 끝나지 않고 중단으로 알립니다.
+    @Test
+    void reportsStopWhenFirstPageFails() {
+        ReflectionTestUtils.setField(service, "apiKey", "test-key");
+        ReflectionTestUtils.setField(service, "apiUrl", "https://example.com/policies");
+        when(restTemplate.getForObject(org.mockito.ArgumentMatchers.any(java.net.URI.class),
+                org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class)))
+                .thenThrow(new org.springframework.web.client.HttpServerErrorException(
+                        org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR));
+
+        assertThatThrownBy(() -> service.fetchAndSaveHousingPolicies())
+                .extracting("result")
+                .isEqualTo(java.util.Map.of("stoppedPage", 1, "savedCount", 0));
     }
 
     private PolicyApiResponseDTO page(int totCount, PolicyItem... items) {
