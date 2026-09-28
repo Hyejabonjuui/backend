@@ -49,9 +49,9 @@ class SeedDataTest {
     private EntityManager entityManager;
 
     @Test
-    void startupCreatesTenRowsPerTableWithTimestamps() {
+    void startupCreatesExpectedRowsWithTimestamps() {
         for (String table : TABLES) {
-            assertThat(count(table)).as(table).isEqualTo(10);
+            assertThat(count(table)).as(table).isEqualTo(table.equals("term") ? 50 : 10);
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table
                     + " WHERE created_at IS NULL OR updated_at IS NULL OR deleted_at IS NOT NULL", Long.class))
                     .as(table + " timestamps").isZero();
@@ -64,6 +64,10 @@ class SeedDataTest {
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM term WHERE term = '중위소득'", Long.class))
                 .isOne();
+        assertThat(jdbc.queryForObject("SELECT COUNT(DISTINCT term) FROM term", Long.class)).isEqualTo(50);
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM term WHERE example LIKE '시연 예시:%'", Long.class))
+                .isZero();
     }
 
     @Test
@@ -147,6 +151,26 @@ class SeedDataTest {
     }
 
     @Test
+    void rerunRefinesUnmodifiedLegacyTerm() {
+        jdbc.update("""
+                UPDATE term
+                SET easy_description = '우리나라 모든 가구를 소득 순서로 세웠을 때 가운데 가구의 소득입니다.',
+                    example = '시연 예시: 중위소득 60% 이하'
+                WHERE term = '중위소득'
+                """);
+
+        executeSeed();
+
+        assertThat(jdbc.queryForObject(
+                "SELECT easy_description FROM term WHERE term = '중위소득'", String.class))
+                .isEqualTo("정부가 가구 소득을 비교하기 위해 정하는 가운데 기준값입니다. "
+                        + "정책에서는 가구원 수별 금액을 사용합니다.");
+        assertThat(jdbc.queryForObject(
+                "SELECT example FROM term WHERE term = '중위소득'", String.class))
+                .isEqualTo("기준 중위소득 60% 이하");
+    }
+
+    @Test
     void seedsNonEmptyDatabaseWithoutDependingOnGeneratedIds() {
         for (String table : List.of("notification", "favorite", "card_news", "policy_region",
                 "profile", "policy", "member", "region", "term")) {
@@ -168,7 +192,8 @@ class SeedDataTest {
         executeSeed();
 
         for (String table : TABLES) {
-            assertThat(count(table)).as(table).isEqualTo(table.equals("member") ? 11 : 10);
+            long expected = table.equals("member") ? 11 : table.equals("term") ? 50 : 10;
+            assertThat(count(table)).as(table).isEqualTo(expected);
         }
         assertThat(jdbc.queryForObject("SELECT email FROM member WHERE member_id = 1", String.class))
                 .isEqualTo("existing@hyeja.test");
