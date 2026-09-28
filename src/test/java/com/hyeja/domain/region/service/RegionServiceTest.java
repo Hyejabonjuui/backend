@@ -2,6 +2,7 @@ package com.hyeja.domain.region.service;
 
 import com.hyeja.domain.region.dto.RegionResponseDTO.SidoDTO;
 import com.hyeja.domain.region.dto.RegionResponseDTO.SigunguDTO;
+import com.hyeja.domain.region.entity.Region;
 import com.hyeja.domain.region.init.RegionDataInitializer;
 import com.hyeja.domain.region.repository.RegionRepository;
 import com.hyeja.global.config.JpaAuditingConfig;
@@ -28,6 +29,8 @@ class RegionServiceTest {
     @Test
     void groupsAllRegionsBySido() throws Exception {
         new RegionDataInitializer(regionRepository, new MockEnvironment()).run();
+        // 회원 조건이 참조 중이라 정리되지 않고 DB에 남은 상위 시 행도 목록에는 나오지 않아야 합니다.
+        regionRepository.save(Region.builder().regionCode("41110").sigunguName("경기도 수원시").build());
 
         List<SidoDTO> result = new RegionService(regionRepository).getRegions();
 
@@ -42,6 +45,11 @@ class RegionServiceTest {
         // 시·군·구 이름에서 시·도 이름이 빠집니다.
         assertThat(seoul.getSigungu()).extracting(SigunguDTO::getRegionCode, SigunguDTO::getSigunguName)
                 .contains(tuple("11440", "마포구"));
+
+        // 상위 시(수원시)는 빠지고 구(장안구 등)만 남습니다.
+        SidoDTO gyeonggi = result.stream().filter(sido -> sido.getSidoCode().equals("41")).findFirst().orElseThrow();
+        assertThat(gyeonggi.getSigungu()).extracting(SigunguDTO::getRegionCode)
+                .doesNotContain("41110").contains("41111");
 
         // 세종은 시·도와 이름이 같아 그대로 둡니다.
         SidoDTO sejong = result.stream().filter(sido -> sido.getSidoCode().equals("36")).findFirst().orElseThrow();
