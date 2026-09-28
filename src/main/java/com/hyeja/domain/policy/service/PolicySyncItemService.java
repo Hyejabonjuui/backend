@@ -10,6 +10,7 @@ import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.policy.repository.PolicyRepository;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.domain.region.repository.RegionRepository;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +46,7 @@ public class PolicySyncItemService {
         createMissingCardNews(policy, analysis);
     }
 
+    // zipCd의 지역 코드를 전부 저장합니다. 지역이 하나도 없으면(또는 00000) 전국 정책입니다.
     private List<Region> resolvePolicyRegions(String policyId, String rawRegionCodes) {
         Set<String> regionCodes = parseRegionCodes(rawRegionCodes);
         regionCodes.remove("00000");
@@ -58,49 +60,35 @@ public class PolicySyncItemService {
                 .toList());
     }
 
+    // REGION(시군구 269건)에서 코드를 찾습니다. REGION에는 새 행을 만들지 않습니다(회원 거주지 목록에 섞이지 않게).
+    // 시·도 코드(예: 11000 서울 전체)는 그 시·도의 시군구 전체로 풀어서 저장합니다.
     private List<Region> resolveRegions(String policyId, Set<String> regionCodes) {
-        Map<String, Region> resolvedRegions = regionRepository.findAllById(regionCodes).stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        Region::getRegionCode, region -> region,
-                        (left, right) -> left, java.util.LinkedHashMap::new));
-        Set<String> unresolvedCodes = new LinkedHashSet<>(regionCodes);
-        unresolvedCodes.removeAll(resolvedRegions.keySet());
+        Map<String, Region> resolved = new LinkedHashMap<>();
+        regionRepository.findAllById(regionCodes).forEach(region -> resolved.put(region.getRegionCode(), region));
 
-        Set<String> unresolvedBroadCodes = unresolvedCodes.stream()
-                .filter(this::isSidoCode)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        for (String sidoCode : unresolvedBroadCodes) {
-            Region representative = regionRepository
-                    .findAllByRegionCodeStartingWith(sidoCode.substring(0, 2)).stream()
+        Set<String> unresolved = new LinkedHashSet<>(regionCodes);
+        unresolved.removeAll(resolved.keySet());
+        for (String code : List.copyOf(unresolved)) {
+            if (!isSidoCode(code)) continue;
+            List<Region> sigungus = regionRepository.findAllByRegionCodeStartingWith(code.substring(0, 2)).stream()
                     .filter(region -> !isSidoCode(region.getRegionCode()))
-                    .findFirst()
-                    .orElse(null);
-            if (representative == null) continue;
-
-            Region broadRegion = Region.builder()
-                    .regionCode(sidoCode)
-                    .sigunguName(sidoName(representative.getSigunguName()))
-                    .build();
-            regionRepository.save(broadRegion);
-            resolvedRegions.put(sidoCode, broadRegion);
-            unresolvedCodes.remove(sidoCode);
+                    .toList();
+            sigungus.forEach(region -> resolved.putIfAbsent(region.getRegionCode(), region));
+            if (!sigungus.isEmpty()) unresolved.remove(code);
         }
 
-        if (!unresolvedCodes.isEmpty()) {
-            log.warn("정책 지역 코드를 region 테이블에서 찾지 못했습니다. policyId={}, codes={}",
-                    policyId, unresolvedCodes);
-            throw new IllegalArgumentException("정책 지역 코드를 찾을 수 없습니다: " + unresolvedCodes);
+        if (!unresolved.isEmpty()) {
+            log.warn("REGION에 없는 정책 지역 코드는 건너뜁니다. policyId={}, codes={}", policyId, unresolved);
         }
-        return List.copyOf(resolvedRegions.values());
+        // 코드가 있는데 하나도 못 찾으면 전국으로 잘못 저장하지 않도록 이 정책은 저장하지 않습니다.
+        if (resolved.isEmpty()) {
+            throw new IllegalArgumentException("정책 지역 코드를 찾을 수 없습니다: " + unresolved);
+        }
+        return List.copyOf(resolved.values());
     }
 
     private boolean isSidoCode(String regionCode) {
         return !"00000".equals(regionCode) && regionCode.endsWith("000");
-    }
-
-    private String sidoName(String sigunguName) {
-        int separatorIndex = sigunguName.indexOf(' ');
-        return separatorIndex < 0 ? sigunguName : sigunguName.substring(0, separatorIndex);
     }
 
     private Set<String> parseRegionCodes(String rawRegionCodes) {
@@ -109,14 +97,8 @@ public class PolicySyncItemService {
             return regionCodes;
         }
         Matcher matcher = REGION_CODE_PATTERN.matcher(rawRegionCodes);
-        if (matcher.find()) {
-            String firstRegionCode = matcher.group();
-            if (matcher.find()) {
-                log.debug("복수 지역 정책을 전국으로 저장합니다. firstRegionCode={}",
-                        firstRegionCode);
-                return regionCodes;
-            }
-            regionCodes.add(firstRegionCode);
+        while (matcher.find()) {
+            regionCodes.add(matcher.group());
         }
         return regionCodes;
     }

@@ -62,25 +62,24 @@ public class PolicyEligibilityEvaluator {
             return result(EligibilityConditionType.REGION, EligibilityStatus.ABLE,
                     "전국", profileRegion(profile));
         }
-        PolicyRegion policyRegion = policyRegions.get(0);
-        String condition = policyRegion.getRegion().getSigunguName();
+        String condition = regionCondition(policyRegions);
         if (profile.getRegion() == null) {
             return result(EligibilityConditionType.REGION, EligibilityStatus.UNKNOWN,
                     condition, "미입력");
         }
+        // 정책 지역 중 하나라도 회원 거주지(시군구)와 같으면 가능합니다.
         String memberRegionCode = profile.getRegion().getRegionCode();
-        boolean matches = matchesRegion(
-                policyRegion.getRegion().getRegionCode(), memberRegionCode);
+        boolean matches = policyRegions.stream()
+                .anyMatch(policyRegion -> policyRegion.getRegion().getRegionCode().equals(memberRegionCode));
         return result(EligibilityConditionType.REGION,
                 matches ? EligibilityStatus.ABLE : EligibilityStatus.DISABLE,
                 condition, profileRegion(profile));
     }
 
-    private boolean matchesRegion(String policyRegionCode, String memberRegionCode) {
-        if (policyRegionCode.equals(memberRegionCode)) return true;
-        return policyRegionCode.endsWith("000")
-                && policyRegionCode.substring(0, 2)
-                        .equals(memberRegionCode.substring(0, 2));
+    // 지역이 여러 곳이면 "서울특별시 종로구 외 24곳"처럼 첫 지역과 나머지 수로 보여 줍니다.
+    private String regionCondition(List<PolicyRegion> policyRegions) {
+        String first = policyRegions.get(0).getRegion().getSigunguName();
+        return policyRegions.size() == 1 ? first : "%s 외 %d곳".formatted(first, policyRegions.size() - 1);
     }
 
     private ConditionResultDTO evaluateIncome(Policy policy, Profile profile) {
