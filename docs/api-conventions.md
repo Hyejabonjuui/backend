@@ -46,7 +46,7 @@
 | `GET` | `/api/policies/housing` | query `category?`, `sort=DEADLINE`, `page=0`, `size=8` | 불필요 | 진행 중 정책 페이지 조회, 상시 정책은 마감일순 마지막 배치 |
 | `GET` | `/api/policies/housing/me` | query `category?`, `sort=DEADLINE`, `onlyEligible=false`, `page=0`, `size=8` | 필요 | 진행 중 정책 페이지 조회, 회원 조건 필터와 관심 여부 포함 |
 | `GET` | `/api/policies/{policyId}` | path `policyId` | 필요 | 회원 맞춤 정보를 포함한 정책 상세 |
-| `POST` | `/api/policies/sync` | 없음 | 관리자 | 외부 정책 수동 동기화 |
+| `POST` | `/api/policies/sync` | 없음 | 관리자 | 외부 정책 수동 동기화. 페이지 요청이 재시도까지 실패하면 `502 POLICY_002`(result에 멈춘 페이지·저장 건수, 저장분은 유지) |
 | `GET` | `/api/favorite` | query `keyword?`, `page=0`, `size=8` | 필요 | 관심 정책을 최근 등록순으로 페이지 조회, 정책명·지원 내용 검색 |
 | `POST` | `/api/favorite/{policyId}` | path `policyId` | 필요 | 관심 정책 등록, 중복 등록 불가 |
 | `DELETE` | `/api/favorite/{policyId}` | path `policyId` | 필요 | 관심 정책 영구 삭제 |
