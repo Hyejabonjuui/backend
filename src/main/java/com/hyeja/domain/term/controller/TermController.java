@@ -1,6 +1,7 @@
 package com.hyeja.domain.term.controller;
 
 import com.hyeja.domain.term.dto.TermResponseDTO;
+import com.hyeja.domain.term.dto.TermDetailResponseDTO;
 import com.hyeja.domain.term.service.TermService;
 import com.hyeja.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -33,5 +35,12 @@ public class TermController {
     @GetMapping("")
     public ApiResponse<List<TermResponseDTO>> getTerms() {
         return ApiResponse.onSuccess(termService.getTerms());
+    }
+
+    @Operation(summary = "용어 상세 조회", description = "선택한 정책 용어의 쉬운 설명을 반환합니다.")
+    @GetMapping("/{termId}")
+    public ApiResponse<TermDetailResponseDTO> getTerm(
+            @PathVariable("termId") Integer termId) {
+        return ApiResponse.onSuccess(termService.getTerm(termId));
     }
 }

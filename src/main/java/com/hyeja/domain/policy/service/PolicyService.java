@@ -8,6 +8,7 @@ import com.hyeja.domain.policy.dto.PolicyApiResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO.ConditionResultDTO;
+import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO.TermSummaryDTO;
 import com.hyeja.domain.policy.dto.PolicyGuestResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyListDTO;
 import com.hyeja.domain.policy.entity.Policy;
@@ -23,6 +24,7 @@ import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.repository.ProfileRepository;
 import com.hyeja.domain.profile.service.ProfileService;
 import com.hyeja.domain.region.entity.Region;
+import com.hyeja.domain.term.repository.TermRepository;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
 import java.net.URI;
@@ -67,6 +69,7 @@ public class PolicyService {
     private final PolicyRegionRepository policyRegionRepository;
     private final PolicyEligibilityEvaluator policyEligibilityEvaluator;
     private final FavoriteRepository favoriteRepository;
+    private final TermRepository termRepository;
     private final Clock clock;
 
     @Value("${youth.api.key}")
@@ -236,6 +239,13 @@ public class PolicyService {
                 policyRegionRepository.findAllByPolicy_PolicyId(policyId);
         List<ConditionResultDTO> conditions =
                 policyEligibilityEvaluator.evaluate(policy, profile, policyRegions);
+        String extraQualification = policy.getExtraQualification();
+        List<TermSummaryDTO> terms = extraQualification == null
+                ? List.of()
+                : termRepository.findAllByDeletedAtIsNullOrderByTermIdAsc().stream()
+                        .filter(term -> extraQualification.contains(term.getTerm()))
+                        .map(term -> new TermSummaryDTO(term.getTermId(), term.getTerm()))
+                        .toList();
 
         return new PolicyDetailResponseDTO(
                 policy.getPolicyId(),
@@ -249,7 +259,8 @@ public class PolicyService {
                 policy.getKeywords(),
                 policy.getDescription(),
                 policy.getSupportContent(),
-                policy.getExtraQualification(),
+                extraQualification,
+                terms,
                 policy.getApplyPeriodCode(),
                 policy.getApplyPeriodCode() == null
                         ? null : policy.getApplyPeriodCode().getLabel(),
