@@ -17,10 +17,7 @@ import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.enums.PolicySort;
 import com.hyeja.domain.policy.repository.PolicyRepository;
 import com.hyeja.domain.policy.repository.PolicyRegionRepository;
-import com.hyeja.domain.member.entity.Member;
-import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.domain.profile.entity.Profile;
-import com.hyeja.domain.profile.repository.ProfileRepository;
 import com.hyeja.domain.profile.service.ProfileService;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
@@ -61,8 +58,6 @@ public class PolicyService {
     private final PolicyApiCodeConverter policyApiCodeConverter;
     private final PolicyAiAnalyzer policyAiAnalyzer;
     private final PolicySyncItemService policySyncItemService;
-    private final MemberRepository memberRepository;
-    private final ProfileRepository profileRepository;
     private final ProfileService profileService;
     private final PolicyRegionRepository policyRegionRepository;
     private final PolicyEligibilityEvaluator policyEligibilityEvaluator;
@@ -225,17 +220,22 @@ public class PolicyService {
     }
 
     @Transactional(readOnly = true)
+    // memberId가 null이면 비로그인 조회입니다. 회원 조건 판정 없이 정책 정보만 내려줍니다
+    // (conditions 빈 목록, overallStatus null, isFavorite false).
     public PolicyDetailResponseDTO getPolicyDetailForMember(String policyId, Long memberId) {
         Policy policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.POLICY_NOT_FOUND));
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
-        Profile profile = profileRepository.findById(member.getEmail())
-                .orElseThrow(() -> new GeneralException(ErrorStatus.PROFILE_NOT_FOUND));
-        List<PolicyRegion> policyRegions =
-                policyRegionRepository.findAllByPolicy_PolicyId(policyId);
-        List<ConditionResultDTO> conditions =
-                policyEligibilityEvaluator.evaluate(policy, profile, policyRegions);
+        List<ConditionResultDTO> conditions = List.of();
+        boolean favorite = false;
+        if (memberId != null) {
+            // 목록 조회와 같은 기준으로, 탈퇴 회원은 MEMBER_001, 조건이 없거나 삭제됐으면 PROFILE_001입니다.
+            Profile profile = profileService.getActiveProfile(memberId);
+            List<PolicyRegion> policyRegions =
+                    policyRegionRepository.findAllByPolicy_PolicyId(policyId);
+            conditions = policyEligibilityEvaluator.evaluate(policy, profile, policyRegions);
+            favorite = favoriteRepository.existsByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(
+                    memberId, policyId);
+        }
 
         return new PolicyDetailResponseDTO(
                 policy.getPolicyId(),
@@ -259,9 +259,8 @@ public class PolicyService {
                 policy.getApplyUrl(),
                 policy.getRefUrl(),
                 policy.getActiveYn(),
-                favoriteRepository.existsByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(
-                        memberId, policyId),
-                overallStatus(conditions),
+                favorite,
+                memberId == null ? null : overallStatus(conditions),
                 conditions);
     }
 
