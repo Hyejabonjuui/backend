@@ -8,6 +8,7 @@ import com.hyeja.domain.policy.dto.PolicyApiResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO.ConditionResultDTO;
+import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO.TermSummaryDTO;
 import com.hyeja.domain.policy.dto.PolicyGuestResponseDTO;
 import com.hyeja.domain.policy.dto.PolicyResponseDTO.PolicyListDTO;
 import com.hyeja.domain.policy.entity.Policy;
@@ -20,12 +21,14 @@ import com.hyeja.domain.policy.repository.PolicyRegionRepository;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.service.ProfileService;
 import com.hyeja.domain.region.entity.Region;
+import com.hyeja.domain.term.repository.TermRepository;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
 import java.net.URI;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Comparator;
@@ -62,6 +65,7 @@ public class PolicyService {
     private final PolicyRegionRepository policyRegionRepository;
     private final PolicyEligibilityEvaluator policyEligibilityEvaluator;
     private final FavoriteRepository favoriteRepository;
+    private final TermRepository termRepository;
     private final Clock clock;
 
     @Value("${youth.api.key}")
@@ -114,8 +118,13 @@ public class PolicyService {
         return processedCount;
     }
 
+    // 대분류(lclsfNm)가 "주거,주거"처럼 쉼표로 여러 개 올 때가 있어, 그중 하나라도 주거면 저장합니다.
+    // (2026-09-28 실측: "청년월세 지원" 등 2건이 이 형태라 수집에서 빠지고 있었음)
     private boolean isSavableHousingPolicy(PolicyItem item) {
-        return HOUSING_CATEGORY.equals(trimToNull(item.getCategory()))
+        return item.getCategory() != null
+                && Arrays.stream(item.getCategory().split(","))
+                        .map(String::trim)
+                        .anyMatch(HOUSING_CATEGORY::equals)
                 && trimToNull(item.getPolicyId()) != null
                 && policyApiCodeConverter.isApproved(item.getApprovalStatusCode());
     }
@@ -225,6 +234,14 @@ public class PolicyService {
     public PolicyDetailResponseDTO getPolicyDetailForMember(String policyId, Long memberId) {
         Policy policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.POLICY_NOT_FOUND));
+        String extraQualification = policy.getExtraQualification();
+        List<TermSummaryDTO> terms = extraQualification == null
+                ? List.of()
+                : termRepository.findAllByDeletedAtIsNullOrderByTermIdAsc().stream()
+                        .filter(term -> !term.getTerm().isBlank()
+                                && extraQualification.contains(term.getTerm()))
+                        .map(term -> new TermSummaryDTO(term.getTermId(), term.getTerm()))
+                        .toList();
         List<ConditionResultDTO> conditions = List.of();
         boolean favorite = false;
         if (memberId != null) {
@@ -249,7 +266,8 @@ public class PolicyService {
                 policy.getKeywords(),
                 policy.getDescription(),
                 policy.getSupportContent(),
-                policy.getExtraQualification(),
+                extraQualification,
+                terms,
                 policy.getApplyPeriodCode(),
                 policy.getApplyPeriodCode() == null
                         ? null : policy.getApplyPeriodCode().getLabel(),

@@ -111,6 +111,7 @@ class SecurityTest {
                 {"GET", "/api/members/find-email?nickname=minji&birth=2000-03-15"},
                 {"GET", "/api/regions"},
                 {"GET", "/api/terms"},
+                {"GET", "/api/terms/1"},
                 {"GET", "/api/policies/housing"},
                 {"GET", "/api/policies/card-news/guest"},
                 {"GET", "/api/policies/card-detail/20260923005400113576"},

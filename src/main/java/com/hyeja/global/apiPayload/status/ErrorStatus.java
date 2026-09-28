@@ -48,6 +48,9 @@ public enum ErrorStatus implements BaseErrorCode {
     // 지역
     REGION_NOT_FOUND(HttpStatus.NOT_FOUND, "REGION_001", "존재하지 않는 지역입니다."),
 
+    // 용어
+    TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "TERM_001", "존재하지 않는 용어입니다."),
+
     // 정책
     POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "POLICY_001", "존재하지 않는 정책입니다."),
     // 온통청년 API 요청이 재시도까지 실패해 수집이 멈춤. 그때까지 저장한 정책은 유지되고, result에 멈춘 페이지·저장 건수가 담깁니다.

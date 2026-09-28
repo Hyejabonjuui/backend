@@ -32,6 +32,8 @@ import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import com.hyeja.domain.profile.service.ProfileService;
 import com.hyeja.domain.region.entity.Region;
+import com.hyeja.domain.term.entity.Term;
+import com.hyeja.domain.term.repository.TermRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -57,13 +59,15 @@ class PolicyServiceTest {
     private final PolicyEligibilityEvaluator policyEligibilityEvaluator =
             new PolicyEligibilityEvaluator(new PolicyIncomeEligibilityEvaluator());
     private final FavoriteRepository favoriteRepository = mock(FavoriteRepository.class);
+    private final TermRepository termRepository = mock(TermRepository.class);
     private final Clock clock = Clock.fixed(
             Instant.parse("2026-09-27T00:00:00Z"),
             ZoneId.of("Asia/Seoul"));
     private final PolicyService service = new PolicyService(
             policyRepository, restTemplate, codeConverter, policyAiAnalyzer,
             policySyncItemService, profileService,
-            policyRegionRepository, policyEligibilityEvaluator, favoriteRepository, clock);
+            policyRegionRepository, policyEligibilityEvaluator, favoriteRepository,
+            termRepository, clock);
 
     @Test
     void mapsYouthPolicyApiFieldsToPolicyEntity() {
@@ -385,6 +389,24 @@ class PolicyServiceTest {
                 org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class));
     }
 
+    // 대분류가 "주거,주거"처럼 여러 개여도 주거가 있으면 수집하고, 주거가 없으면 건너뜁니다.
+    @Test
+    void savesPolicyWhoseCategoryListContainsHousing() {
+        ReflectionTestUtils.setField(service, "apiKey", "test-key");
+        ReflectionTestUtils.setField(service, "apiUrl", "https://example.com/policies");
+        PolicyItem duplicated = approvedHousingPolicy("duplicated-housing");
+        duplicated.setCategory("주거,주거");
+        PolicyItem other = approvedHousingPolicy("not-housing");
+        other.setCategory("일자리,복지문화");
+        when(restTemplate.getForObject(org.mockito.ArgumentMatchers.any(java.net.URI.class),
+                org.mockito.ArgumentMatchers.eq(PolicyApiResponseDTO.class)))
+                .thenReturn(page(2, duplicated, other));
+
+        assertThat(service.fetchAndSaveHousingPolicies()).isEqualTo(1);
+        verify(policySyncItemService).save(org.mockito.ArgumentMatchers.eq(duplicated), org.mockito.ArgumentMatchers.any());
+        verify(policySyncItemService, never()).save(org.mockito.ArgumentMatchers.eq(other), org.mockito.ArgumentMatchers.any());
+    }
+
     // 한 페이지 요청이 한 번 실패해도 다시 시도해서 이어서 수집합니다.
     @Test
     void retriesFailedPageOnceAndContinues() {
@@ -548,6 +570,24 @@ class PolicyServiceTest {
         when(policy.getCategories()).thenReturn(Set.of(PolicyCategory.OTHER));
         when(policy.getAgeLimitYn()).thenReturn(true);
         when(policy.getIncomeConditionCode()).thenReturn(PolicyIncomeCondition.UNKNOWN);
+        when(policy.getExtraQualification()).thenReturn(
+                "중위소득 60% 이하인 무주택자");
+
+        Term incomeTerm = Term.builder()
+                .term("중위소득")
+                .easyDescription("전체 가구 소득의 중간값")
+                .build();
+        ReflectionTestUtils.setField(incomeTerm, "termId", 1L);
+        Term unrelatedTerm = Term.builder()
+                .term("신혼부부")
+                .easyDescription("혼인한 지 얼마 되지 않은 부부")
+                .build();
+        ReflectionTestUtils.setField(unrelatedTerm, "termId", 2L);
+        Term blankTerm = Term.builder()
+                .term(" ")
+                .easyDescription("빈 용어")
+                .build();
+        ReflectionTestUtils.setField(blankTerm, "termId", 3L);
 
         Profile profile = mock(Profile.class);
 
@@ -558,6 +598,8 @@ class PolicyServiceTest {
         when(favoriteRepository
                 .existsByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(1L, "policy-detail"))
                 .thenReturn(true);
+        when(termRepository.findAllByDeletedAtIsNullOrderByTermIdAsc())
+                .thenReturn(List.of(incomeTerm, unrelatedTerm, blankTerm));
 
         PolicyDetailResponseDTO response =
                 service.getPolicyDetailForMember("policy-detail", 1L);
@@ -565,6 +607,8 @@ class PolicyServiceTest {
         assertThat(response.policyId()).isEqualTo("policy-detail");
         assertThat(response.conditions()).hasSize(5);
         assertThat(response.isFavorite()).isTrue();
+        assertThat(response.terms()).containsExactly(
+                new PolicyDetailResponseDTO.TermSummaryDTO(1L, "중위소득"));
         assertThat(response.overallStatus()).isEqualTo(
                 com.hyeja.domain.policy.enums.EligibilityStatus.UNKNOWN);
     }
