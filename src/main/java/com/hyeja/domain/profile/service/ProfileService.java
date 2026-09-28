@@ -11,6 +11,8 @@ import com.hyeja.domain.region.entity.Region;
 import com.hyeja.domain.region.repository.RegionRepository;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
+import java.time.Clock;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,8 @@ public class ProfileService {
     private final MemberService memberService;
     private final ProfileRepository profileRepository;
     private final RegionRepository regionRepository;
+    // 한국 시간(Asia/Seoul) 기준 오늘 날짜로 나이를 셉니다. SchedulingConfig의 koreaClock 빈입니다.
+    private final Clock clock;
 
     /**
      * 회원 ID로 내 조건(생년월일·거주지·취업 상태 등)을 조회합니다.
@@ -31,7 +35,7 @@ public class ProfileService {
      * 프론트는 PROFILE_NOT_FOUND를 받으면 온보딩(S-04)으로 이동합니다.
      */
     public ProfileResponseDTO getMyProfile(Long memberId) {
-        return ProfileConverter.toProfileResponseDTO(getActiveProfile(memberId));
+        return ProfileConverter.toProfileResponseDTO(getActiveProfile(memberId), LocalDate.now(clock));
     }
 
     /**
@@ -51,7 +55,7 @@ public class ProfileService {
         // 수정 시각(updated_at)은 DB에 반영(flush)될 때 채워지므로, 응답에 새 시각이 담기도록 먼저 반영합니다.
         profileRepository.flush();
 
-        return ProfileConverter.toProfileResponseDTO(profile);
+        return ProfileConverter.toProfileResponseDTO(profile, LocalDate.now(clock));
     }
 
     // 탈퇴하지 않은 회원의, 삭제되지 않은 조건을 조회합니다. 조건 조회·수정과 정책 필터가 함께 씁니다.

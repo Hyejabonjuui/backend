@@ -56,13 +56,13 @@ class PolicyServiceTest {
     private final PolicySyncItemService policySyncItemService = mock(PolicySyncItemService.class);
     private final ProfileService profileService = mock(ProfileService.class);
     private final PolicyRegionRepository policyRegionRepository = mock(PolicyRegionRepository.class);
-    private final PolicyEligibilityEvaluator policyEligibilityEvaluator =
-            new PolicyEligibilityEvaluator(new PolicyIncomeEligibilityEvaluator());
     private final FavoriteRepository favoriteRepository = mock(FavoriteRepository.class);
     private final TermRepository termRepository = mock(TermRepository.class);
     private final Clock clock = Clock.fixed(
             Instant.parse("2026-09-27T00:00:00Z"),
             ZoneId.of("Asia/Seoul"));
+    private final PolicyEligibilityEvaluator policyEligibilityEvaluator =
+            new PolicyEligibilityEvaluator(new PolicyIncomeEligibilityEvaluator(), clock);
     private final PolicyService service = new PolicyService(
             policyRepository, restTemplate, codeConverter, policyAiAnalyzer,
             policySyncItemService, profileService,

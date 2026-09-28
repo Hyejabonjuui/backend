@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.PageRequest;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -35,11 +36,13 @@ public class CardNewsService {
     private final PolicyRegionRepository policyRegionRepository;
     private final FavoriteRepository favoriteRepository;
     private final ProfileService profileService;
+    // 한국 시간(Asia/Seoul) 기준 오늘 날짜. SchedulingConfig의 koreaClock 빈입니다.
+    private final Clock clock;
 
     public List<CardNewsResponseDTO> getGuestCardNews() {
         // Pageable 없이 레포지토리에서 상위 4개를 바로 조회
         List<CardNews> cardNewsList = cardNewsRepository.findGuestHomeCardNews(
-                LocalDate.now(), PageRequest.of(0, 4));
+                LocalDate.now(clock), PageRequest.of(0, 4));
 
         return cardNewsList.stream()
                 .map(cn -> CardNewsResponseDTO.builder()
@@ -59,7 +62,7 @@ public class CardNewsService {
 
         return cardNewsRepository.findMemberHomeCardNews(
                         regionCode, regionCode.substring(0, 2) + "000",
-                        LocalDate.now(), PageRequest.of(0, 4)).stream()
+                        LocalDate.now(clock), PageRequest.of(0, 4)).stream()
                 .map(cardNews -> new MemberCardNewsResponseDTO(
                         cardNews.getPolicy().getPolicyId(),
                         cardNews.getPolicy().getPolicyName(),
@@ -117,6 +120,6 @@ public class CardNewsService {
     private Integer calculateDDay(Policy policy) {
         return policy.getApplyEndDate() == null ? null
                 : Math.toIntExact(ChronoUnit.DAYS.between(
-                        LocalDate.now(), policy.getApplyEndDate()));
+                        LocalDate.now(clock), policy.getApplyEndDate()));
     }
 }

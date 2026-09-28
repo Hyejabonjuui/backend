@@ -15,11 +15,15 @@ import com.hyeja.domain.region.repository.RegionRepository;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -45,13 +49,27 @@ class ProfileServiceTest {
     @Mock
     private RegionRepository regionRepository;
 
+    // 한국 2026-09-28 01:00 = UTC 2026-09-27 16:00. 서버 기본 시간대(UTC)로 계산하면 날짜가 하루 어긋나는 시각입니다.
+    @Spy
+    private Clock clock = Clock.fixed(Instant.parse("2026-09-27T16:00:00Z"), ZoneId.of("Asia/Seoul"));
+
     @InjectMocks
     private ProfileService profileService;
+
+    // 한국 날짜로 생일 당일(2000-09-28)이면 만 26세입니다. UTC 날짜(09-27)로 세면 25세가 됩니다.
+    @Test
+    void countsAgeByKoreanDate() {
+        when(memberService.getActiveMember(1L)).thenReturn(member());
+        when(profileRepository.findById(EMAIL)).thenReturn(Optional.of(
+                profile(LocalDate.of(2000, 9, 28), LocalDateTime.of(2026, 9, 22, 14, 10, 2))));
+
+        assertThat(profileService.getMyProfile(1L).getAge()).isEqualTo(26);
+    }
 
     @Test
     void returnsProfileWithCodeNamesAndAge() {
         // 올해 생일이 내일이라 아직 26세가 되지 않은 경우 → 만 25세
-        LocalDate birth = LocalDate.now().minusYears(26).plusDays(1);
+        LocalDate birth = LocalDate.now(clock).minusYears(26).plusDays(1);
         LocalDateTime updatedAt = LocalDateTime.of(2026, 9, 22, 14, 10, 2);
         when(memberService.getActiveMember(1L)).thenReturn(member());
         when(profileRepository.findById(EMAIL)).thenReturn(Optional.of(profile(birth, updatedAt)));

@@ -22,6 +22,9 @@ import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -30,9 +33,12 @@ class CardNewsServiceTest {
     private final CardNewsRepository cardNewsRepository = mock(CardNewsRepository.class);
     private final PolicyRegionRepository policyRegionRepository = mock(PolicyRegionRepository.class);
     private final FavoriteRepository favoriteRepository = mock(FavoriteRepository.class);
+    // 한국 2026-09-28 01:00 = UTC 2026-09-27 16:00. 서버 기본 시간대(UTC)로 계산하면 날짜가 하루 어긋나는 시각입니다.
+    private static final Clock KOREA_CLOCK = Clock.fixed(
+            Instant.parse("2026-09-27T16:00:00Z"), ZoneId.of("Asia/Seoul"));
     private final ProfileService profileService = mock(ProfileService.class);
     private final CardNewsService service = new CardNewsService(
-            cardNewsRepository, policyRegionRepository, favoriteRepository, profileService);
+            cardNewsRepository, policyRegionRepository, favoriteRepository, profileService, KOREA_CLOCK);
 
     @Test
     void returnsPopupDataForAuthenticatedMember() {
@@ -56,6 +62,7 @@ class CardNewsServiceTest {
 
         assertThat(response.policyId()).isEqualTo("policy-1");
         assertThat(response.categoryLabel()).isEqualTo("월세");
+        // 한국 날짜 09-28 기준 마감 10-03 → D-5 (UTC 날짜 09-27로 세면 D-6)
         assertThat(response.dDay()).isEqualTo(5);
         assertThat(response.isAuthenticated()).isTrue();
         assertThat(response.isFavorite()).isTrue();
@@ -150,8 +157,8 @@ class CardNewsServiceTest {
                 .ageLimitYn(true)
                 .houselessRequirement(PolicyHouselessRequirement.UNKNOWN)
                 .applyPeriodCode(PolicyApplyPeriod.SPECIFIC_PERIOD)
-                .applyStartDate(LocalDate.now().minusDays(5))
-                .applyEndDate(LocalDate.now().plusDays(5))
+                .applyStartDate(LocalDate.of(2026, 9, 23))
+                .applyEndDate(LocalDate.of(2026, 10, 3))
                 .applyUrl("https://example.com/apply")
                 .build();
     }
