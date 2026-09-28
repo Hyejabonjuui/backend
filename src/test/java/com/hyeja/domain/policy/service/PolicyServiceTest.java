@@ -563,6 +563,11 @@ class PolicyServiceTest {
                 .easyDescription("혼인한 지 얼마 되지 않은 부부")
                 .build();
         ReflectionTestUtils.setField(unrelatedTerm, "termId", 2);
+        Term blankTerm = Term.builder()
+                .term(" ")
+                .easyDescription("빈 용어")
+                .build();
+        ReflectionTestUtils.setField(blankTerm, "termId", 3);
 
         Profile profile = mock(Profile.class);
 
@@ -574,7 +579,7 @@ class PolicyServiceTest {
                 .existsByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(1L, "policy-detail"))
                 .thenReturn(true);
         when(termRepository.findAllByDeletedAtIsNullOrderByTermIdAsc())
-                .thenReturn(List.of(incomeTerm, unrelatedTerm));
+                .thenReturn(List.of(incomeTerm, unrelatedTerm, blankTerm));
 
         PolicyDetailResponseDTO response =
                 service.getPolicyDetailForMember("policy-detail", 1L);

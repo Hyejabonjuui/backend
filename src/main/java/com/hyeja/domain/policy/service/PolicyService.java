@@ -232,7 +232,8 @@ public class PolicyService {
         List<TermSummaryDTO> terms = extraQualification == null
                 ? List.of()
                 : termRepository.findAllByDeletedAtIsNullOrderByTermIdAsc().stream()
-                        .filter(term -> extraQualification.contains(term.getTerm()))
+                        .filter(term -> !term.getTerm().isBlank()
+                                && extraQualification.contains(term.getTerm()))
                         .map(term -> new TermSummaryDTO(term.getTermId(), term.getTerm()))
                         .toList();
         List<ConditionResultDTO> conditions = List.of();
