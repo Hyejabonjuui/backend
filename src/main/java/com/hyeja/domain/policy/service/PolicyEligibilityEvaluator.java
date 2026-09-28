@@ -12,6 +12,7 @@ import com.hyeja.domain.policy.enums.PolicyHouselessRequirement;
 import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import java.text.NumberFormat;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.List;
@@ -25,6 +26,8 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class PolicyEligibilityEvaluator {
     private final PolicyIncomeEligibilityEvaluator incomeEvaluator;
+    // 한국 시간(Asia/Seoul) 기준 오늘 날짜로 나이를 셉니다. SchedulingConfig의 koreaClock 빈입니다.
+    private final Clock clock;
 
     public List<ConditionResultDTO> evaluate(
             Policy policy, Profile profile, List<PolicyRegion> policyRegions) {
@@ -47,7 +50,7 @@ public class PolicyEligibilityEvaluator {
                     condition, "미입력");
         }
 
-        int age = Period.between(profile.getBirth(), LocalDate.now()).getYears();
+        int age = Period.between(profile.getBirth(), LocalDate.now(clock)).getYears();
         boolean belowMinimum = policy.getMinAge() != null && age < policy.getMinAge();
         boolean aboveMaximum = policy.getMaxAge() != null && age > policy.getMaxAge();
         EligibilityStatus status = belowMinimum || aboveMaximum
@@ -149,7 +152,7 @@ public class PolicyEligibilityEvaluator {
 
     private String memberAge(Profile profile) {
         return profile.getBirth() == null ? "미입력"
-                : "만 " + Period.between(profile.getBirth(), LocalDate.now()).getYears() + "세";
+                : "만 " + Period.between(profile.getBirth(), LocalDate.now(clock)).getYears() + "세";
     }
 
     private String profileRegion(Profile profile) {

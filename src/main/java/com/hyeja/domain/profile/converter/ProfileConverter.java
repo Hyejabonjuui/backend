@@ -28,10 +28,11 @@ public class ProfileConverter {
     }
 
     // 내 조건 조회 응답으로 변환합니다. 지역(LAZY)을 읽으므로 트랜잭션 안에서 호출해야 합니다.
-    public static ProfileResponseDTO toProfileResponseDTO(Profile profile) {
+    // today는 나이 계산 기준일로, 서비스가 한국 시간 Clock으로 구해 넘깁니다.
+    public static ProfileResponseDTO toProfileResponseDTO(Profile profile, LocalDate today) {
         return ProfileResponseDTO.builder()
                 .birth(profile.getBirth())
-                .age(Period.between(profile.getBirth(), LocalDate.now()).getYears())
+                .age(Period.between(profile.getBirth(), today).getYears())
                 .regionCode(profile.getRegion().getRegionCode())
                 .regionName(profile.getRegion().getSigunguName())
                 .employmentCode(profile.getEmploymentCode())
