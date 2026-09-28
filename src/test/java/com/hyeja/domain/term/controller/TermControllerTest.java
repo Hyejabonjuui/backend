@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.hyeja.domain.term.dto.TermResponseDTO;
+import com.hyeja.domain.term.dto.TermDetailResponseDTO;
 import com.hyeja.domain.term.service.TermService;
 import com.hyeja.global.exception.ExceptionAdvice;
 import java.util.List;
@@ -57,5 +58,20 @@ class TermControllerTest {
                 .andExpect(jsonPath("$.result[1].example").value(nullValue()));
 
         verify(termService).getTerms();
+    }
+
+    @Test
+    void returnsTermDetail() throws Exception {
+        when(termService.getTerm(1)).thenReturn(
+                new TermDetailResponseDTO(1, "중위소득", "전체 가구 소득의 중간값"));
+
+        mvc.perform(get("/api/terms/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.termId").value(1))
+                .andExpect(jsonPath("$.result.termName").value("중위소득"))
+                .andExpect(jsonPath("$.result.description")
+                        .value("전체 가구 소득의 중간값"));
+
+        verify(termService).getTerm(1);
     }
 }

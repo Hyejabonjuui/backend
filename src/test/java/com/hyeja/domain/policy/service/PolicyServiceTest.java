@@ -34,6 +34,8 @@ import com.hyeja.domain.profile.entity.Profile;
 import com.hyeja.domain.profile.enums.EmploymentStatus;
 import com.hyeja.domain.profile.service.ProfileService;
 import com.hyeja.domain.region.entity.Region;
+import com.hyeja.domain.term.entity.Term;
+import com.hyeja.domain.term.repository.TermRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -61,13 +63,15 @@ class PolicyServiceTest {
     private final PolicyEligibilityEvaluator policyEligibilityEvaluator =
             new PolicyEligibilityEvaluator(new PolicyIncomeEligibilityEvaluator());
     private final FavoriteRepository favoriteRepository = mock(FavoriteRepository.class);
+    private final TermRepository termRepository = mock(TermRepository.class);
     private final Clock clock = Clock.fixed(
             Instant.parse("2026-09-27T00:00:00Z"),
             ZoneId.of("Asia/Seoul"));
     private final PolicyService service = new PolicyService(
             policyRepository, restTemplate, codeConverter, policyAiAnalyzer,
             policySyncItemService, memberRepository, profileRepository, profileService,
-            policyRegionRepository, policyEligibilityEvaluator, favoriteRepository, clock);
+            policyRegionRepository, policyEligibilityEvaluator, favoriteRepository,
+            termRepository, clock);
 
     @Test
     void mapsYouthPolicyApiFieldsToPolicyEntity() {
@@ -550,6 +554,19 @@ class PolicyServiceTest {
         when(policy.getCategories()).thenReturn(Set.of(PolicyCategory.OTHER));
         when(policy.getAgeLimitYn()).thenReturn(true);
         when(policy.getIncomeConditionCode()).thenReturn(PolicyIncomeCondition.UNKNOWN);
+        when(policy.getExtraQualification()).thenReturn(
+                "중위소득 60% 이하인 무주택자");
+
+        Term incomeTerm = Term.builder()
+                .term("중위소득")
+                .easyDescription("전체 가구 소득의 중간값")
+                .build();
+        ReflectionTestUtils.setField(incomeTerm, "termId", 1);
+        Term unrelatedTerm = Term.builder()
+                .term("신혼부부")
+                .easyDescription("혼인한 지 얼마 되지 않은 부부")
+                .build();
+        ReflectionTestUtils.setField(unrelatedTerm, "termId", 2);
 
         Member member = mock(Member.class);
         when(member.getEmail()).thenReturn("member@example.com");
@@ -563,6 +580,8 @@ class PolicyServiceTest {
         when(favoriteRepository
                 .existsByMemberMemberIdAndPolicyPolicyIdAndDeletedAtIsNull(1L, "policy-detail"))
                 .thenReturn(true);
+        when(termRepository.findAllByDeletedAtIsNullOrderByTermIdAsc())
+                .thenReturn(List.of(incomeTerm, unrelatedTerm));
 
         PolicyDetailResponseDTO response =
                 service.getPolicyDetailForMember("policy-detail", 1L);
@@ -570,6 +589,8 @@ class PolicyServiceTest {
         assertThat(response.policyId()).isEqualTo("policy-detail");
         assertThat(response.conditions()).hasSize(5);
         assertThat(response.isFavorite()).isTrue();
+        assertThat(response.terms()).containsExactly(
+                new PolicyDetailResponseDTO.TermSummaryDTO(1, "중위소득"));
         assertThat(response.overallStatus()).isEqualTo(
                 com.hyeja.domain.policy.enums.EligibilityStatus.UNKNOWN);
     }
