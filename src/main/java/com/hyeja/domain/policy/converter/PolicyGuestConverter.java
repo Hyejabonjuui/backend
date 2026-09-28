@@ -4,6 +4,7 @@ import com.hyeja.domain.policy.dto.PolicyGuestResponseDTO.PolicyListDTO;
 import com.hyeja.domain.policy.dto.PolicyGuestResponseDTO.PolicyListItemDTO;
 import com.hyeja.domain.policy.dto.PolicyGuestResponseDTO.PolicyRegionItemDTO;
 import com.hyeja.domain.policy.entity.Policy;
+import com.hyeja.domain.region.converter.RegionConverter;
 import com.hyeja.domain.region.entity.Region;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -58,6 +59,7 @@ public final class PolicyGuestConverter {
                                 .build())
                         .toList())
                 .nationwide(regions.isEmpty())
+                .regionSummary(RegionConverter.summarize(regions))
                 .applyEndDate(policy.getApplyEndDate())
                 .applyPeriodCode(policy.getApplyPeriodCode())
                 .dDay(policy.getApplyEndDate() == null

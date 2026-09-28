@@ -3,6 +3,7 @@ package com.hyeja.domain.policy.service;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO.ConditionResultDTO;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.entity.PolicyRegion;
+import com.hyeja.domain.region.converter.RegionConverter;
 import com.hyeja.domain.policy.enums.EligibilityConditionType;
 import com.hyeja.domain.policy.enums.EligibilityStatus;
 import com.hyeja.domain.policy.enums.PolicyEmploymentCondition;
@@ -78,8 +79,7 @@ public class PolicyEligibilityEvaluator {
 
     // 지역이 여러 곳이면 "서울특별시 종로구 외 24곳"처럼 첫 지역과 나머지 수로 보여 줍니다.
     private String regionCondition(List<PolicyRegion> policyRegions) {
-        String first = policyRegions.get(0).getRegion().getSigunguName();
-        return policyRegions.size() == 1 ? first : "%s 외 %d곳".formatted(first, policyRegions.size() - 1);
+        return RegionConverter.summarize(policyRegions.stream().map(PolicyRegion::getRegion).toList());
     }
 
     private ConditionResultDTO evaluateIncome(Policy policy, Profile profile) {
