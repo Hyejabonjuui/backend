@@ -24,7 +24,7 @@ public class TermService {
                 .toList();
     }
 
-    public TermDetailResponseDTO getTerm(Integer termId) {
+    public TermDetailResponseDTO getTerm(Long termId) {
         return termRepository.findByTermIdAndDeletedAtIsNull(termId)
                 .map(term -> new TermDetailResponseDTO(
                         term.getTermId(), term.getTerm(), term.getEasyDescription()))

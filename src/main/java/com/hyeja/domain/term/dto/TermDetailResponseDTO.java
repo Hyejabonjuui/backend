@@ -1,7 +1,7 @@
 package com.hyeja.domain.term.dto;
 
 public record TermDetailResponseDTO(
-        Integer termId,
+        Long termId,
         String termName,
         String description) {
 }

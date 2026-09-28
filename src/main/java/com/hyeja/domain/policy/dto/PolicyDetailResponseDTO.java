@@ -32,7 +32,7 @@ public record PolicyDetailResponseDTO(
         EligibilityStatus overallStatus,
         List<ConditionResultDTO> conditions) {
 
-    public record TermSummaryDTO(Integer termId, String termName) {
+    public record TermSummaryDTO(Long termId, String termName) {
     }
 
     public record ConditionResultDTO(

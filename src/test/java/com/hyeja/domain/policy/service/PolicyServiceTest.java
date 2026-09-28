@@ -557,17 +557,17 @@ class PolicyServiceTest {
                 .term("중위소득")
                 .easyDescription("전체 가구 소득의 중간값")
                 .build();
-        ReflectionTestUtils.setField(incomeTerm, "termId", 1);
+        ReflectionTestUtils.setField(incomeTerm, "termId", 1L);
         Term unrelatedTerm = Term.builder()
                 .term("신혼부부")
                 .easyDescription("혼인한 지 얼마 되지 않은 부부")
                 .build();
-        ReflectionTestUtils.setField(unrelatedTerm, "termId", 2);
+        ReflectionTestUtils.setField(unrelatedTerm, "termId", 2L);
         Term blankTerm = Term.builder()
                 .term(" ")
                 .easyDescription("빈 용어")
                 .build();
-        ReflectionTestUtils.setField(blankTerm, "termId", 3);
+        ReflectionTestUtils.setField(blankTerm, "termId", 3L);
 
         Profile profile = mock(Profile.class);
 
@@ -588,7 +588,7 @@ class PolicyServiceTest {
         assertThat(response.conditions()).hasSize(5);
         assertThat(response.isFavorite()).isTrue();
         assertThat(response.terms()).containsExactly(
-                new PolicyDetailResponseDTO.TermSummaryDTO(1, "중위소득"));
+                new PolicyDetailResponseDTO.TermSummaryDTO(1L, "중위소득"));
         assertThat(response.overallStatus()).isEqualTo(
                 com.hyeja.domain.policy.enums.EligibilityStatus.UNKNOWN);
     }

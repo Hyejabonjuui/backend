@@ -7,9 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface TermRepository extends JpaRepository<Term, Integer> {
+public interface TermRepository extends JpaRepository<Term, Long> {
 
     List<Term> findAllByDeletedAtIsNullOrderByTermIdAsc();
 
-    Optional<Term> findByTermIdAndDeletedAtIsNull(Integer termId);
+    Optional<Term> findByTermIdAndDeletedAtIsNull(Long termId);
 }

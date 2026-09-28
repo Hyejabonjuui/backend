@@ -40,7 +40,7 @@ public class TermController {
     @Operation(summary = "용어 상세 조회", description = "선택한 정책 용어의 쉬운 설명을 반환합니다.")
     @GetMapping("/{termId}")
     public ApiResponse<TermDetailResponseDTO> getTerm(
-            @PathVariable("termId") Integer termId) {
+            @PathVariable("termId") Long termId) {
         return ApiResponse.onSuccess(termService.getTerm(termId));
     }
 }

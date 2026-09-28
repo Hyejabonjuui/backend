@@ -35,7 +35,7 @@ class TermServiceTest {
                 .easyDescription("전체 가구를 소득 순서로 세웠을 때 가운데 가구의 소득")
                 .example("중위소득 60% 이하")
                 .build();
-        ReflectionTestUtils.setField(term, "termId", 1);
+        ReflectionTestUtils.setField(term, "termId", 1L);
         when(termRepository.findAllByDeletedAtIsNullOrderByTermIdAsc()).thenReturn(List.of(term));
 
         List<TermResponseDTO> result = termService.getTerms();
@@ -55,11 +55,11 @@ class TermServiceTest {
                 .term("중위소득")
                 .easyDescription("전체 가구 소득의 중간값")
                 .build();
-        ReflectionTestUtils.setField(term, "termId", 1);
-        when(termRepository.findByTermIdAndDeletedAtIsNull(1)).thenReturn(Optional.of(term));
+        ReflectionTestUtils.setField(term, "termId", 1L);
+        when(termRepository.findByTermIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(term));
 
-        assertThat(termService.getTerm(1)).satisfies(result -> {
-            assertThat(result.termId()).isEqualTo(1);
+        assertThat(termService.getTerm(1L)).satisfies(result -> {
+            assertThat(result.termId()).isEqualTo(1L);
             assertThat(result.termName()).isEqualTo("중위소득");
             assertThat(result.description()).isEqualTo("전체 가구 소득의 중간값");
         });
@@ -67,9 +67,9 @@ class TermServiceTest {
 
     @Test
     void rejectsMissingTerm() {
-        when(termRepository.findByTermIdAndDeletedAtIsNull(99)).thenReturn(Optional.empty());
+        when(termRepository.findByTermIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> termService.getTerm(99))
+        assertThatThrownBy(() -> termService.getTerm(99L))
                 .isInstanceOfSatisfying(GeneralException.class,
                         exception -> assertThat(exception.getCode())
                                 .isEqualTo(ErrorStatus.TERM_NOT_FOUND));

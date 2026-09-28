@@ -34,13 +34,13 @@ class TermControllerTest {
     void returnsTerms() throws Exception {
         when(termService.getTerms()).thenReturn(List.of(
                 TermResponseDTO.builder()
-                        .termId(1)
+                        .termId(1L)
                         .term("중위소득")
                         .easyDescription("전체 가구를 소득 순서로 세웠을 때 가운데 가구의 소득")
                         .example("중위소득 60% 이하")
                         .build(),
                 TermResponseDTO.builder()
-                        .termId(2)
+                        .termId(2L)
                         .term("무주택자")
                         .easyDescription("본인 명의 주택을 소유하지 않은 사람")
                         .build()
@@ -62,8 +62,8 @@ class TermControllerTest {
 
     @Test
     void returnsTermDetail() throws Exception {
-        when(termService.getTerm(1)).thenReturn(
-                new TermDetailResponseDTO(1, "중위소득", "전체 가구 소득의 중간값"));
+        when(termService.getTerm(1L)).thenReturn(
+                new TermDetailResponseDTO(1L, "중위소득", "전체 가구 소득의 중간값"));
 
         mvc.perform(get("/api/terms/1"))
                 .andExpect(status().isOk())
@@ -72,6 +72,6 @@ class TermControllerTest {
                 .andExpect(jsonPath("$.result.description")
                         .value("전체 가구 소득의 중간값"));
 
-        verify(termService).getTerm(1);
+        verify(termService).getTerm(1L);
     }
 }
