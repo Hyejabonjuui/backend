@@ -3,6 +3,7 @@ package com.hyeja.domain.policy.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -101,8 +102,10 @@ class PolicySyncItemServiceTest {
         assertThat(transactional.propagation()).isEqualTo(Propagation.REQUIRES_NEW);
     }
 
+    // 시·도 코드(11000)는 REGION에 새 행을 만들지 않고 그 시·도의 시군구 전체로 풀어서 저장합니다.
+    // 예전 수집이 만든 시·도 행이 REGION에 이미 있어도 그 행이 아니라 시군구로 저장합니다.
     @Test
-    void storesSidoCodeWithoutExpandingToSigunguRegions() {
+    void expandsSidoCodeToSigunguRegionsWithoutCreatingRegion() {
         PolicyItem item = new PolicyItem();
         item.setPolicyId("seoul-policy");
         item.setPolicyName("서울특별시 지원 정책");
@@ -121,28 +124,29 @@ class PolicySyncItemServiceTest {
                 .regionCode("11680").sigunguName("서울특별시 강남구").build();
         when(policyRepository.save(any(Policy.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        Region legacySido = Region.builder().regionCode("11000").sigunguName("서울특별시").build();
+        when(regionRepository.findAllById(any())).thenReturn(List.of(legacySido));
         when(regionRepository.findAllByRegionCodeStartingWith("11"))
-                .thenReturn(List.of(jongno, gangnam));
+                .thenReturn(List.of(legacySido, jongno, gangnam));
         when(cardNewsRepository.existsByPolicy_PolicyIdAndCardNo("seoul-policy", 1L))
                 .thenReturn(true);
 
         service.save(item, analysis);
 
         verify(regionRepository).findAllByRegionCodeStartingWith("11");
-        verify(regionRepository).save(org.mockito.ArgumentMatchers.argThat(region ->
-                "11000".equals(region.getRegionCode())
-                        && "서울특별시".equals(region.getSigunguName())));
+        verify(regionRepository, never()).save(any(Region.class));
         verify(policyRegionRepository).saveAll(org.mockito.ArgumentMatchers.argThat(regions -> {
             java.util.List<com.hyeja.domain.policy.entity.PolicyRegion> values =
                     new java.util.ArrayList<>();
             regions.forEach(values::add);
-            return values.size() == 1
-                    && values.get(0).getRegion().getRegionCode().equals("11000");
+            return values.stream().map(value -> value.getRegion().getRegionCode()).toList()
+                    .equals(List.of("11110", "11680"));
         }));
     }
 
+    // 지역 코드가 여러 개면 전부 저장합니다. REGION에 없는 코드(99999)는 건너뜁니다.
     @Test
-    void treatsMultipleRegionCodesAsNationwide() {
+    void savesAllRegionCodesAndSkipsUnknownCode() {
         PolicyItem item = new PolicyItem();
         item.setPolicyId("nationwide-policy");
         item.setPolicyName("전국 정책");
@@ -154,7 +158,8 @@ class PolicySyncItemServiceTest {
                 .toList();
         item.setRegionCodes(regions.stream()
                 .map(Region::getRegionCode)
-                .collect(java.util.stream.Collectors.joining(",")));
+                .collect(java.util.stream.Collectors.joining(",")) + ",99999");
+        when(regionRepository.findAllById(any())).thenReturn(regions);
         item.setApplyPeriodCode("57002");
         PolicyAiAnalysis analysis = new PolicyAiAnalysis(
                 "전국 지원 정책입니다.",
@@ -174,7 +179,7 @@ class PolicySyncItemServiceTest {
             java.util.List<com.hyeja.domain.policy.entity.PolicyRegion> policyRegions =
                     new java.util.ArrayList<>();
             values.forEach(policyRegions::add);
-            return policyRegions.isEmpty();
+            return policyRegions.size() == 200;
         }));
     }
 }

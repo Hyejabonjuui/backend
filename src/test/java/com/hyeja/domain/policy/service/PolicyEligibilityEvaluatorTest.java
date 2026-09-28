@@ -179,28 +179,42 @@ class PolicyEligibilityEvaluatorTest {
         assertThat(differentResult.memberValue()).isEqualTo("서울특별시 강남구");
     }
 
+    // 여러 지역 정책은 그중 하나라도 회원 거주지와 같으면 가능하고, 조건은 "첫 지역 외 N곳"으로 보여 줍니다.
     @Test
-    void matchesSidoPolicyCodeWithMemberSigunguPrefix() {
+    void matchesAnyOfMultiplePolicyRegions() {
         Policy policy = mock(Policy.class);
-        Region sido = mock(Region.class);
-        when(sido.getRegionCode()).thenReturn("11000");
-        when(sido.getSigunguName()).thenReturn("서울특별시");
+        List<com.hyeja.domain.policy.entity.PolicyRegion> policyRegions = List.of(
+                policyRegion("11110", "서울특별시 종로구"),
+                policyRegion("11440", "서울특별시 마포구"),
+                policyRegion("11680", "서울특별시 강남구"));
+
+        ConditionResultDTO mapo = regionResult(policy, "11440", "서울특별시 마포구", policyRegions);
+        ConditionResultDTO busan = regionResult(policy, "26110", "부산광역시 중구", policyRegions);
+
+        assertThat(mapo.status()).isEqualTo(EligibilityStatus.ABLE);
+        assertThat(mapo.policyCondition()).isEqualTo("서울특별시 종로구 외 2곳");
+        assertThat(busan.status()).isEqualTo(EligibilityStatus.DISABLE);
+    }
+
+    private com.hyeja.domain.policy.entity.PolicyRegion policyRegion(String code, String name) {
+        Region region = mock(Region.class);
+        when(region.getRegionCode()).thenReturn(code);
+        when(region.getSigunguName()).thenReturn(name);
         com.hyeja.domain.policy.entity.PolicyRegion policyRegion =
                 mock(com.hyeja.domain.policy.entity.PolicyRegion.class);
-        when(policyRegion.getRegion()).thenReturn(sido);
+        when(policyRegion.getRegion()).thenReturn(region);
+        return policyRegion;
+    }
 
+    private ConditionResultDTO regionResult(Policy policy, String memberCode, String memberName,
+            List<com.hyeja.domain.policy.entity.PolicyRegion> policyRegions) {
         Region memberRegion = mock(Region.class);
-        when(memberRegion.getRegionCode()).thenReturn("11680");
-        when(memberRegion.getSigunguName()).thenReturn("서울특별시 강남구");
+        when(memberRegion.getRegionCode()).thenReturn(memberCode);
+        when(memberRegion.getSigunguName()).thenReturn(memberName);
         Profile profile = mock(Profile.class);
         when(profile.getRegion()).thenReturn(memberRegion);
-
-        ConditionResultDTO result = evaluator.evaluate(policy, profile, List.of(policyRegion))
-                .stream()
+        return evaluator.evaluate(policy, profile, policyRegions).stream()
                 .filter(condition -> condition.type() == EligibilityConditionType.REGION)
                 .findFirst().orElseThrow();
-
-        assertThat(result.status()).isEqualTo(EligibilityStatus.ABLE);
-        assertThat(result.policyCondition()).isEqualTo("서울특별시");
     }
 }
