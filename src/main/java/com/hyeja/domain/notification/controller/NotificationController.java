@@ -2,6 +2,7 @@ package com.hyeja.domain.notification.controller;
 
 import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationItemDTO;
 import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationListDTO;
+import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationUnreadCountDTO;
 import com.hyeja.domain.notification.service.NotificationService;
 import com.hyeja.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -64,6 +65,28 @@ public class NotificationController {
     ) {
         NotificationListDTO result = notificationService.getNotifications(memberId, page, size);
         return ApiResponse.onSuccess(result);
+    }
+
+    @Operation(
+            summary = "안 읽은 알림 개수 조회",
+            description = "로그인 회원의 삭제되지 않은 알림 중 안 읽은 알림 개수를 조회합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "안 읽은 알림 개수 조회 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "회원을 찾을 수 없음 (MEMBER_001)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))
+            )
+    })
+    @GetMapping("/unread-count")
+    public ApiResponse<NotificationUnreadCountDTO> getUnreadNotificationCount(
+            @AuthenticationPrincipal Long memberId
+    ) {
+        return ApiResponse.onSuccess(notificationService.getUnreadCount(memberId));
     }
 
     @Operation(

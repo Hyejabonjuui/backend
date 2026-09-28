@@ -73,4 +73,14 @@ public final class NotificationResponseDTO {
         @Schema(description = "다음 페이지 존재 여부", example = "true")
         private boolean hasNext;
     }
+
+    @Getter
+    @Builder
+    @Schema(name = "NotificationUnreadCountDTO", description = "안 읽은 알림 개수 응답")
+    public static class NotificationUnreadCountDTO {
+
+        @JsonProperty("unread_count")
+        @Schema(description = "안 읽은 알림 개수", example = "3")
+        private long unreadCount;
+    }
 }

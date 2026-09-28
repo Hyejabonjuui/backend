@@ -4,6 +4,7 @@ import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.domain.notification.converter.NotificationConverter;
 import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationItemDTO;
 import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationListDTO;
+import com.hyeja.domain.notification.dto.NotificationResponseDTO.NotificationUnreadCountDTO;
 import com.hyeja.domain.notification.entity.Notification;
 import com.hyeja.domain.notification.repository.NotificationRepository;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
@@ -30,6 +31,15 @@ public class NotificationService {
                 PageRequest.of(page, size)
         );
         return NotificationConverter.toNotificationListDTO(notificationPage);
+    }
+
+    public NotificationUnreadCountDTO getUnreadCount(Long memberId) {
+        validateActiveMember(memberId);
+
+        return NotificationUnreadCountDTO.builder()
+                .unreadCount(notificationRepository
+                        .countByMemberMemberIdAndReadYnFalseAndDeletedAtIsNull(memberId))
+                .build();
     }
 
     @Transactional
