@@ -3,7 +3,9 @@ package com.hyeja.domain.policy.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyeja.domain.policy.dto.PolicyDetailResponseDTO.ConditionResultDTO;
+import com.hyeja.domain.policy.enums.EligibilityStatus;
 import com.hyeja.domain.policy.enums.PolicyCategory;
+import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.AiAssessment;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.ReasonRequest;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.SearchIntent;
 import com.hyeja.domain.policy.service.PolicySearchAiAnalyzer.AnalysisException;
@@ -38,13 +40,18 @@ public class OpenAiPolicySearchAnalyzer implements PolicySearchAiAnalyzer {
             """;
     private static final String REASON_PROMPT = """
             청년 주거 정책 검색 결과에 표시할 개인화 이유를 작성하세요.
-            evaluation과 overallStatus는 서버가 확정한 값이므로 절대 변경하지 마세요.
+            서버의 overallStatus와 evaluation, profile, extraQualification을 함께 검토해 최종 status와 reason을 작성하세요.
+            서버의 status보다 유리하게 바꾸면 안 됩니다. ABLE은 UNKNOWN 또는 DISABLE로, UNKNOWN은 DISABLE로만 변경할 수 있고,
+            DISABLE은 반드시 DISABLE로 유지하세요. 확실히 판단할 근거가 부족하면 UNKNOWN을 선택하세요.
             제공된 profile과 extraQualification을 직접 비교한 내용도 이유에 반영하세요.
             추가 자격에 필요한 profile 정보가 없거나 문장만으로 판단할 수 없으면 확인이 필요하다고 안내하세요.
             제공된 회원 정보와 정책 조건만 사용하고 없는 사실은 추측하지 마세요.
-            ABLE 결과는 충족한 핵심 근거를, UNKNOWN 결과는 추가 확인할 정보나 조건을,
-            DISABLE 결과는 맞지 않는 조건과 회원 값을 우선하여 자연스러운 존댓말 한 문장으로 쓰세요.
-            각 문장은 간결하게 작성하세요.
+            reason에 정책명은 쓰지 말고 각 policyId의 정보만 사용하세요.
+            ABLE에는 구조화 조건과 추가 자격이 회원 정보에 어떻게 부합하는지만 설명하세요.
+            UNKNOWN에는 profile과 extraQualification을 비교해도 확정할 수 없는 조건만 설명하세요.
+            DISABLE에는 구조화 조건 또는 추가 자격 중 회원 정보와 맞지 않는 조건만 설명하세요.
+            상태를 선언하는 접두 문구 없이 사유만 한 문장으로 작성하고, 반드시 자연스러운 해요체인 "요."로 끝내세요.
+            UNKNOWN과 DISABLE에는 신청 가능성이나 모든 조건을 충족했다는 표현을 절대 쓰지 마세요.
             """;
     private static final Map<String, Object> INTENT_SCHEMA = Map.of(
             "type", "object",
@@ -64,8 +71,10 @@ public class OpenAiPolicySearchAnalyzer implements PolicySearchAiAnalyzer {
                             "type", "object",
                             "properties", Map.of(
                                     "policyId", Map.of("type", "string"),
+                                    "status", Map.of("type", "string", "enum", List.of(
+                                            "ABLE", "UNKNOWN", "DISABLE")),
                                     "reason", Map.of("type", "string", "minLength", 1)),
-                            "required", List.of("policyId", "reason"),
+                            "required", List.of("policyId", "status", "reason"),
                             "additionalProperties", false))),
             "required", List.of("reasons"),
             "additionalProperties", false);
@@ -95,16 +104,18 @@ public class OpenAiPolicySearchAnalyzer implements PolicySearchAiAnalyzer {
     }
 
     @Override
-    public Map<String, String> generateReasons(List<ReasonRequest> requests) {
+    public Map<String, AiAssessment> assess(List<ReasonRequest> requests) {
         String input = requests.stream().map(this::reasonInput)
                 .collect(java.util.stream.Collectors.joining("\n\n"));
         ReasonsResponse response = parse(call(REASON_PROMPT, input, "policy_search_reasons", REASON_SCHEMA),
                 ReasonsResponse.class);
-        Map<String, String> reasons = new LinkedHashMap<>();
+        Map<String, AiAssessment> reasons = new LinkedHashMap<>();
         if (response.reasons() != null) {
             response.reasons().forEach(item -> {
-                if (item.policyId() != null && item.reason() != null && !item.reason().isBlank()) {
-                    reasons.putIfAbsent(item.policyId(), item.reason().trim());
+                if (item.policyId() != null && item.status() != null
+                        && item.reason() != null && !item.reason().isBlank()) {
+                    reasons.putIfAbsent(item.policyId(),
+                            new AiAssessment(item.status(), item.reason().trim()));
                 }
             });
         }
@@ -186,6 +197,6 @@ public class OpenAiPolicySearchAnalyzer implements PolicySearchAiAnalyzer {
     private record ReasonsResponse(List<ReasonItem> reasons) {
     }
 
-    private record ReasonItem(String policyId, String reason) {
+    private record ReasonItem(String policyId, EligibilityStatus status, String reason) {
     }
 }

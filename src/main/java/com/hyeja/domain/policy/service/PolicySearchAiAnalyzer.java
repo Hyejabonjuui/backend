@@ -10,7 +10,7 @@ import java.util.Set;
 public interface PolicySearchAiAnalyzer {
     SearchIntent analyzeIntent(String query);
 
-    Map<String, String> generateReasons(List<ReasonRequest> requests);
+    Map<String, AiAssessment> assess(List<ReasonRequest> requests);
 
     record SearchIntent(boolean housingRelated, Set<PolicyCategory> categories) {
     }
@@ -33,6 +33,9 @@ public interface PolicySearchAiAnalyzer {
             String income,
             String education,
             String housingType) {
+    }
+
+    record AiAssessment(EligibilityStatus status, String reason) {
     }
 
     enum FailureType {
