@@ -248,6 +248,10 @@ class PolicyControllerTest {
 
         mvc.perform(get("/api/policies/search").param("query", "#월세"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true))
+                .andExpect(jsonPath("$.result.approvedCount").value(1))
+                .andExpect(jsonPath("$.result.underReviewCount").value(0))
+                .andExpect(jsonPath("$.result.declinedCount").value(0))
                 .andExpect(jsonPath("$.result.approved[0].policyId").value("POLICY-1"))
                 .andExpect(jsonPath("$.result.approved[0].categories[0]").value("MONTHLY_RENT"))
                 .andExpect(jsonPath("$.result.approved[0].isFavorite").value(true))
