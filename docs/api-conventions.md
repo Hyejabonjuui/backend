@@ -44,8 +44,8 @@
 | `GET` | `/api/terms` | 없음 | 불필요 | 삭제되지 않은 정책 용어 풀이 목록을 ID 순으로 조회 |
 | `GET` | `/api/terms/{termId}` | path `termId` | 불필요 | 선택한 용어의 이름과 쉬운 설명 조회 |
 | `GET` | `/api/policies/card-news/guest` | 없음 | 불필요 | 대표 카드 중 최대 4건 |
-| `GET` | `/api/policies/housing` | query `category?`, `sort=DEADLINE`, `page=0`, `size=8` | 불필요 | 진행 중 정책 페이지 조회, 상시 정책은 마감일순 마지막 배치 |
-| `GET` | `/api/policies/housing/me` | query `category?`, `sort=DEADLINE`, `onlyEligible=false`, `page=0`, `size=8` | 필요 | 진행 중 정책 페이지 조회, 회원 조건 필터와 관심 여부 포함 |
+| `GET` | `/api/policies/housing` | query `category?`, `sort=DEADLINE`, `page=0`, `size=8` | 불필요 | 진행 중 정책 페이지 조회, 상시 정책은 마감일순 마지막 배치. 지역 칸은 `region_summary`("전국" / "첫 지역 외 N곳") 사용 |
+| `GET` | `/api/policies/housing/me` | query `category?`, `sort=DEADLINE`, `onlyEligible=false`, `page=0`, `size=8` | 필요 | 진행 중 정책 페이지 조회, 회원 조건 필터와 관심 여부 포함. 지역 칸은 `region_summary` 사용 |
 | `GET` | `/api/policies/{policyId}` | path `policyId` | 불필요 | 정책 상세와 `extraQualification`에 포함된 용어의 `termId`·`termName` 목록. 로그인하면 회원 조건별 판정·관심 여부 포함, 비로그인이면 `conditions` 빈 목록·`overallStatus` null. 토큰을 보냈는데 무효하면 `401 COMMON_002` |
 | `POST` | `/api/policies/sync` | 없음 | 관리자 | 외부 정책 수동 동기화. 페이지 요청이 재시도까지 실패하면 `502 POLICY_002`(result에 멈춘 페이지·저장 건수, 저장분은 유지) |
 | `GET` | `/api/favorite` | query `keyword?`, `page=0`, `size=8` | 필요 | 관심 정책을 최근 등록순으로 페이지 조회, 정책명·지원 내용 검색 |

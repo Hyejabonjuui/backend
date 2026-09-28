@@ -56,6 +56,12 @@ public final class PolicyResponseDTO {
         @Schema(description = "전국 정책 여부", example = "false")
         private boolean nationwide;
 
+        // regions가 수백 개일 수 있어(전국 대상 정책) 화면의 지역 칸에는 이 문구를 씁니다.
+        @JsonProperty("region_summary")
+        @Schema(description = "지역 요약 문구. 전국이면 \"전국\", 여러 곳이면 \"첫 지역 외 N곳\"",
+                example = "서울특별시 종로구 외 24곳")
+        private String regionSummary;
+
         @JsonProperty("apply_end_date")
         @Schema(description = "신청 마감일. 상시 모집이면 null", example = "2026-09-30", nullable = true)
         private LocalDate applyEndDate;

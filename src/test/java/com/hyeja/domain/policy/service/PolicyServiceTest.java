@@ -544,6 +544,7 @@ class PolicyServiceTest {
                 assertThat(itemRegion.getRegionName()).isEqualTo("서울특별시 마포구");
             });
             assertThat(item.isNationwide()).isFalse();
+            assertThat(item.getRegionSummary()).isEqualTo("서울특별시 마포구");
             assertThat(item.getApplyPeriodCode()).isEqualTo(PolicyApplyPeriod.SPECIFIC_PERIOD);
             assertThat(item.getDDay()).isEqualTo(4);
         });
@@ -551,6 +552,7 @@ class PolicyServiceTest {
             assertThat(item.getPolicyId()).isEqualTo("POLICY-2");
             assertThat(item.getRegions()).isEmpty();
             assertThat(item.isNationwide()).isTrue();
+            assertThat(item.getRegionSummary()).isEqualTo("전국");
             assertThat(item.getApplyEndDate()).isNull();
             assertThat(item.getApplyPeriodCode()).isEqualTo(PolicyApplyPeriod.ALWAYS);
             assertThat(item.getDDay()).isNull();
@@ -755,6 +757,7 @@ class PolicyServiceTest {
                 assertThat(itemRegion.getRegionName()).isEqualTo("서울특별시 마포구");
             });
             assertThat(item.isNationwide()).isFalse();
+            assertThat(item.getRegionSummary()).isEqualTo("서울특별시 마포구");
             assertThat(item.getApplyPeriodCode()).isEqualTo(PolicyApplyPeriod.SPECIFIC_PERIOD);
             assertThat(item.getDDay()).isEqualTo(4);
             assertThat(item.isFavoriteYn()).isTrue();

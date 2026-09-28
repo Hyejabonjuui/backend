@@ -126,17 +126,19 @@ class SecurityTest {
         }
     }
 
-    // 정책 상세는 비로그인도 볼 수 있지만, 토큰을 보냈는데 무효(위조·로그아웃·탈퇴)하면 비로그인 화면이 아니라 401입니다.
+    // 정책 상세·카드뉴스 팝업은 비로그인도 볼 수 있지만, 토큰을 보냈는데 무효(위조·로그아웃·탈퇴)하면 비로그인 화면이 아니라 401입니다.
     @Test
     void policyDetailRejectsInvalidTokenButAllowsNoToken() throws Exception {
         String loggedOut = jwtProvider.createAccessToken(member(3L));
         when(tokenBlacklist.contains(loggedOut)).thenReturn(true);
 
-        for (String header : new String[] {"Bearer not-a-jwt", "Bearer " + loggedOut}) {
-            HttpResponse<String> response = send("GET", "/api/policies/policy-1", header);
+        for (String path : new String[] {"/api/policies/policy-1", "/api/policies/card-detail/policy-1"}) {
+            for (String header : new String[] {"Bearer not-a-jwt", "Bearer " + loggedOut}) {
+                HttpResponse<String> response = send("GET", path, header);
 
-            assertThat(response.statusCode()).isEqualTo(401);
-            assertThat(JsonPath.parse(response.body()).read("$.code", String.class)).isEqualTo("COMMON_002");
+                assertThat(response.statusCode()).as(path).isEqualTo(401);
+                assertThat(JsonPath.parse(response.body()).read("$.code", String.class)).isEqualTo("COMMON_002");
+            }
         }
         // 토큰이 없으면 비로그인으로 조회합니다. (없는 정책이라 POLICY_001)
         HttpResponse<String> guest = send("GET", "/api/policies/policy-1", null);

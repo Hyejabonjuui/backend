@@ -11,14 +11,13 @@ import static org.mockito.ArgumentMatchers.any;
 import com.hyeja.domain.cardnews.entity.CardNews;
 import com.hyeja.domain.cardnews.repository.CardNewsRepository;
 import com.hyeja.domain.favorite.repository.FavoriteRepository;
-import com.hyeja.domain.member.repository.MemberRepository;
 import com.hyeja.domain.policy.entity.Policy;
 import com.hyeja.domain.policy.entity.PolicyRegion;
 import com.hyeja.domain.policy.enums.PolicyApplyPeriod;
 import com.hyeja.domain.policy.enums.PolicyCategory;
 import com.hyeja.domain.policy.enums.PolicyHouselessRequirement;
 import com.hyeja.domain.policy.repository.PolicyRegionRepository;
-import com.hyeja.domain.profile.repository.ProfileRepository;
+import com.hyeja.domain.profile.service.ProfileService;
 import com.hyeja.domain.region.entity.Region;
 import com.hyeja.global.apiPayload.status.ErrorStatus;
 import com.hyeja.global.exception.GeneralException;
@@ -31,11 +30,9 @@ class CardNewsServiceTest {
     private final CardNewsRepository cardNewsRepository = mock(CardNewsRepository.class);
     private final PolicyRegionRepository policyRegionRepository = mock(PolicyRegionRepository.class);
     private final FavoriteRepository favoriteRepository = mock(FavoriteRepository.class);
-    private final MemberRepository memberRepository = mock(MemberRepository.class);
-    private final ProfileRepository profileRepository = mock(ProfileRepository.class);
+    private final ProfileService profileService = mock(ProfileService.class);
     private final CardNewsService service = new CardNewsService(
-            cardNewsRepository, policyRegionRepository, favoriteRepository,
-            memberRepository, profileRepository);
+            cardNewsRepository, policyRegionRepository, favoriteRepository, profileService);
 
     @Test
     void returnsPopupDataForAuthenticatedMember() {
@@ -68,6 +65,34 @@ class CardNewsServiceTest {
         assertThat(response.cards().get(1).badges())
                 .containsExactly("만 19~34세", "서울특별시");
         assertThat(response.cards().get(0).badges()).isEmpty();
+    }
+
+    // 지역이 여러 곳이면 첫 지역만 보여 주지 않고 "외 N곳"으로 요약합니다(정책 목록·상세와 같은 문구).
+    @Test
+    void summarizesMultipleRegionsInBadge() {
+        Policy policy = policy();
+        when(cardNewsRepository.findAllActiveByPolicyIdOrderByCardNo("policy-1"))
+                .thenReturn(List.of(card(policy, 2L, null, "신청 대상")));
+        when(policyRegionRepository.findAllActiveByPolicyIds(List.of("policy-1")))
+                .thenReturn(List.of(
+                        PolicyRegion.builder().policy(policy).region(Region.builder()
+                                .regionCode("11110").sigunguName("서울특별시 종로구").build()).build(),
+                        PolicyRegion.builder().policy(policy).region(Region.builder()
+                                .regionCode("11140").sigunguName("서울특별시 중구").build()).build()));
+
+        var response = service.getCardNewsDetail("policy-1", null);
+
+        assertThat(response.cards().get(0).badges()).containsExactly("만 19~34세", "서울특별시 종로구 외 1곳");
+    }
+
+    // 탈퇴한 회원은 정책 목록·상세와 같이 MEMBER_001입니다.
+    @Test
+    void rejectsMemberHomeCardNewsForWithdrawnMember() {
+        when(profileService.getActiveProfile(7L)).thenThrow(new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
+
+        assertThatThrownBy(() -> service.getMemberCardNews(7L))
+                .isInstanceOfSatisfying(GeneralException.class,
+                        exception -> assertThat(exception.getCode()).isEqualTo(ErrorStatus.MEMBER_NOT_FOUND));
     }
 
     @Test
