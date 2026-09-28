@@ -84,8 +84,10 @@ public class PolicyService {
         do {
             PolicyApiResponseDTO response = requestPageWithRetry(pageNumber);
             if (response == null || response.getResult() == null) {
-                log.warn("온통청년 API {}페이지의 응답이 비어 있습니다.", pageNumber);
-                break;
+                // 끝까지 못 가고 멈춘 것을 "완료"로 응답하지 않도록 알립니다. 이미 저장한 정책은 항목마다 따로 저장돼 남습니다.
+                log.error("온통청년 API {}페이지 요청 실패로 수집 중단 - 저장 {}건", pageNumber, processedCount);
+                throw new GeneralException(ErrorStatus.POLICY_SYNC_STOPPED,
+                        Map.of("stoppedPage", pageNumber, "savedCount", processedCount));
             }
             if (response.getResult().getPagging() != null) {
                 totalCount = response.getResult().getPagging().getTotCount();
@@ -124,7 +126,7 @@ public class PolicyService {
     }
 
     // 온통청년 서버가 뒤쪽 페이지에서 연결을 끊는 경우가 있어 한 번 더 시도합니다.
-    // 그래도 실패하면 null을 돌려, 그때까지 저장한 정책은 유지한 채 수집을 끝냅니다(500 대신 정상 종료).
+    // 그래도 실패하면 null을 돌려, 호출한 쪽이 수집 중단(POLICY_002)으로 응답합니다.
     private PolicyApiResponseDTO requestPageWithRetry(int pageNumber) {
         for (int attempt = 1; attempt <= 2; attempt++) {
             try {

@@ -50,6 +50,8 @@ public enum ErrorStatus implements BaseErrorCode {
 
     // 정책
     POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "POLICY_001", "존재하지 않는 정책입니다."),
+    // 온통청년 API 요청이 재시도까지 실패해 수집이 멈춤. 그때까지 저장한 정책은 유지되고, result에 멈춘 페이지·저장 건수가 담깁니다.
+    POLICY_SYNC_STOPPED(HttpStatus.BAD_GATEWAY, "POLICY_002", "온통청년 API 요청이 실패해 정책 수집이 중간에 멈췄어요. 잠시 후 다시 시도해 주세요."),
     POLICY_SEARCH_EMPTY(HttpStatus.OK, "POLICY_SEARCH_001", "조건에 맞는 정책을 찾지 못했어요."),
     POLICY_SEARCH_NOT_HOUSING(HttpStatus.BAD_REQUEST, "POLICY_SEARCH_002", "혜자는 주거 관련 혜택을 알려드려요."),
     POLICY_SEARCH_AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "POLICY_SEARCH_003", "AI 검색 서비스에 연결할 수 없어요. 잠시 후 다시 시도해 주세요."),
