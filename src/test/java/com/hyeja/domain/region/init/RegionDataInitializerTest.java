@@ -18,8 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import(JpaAuditingConfig.class)
 class RegionDataInitializerTest {
 
-    // csv/region_sigungu.csv 행 수 (시군구 269건)
-    private static final long SIGUNGU_COUNT = 269;
+    // csv/region_sigungu.csv 행 수 (시군구 256건, 구가 있는 시의 상위 시 제외)
+    private static final long SIGUNGU_COUNT = 256;
 
     @Autowired
     private RegionRepository regionRepository;

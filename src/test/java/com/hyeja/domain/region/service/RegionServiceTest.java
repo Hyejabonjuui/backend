@@ -16,7 +16,7 @@ import org.springframework.test.context.ActiveProfiles;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
-// 실제 지역 CSV(269건)를 적재한 뒤 시·도별로 묶이는지 검증합니다.
+// 실제 지역 CSV(256건)를 적재한 뒤 시·도별로 묶이는지 검증합니다.
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @ActiveProfiles("test")
 @Import(JpaAuditingConfig.class)
@@ -31,10 +31,10 @@ class RegionServiceTest {
 
         List<SidoDTO> result = new RegionService(regionRepository).getRegions();
 
-        // 시·도 16개, 시·군·구 269건이 코드 순으로 묶입니다.
+        // 시·도 16개, 시·군·구 256건이 코드 순으로 묶입니다.
         assertThat(result).hasSize(16);
         assertThat(result).extracting(SidoDTO::getSidoCode).isSorted();
-        assertThat(result.stream().mapToInt(sido -> sido.getSigungu().size()).sum()).isEqualTo(269);
+        assertThat(result.stream().mapToInt(sido -> sido.getSigungu().size()).sum()).isEqualTo(256);
 
         SidoDTO seoul = result.get(0);
         assertThat(seoul.getSidoCode()).isEqualTo("11");
