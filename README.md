@@ -159,6 +159,8 @@ LG CNS AM Inspire 6기 미니프로젝트 1 · 7조 **혜자본주의**
 
 ## 📁 폴더 구조
 
+### Backend
+
 ```text
 src
 ├── main
@@ -186,6 +188,34 @@ src
 │       └── mail                  # 인증 메일 템플릿
 ├── test                          # 단위 · Controller · Service · Repository 테스트
 └── e2eTest                       # Testcontainers 기반 API E2E 테스트
+```
+
+### Frontend ([Hyejabonjuui/frontend](https://github.com/Hyejabonjuui/frontend))
+
+```text
+src
+├── api                           # axios 인스턴스(httpClient) · 도메인별 API 함수
+├── components                    # 재사용 컴포넌트
+│   ├── auth                      # 로그인 다이얼로그
+│   ├── common                    # D-day 배지 · 판정 칩 · 빈/오류 상태 등
+│   ├── landing                   # 랜딩 히어로
+│   ├── layout                    # Header · Footer · MainLayout
+│   ├── notification              # 알림 목록 · 팝오버
+│   ├── policy                    # 정책 목록 · 검색창 · 카드뉴스 · 용어 풀이
+│   └── search                    # 맞춤 검색 결과 3그룹
+├── contexts                      # 로그인 · 로그인 다이얼로그 · 알림 · 토스트 전역 상태
+├── constants                     # 라우트 · 조건 선택지 · 메시지 상수
+├── hooks                         # 정책 · 검색 · 관심 정책 · 알림 등 커스텀 훅
+├── mocks                         # 백엔드 없이 화면을 확인하는 목 모드
+├── pages                         # 화면 단위 (landing · home · search · policy · favorite ·
+│                                 #   notification · mypage · onboarding · auth · admin)
+├── routes                        # Router · 로그인/관리자 전용 라우트 가드
+├── styles                        # MUI 테마 · 전역 CSS
+└── utils                         # 날짜 · 토큰 저장 · 에러 메시지 등
+tests
+├── unit                          # Vitest 단위 테스트
+├── integration                   # Testing Library + MSW 화면 통합 테스트
+└── e2e                           # Playwright E2E 테스트
 ```
 
 <br>
@@ -225,7 +255,7 @@ docker compose up -d
 ./gradlew bootRun
 ```
 
-- API 문서(Swagger UI): `http://localhost:8080/swagger-ui.html`
+- API 명세: [Notion API 명세](https://shared-wool-66d.notion.site/API-3e382c18756e80cd9119ca6d6fb50ce1) (로컬 실행 시 Swagger UI `http://localhost:8080/swagger-ui.html`에서도 확인 가능)
 - 헬스체크: `GET /api/health`
 - 프론트엔드 실행 방법은 [frontend 저장소](https://github.com/Hyejabonjuui/frontend)를 참고합니다.
 
